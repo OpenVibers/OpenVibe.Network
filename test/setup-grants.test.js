@@ -72,7 +72,10 @@ const { createSetupGrants, TTL_MS, hashOf } = require('../server/admin/setup-gra
         assert.strictEqual((await call('POST', `/internal/setup/grants/${late.id}/save`, { values: { 'groq.api_key': VALUE } })).status, 410, 'an expired grant');
         r = await call('POST', '/api/admin/setup/grants', { service: 'ai', namespace: 'ai.providers', keys: ['groq.api_key'] });
         const gone = r.body.grant;
-        assert.strictEqual((await call('DELETE', `/api/admin/setup/grants/${gone.ref}`)).status, 200, 'revoked');
+        const took = await call('DELETE', `/api/admin/setup/grants/${gone.ref}`);
+        assert.deepStrictEqual([took.status, took.body.state, took.body.task_stopped], [200, 'revoked', null], 'revoked');
+        assert.strictEqual((await call('DELETE', `/api/admin/setup/grants/${g.ref}`)).body.state, 'spent', 'a grant the agent spent says so (11-14 review)');
+        assert.strictEqual((await call('DELETE', '/api/admin/setup/grants/000000000000')).status, 404, 'no such grant');
         assert.strictEqual((await call('POST', `/internal/setup/grants/${gone.id}/save`, { values: { 'groq.api_key': VALUE } })).status, 410, 'a revoked grant');
         assert.strictEqual((await call('POST', '/internal/setup/grants/sgr_nope/save', { values: { a: 'b' } })).status, 404, 'a made-up id');
 
@@ -102,6 +105,21 @@ const { createSetupGrants, TTL_MS, hashOf } = require('../server/admin/setup-gra
             assert.strictEqual(st.status, 502, 'Actor down');
             const last = JSON.parse(toActor[toActor.length - 1].init.body).setup.grant;
             assert.ok((await db.prepare('SELECT revoked_at FROM setup_grants WHERE id_hash = ?').get(hashOf(last))).revoked_at, 'a failed start revokes its grant');
+            // Stop takes the grant back and stops the agent's task with the owner's Bearer (11-14 review).
+            actorUp = true;
+            st = await start(row);
+            const del = async (path) => { const x = await fetch(b2 + '/g' + path, { method: 'DELETE', headers: { authorization: 'Bearer owner-token' } }); return { status: x.status, body: await x.json() }; };
+            const stopped = await del(`/${st.body.grant.ref}?task=${st.body.grant.task.id}`);
+            assert.deepStrictEqual([stopped.status, stopped.body.state, stopped.body.task_stopped], [200, 'revoked', true], JSON.stringify(stopped.body));
+            const cancel = toActor[toActor.length - 1];
+            assert.deepStrictEqual([cancel.url, cancel.init.method, cancel.init.headers.Authorization], [`http://actor.test/api/v1/tasks/${st.body.grant.task.id}/cancel`, 'POST', 'Bearer owner-token']);
+            st = await start(row);
+            actorUp = false;
+            const failed = await del(`/${st.body.grant.ref}?task=${st.body.grant.task.id}`);
+            assert.deepStrictEqual([failed.body.state, failed.body.task_stopped], ['revoked', false], 'a task Actor did not stop is said so');
+            const before = toActor.length;
+            assert.strictEqual((await del(`/${st.body.grant.ref}?task=not-a-task`)).body.task_stopped, false, 'a bad task id never reaches Actor');
+            assert.strictEqual(toActor.length, before);
         } finally { s2.close(); }
 
         // The agent's screen beside the step (AB.44): its task and desk picture, read from Actor with the owner's
