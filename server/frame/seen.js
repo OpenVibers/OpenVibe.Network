@@ -28,6 +28,12 @@ let day = '';
 let dayKey = null;
 const members = new Map();   // subject id → { at: ms, site: site id | null }
 const guests = new Map();    // keyed hash → last seen ms
+// The UTC day's distinct people (the Report card's "people today", 11-14): signed-in ids and today's guest hashes,
+// both gone at midnight with the day's key. Past the cap a newcomer still counts, it just is not remembered.
+const MAX_DAY = 200000;
+const dayMembers = new Set();
+const dayGuests = new Set();
+let dayOver = { members: 0, guests: 0 };
 
 /** A new key at UTC midnight: yesterday's hashes cannot be recomputed from today's, so the guest entries
  *  they named go with it (the count starts again rather than mixing two days under one read). */
@@ -37,6 +43,9 @@ function rotate(now) {
         day = d;
         dayKey = crypto.randomBytes(32);
         guests.clear();
+        dayMembers.clear();
+        dayGuests.clear();
+        dayOver = { members: 0, guests: 0 };
     }
 }
 
@@ -71,7 +80,9 @@ function prune(now = Date.now()) {
 function seenMember(subject, site = null, now = Date.now()) {
     const id = String(subject || '');
     if (!id || !/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(id)) return false;
+    rotate(now);
     members.set(id, { at: now, site: site ? String(site) : null });
+    if (!dayMembers.has(id)) { if (dayMembers.size < MAX_DAY) dayMembers.add(id); else dayOver.members++; }
     if (members.size > MAX_MEMBERS) prune(now);
     return true;
 }
@@ -79,7 +90,9 @@ function seenMember(subject, site = null, now = Date.now()) {
 /** A guest page view: one entry per distinct address + user agent in the window. */
 function seenGuest(ip, ua, now = Date.now()) {
     if (isBot(ua)) return false;
-    guests.set(guestKey(ip, ua, now), now);
+    const k = guestKey(ip, ua, now);
+    guests.set(k, now);
+    if (!dayGuests.has(k)) { if (dayGuests.size < MAX_DAY) dayGuests.add(k); else dayOver.guests++; }
     if (guests.size > MAX_GUESTS) prune(now);
     return true;
 }
@@ -95,7 +108,15 @@ function siteOfOrigin(origin) {
 
 /** A signed-in beacon: this browser is not a guest, and any guest entry it left is forgotten. */
 function forgetGuest(ip, ua, now = Date.now()) {
-    guests.delete(guestKey(ip, ua, now));
+    const k = guestKey(ip, ua, now);
+    guests.delete(k);
+    dayGuests.delete(k);   // the same browser, signed in: counted once, as a member
+}
+
+/** The UTC day's distinct people so far: { day, members, guests } (counts only). */
+function today(now = Date.now()) {
+    rotate(now);
+    return { day, members: dayMembers.size + dayOver.members, guests: dayGuests.size + dayOver.guests };
 }
 
 /** What the read sees: the members seen (with their last site) and how many distinct guests. */
@@ -115,8 +136,11 @@ function state() {
 function reset() {
     members.clear();
     guests.clear();
+    dayMembers.clear();
+    dayGuests.clear();
+    dayOver = { members: 0, guests: 0 };
     day = '';
     dayKey = null;
 }
 
-module.exports = { WINDOW_MS, MAX_MEMBERS, MAX_GUESTS, BOT, isBot, guestKey, seenMember, seenGuest, forgetGuest, siteOfOrigin, snapshot, state, reset };
+module.exports = { WINDOW_MS, MAX_MEMBERS, MAX_GUESTS, BOT, isBot, guestKey, seenMember, seenGuest, forgetGuest, siteOfOrigin, snapshot, today, state, reset };

@@ -17,6 +17,7 @@
 const express = require('express');
 const store = require('./store');
 const { cardOf, oneCardPerThing, foldCards, rankCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD } = require('./card');
+const { createPictures } = require('./pictures');
 const { createFeedSources } = require('./sources');
 const { createEffects } = require('./effects');
 const { createEventsPull } = require('./events');
@@ -80,6 +81,8 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
     // The name effect a person wears (actor.fx): asked of OpenVibe.Inventory by the feed's own server,
     // so no site needs Inventory in its connect-src. Inventory down leaves the cards without one.
     const effects = createEffects({ baseUrl: (config.feed && config.feed.inventoryUrl) || '', fetchImpl, now });
+    // A store's picture (Deals) on an address every site's img-src allows: Network's (server/feed/pictures.js).
+    const pictures = createPictures({ privateKey, baseUrl: config.baseUrl || issuer || 'https://openvibe.network', now });
     let started = false;
 
     const headers = (req, res) => {
@@ -138,13 +141,15 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
             try { n = Math.max(n, await store.countBulk(db, b)); } catch { /* the page's own count */ }
             if (n < 2) continue;
             if (!card.group) card.group = { count: n, items: [{ id: card.id, url: card.url, title: card.title, media: card.media }] };
+            // A run of deals shows each one's picture in its rows; one product's picture over "321 new deals" says nothing.
+            card.media = null;
             card.id = bulkId(b.kind, b.site, b.hour);
             card.title = `${n.toLocaleString('en-US')} new ${b.many}`;
             card.group.count = n;
             card.counts = { ...card.counts, people: n };
         }
         cards = rankCards(cards, { followed: new Set(followed), affinity, now: now() });
-        const items = cards.slice(0, want);
+        const items = cards.slice(0, want).map(pictures.card);
         // The next page starts at the newest row whose card this page did not show (it used to start after every row
         // read, so the cards past the first `want` were never seen); a row of a shown burst or group counts as shown.
         const shown = new Set();
@@ -196,7 +201,7 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
             const read = await store.listItems(db, { q, followed, viewerSubject: viewer && viewer.subject, limit: 400, since: new Date(now() - 365 * 86400000).toISOString() });
             const actors = await actorsFor(db, read.rows);
             const cards = foldCards(oneCardPerThing(read.rows.map((r) => cardOf(r, actors.get(r.actor_subject) || null))).filter((c) => searchMatches(c, q)), now()).map(({ bulk, ...c }) => c);
-            res.json({ items: rankCards(cards, { followed: new Set(followed), now: now() }).slice(0, want), next_cursor: null });
+            res.json({ items: rankCards(cards, { followed: new Set(followed), now: now() }).slice(0, want).map(pictures.card), next_cursor: null });
         } catch (err) { next(err); }
     };
     const router = express.Router();
@@ -204,6 +209,7 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
     router.get('/wall', handleWall);
     router.get('/examples', handleExamples);
     router.get('/search', handleSearch);
+    router.get('/picture', (req, res, next) => pictures.handle(req, res).catch(next));
     router.options('*', (req, res) => {
         res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Max-Age': '600' });
         res.status(204).end();
@@ -217,7 +223,7 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
     }
     function stop() { sources.stop(); events.stop(); }
 
-    return { router, page, handleFeed, handleWall, handleSearch, handleExamples, start, stop, sources, events, viewerOf };
+    return { router, page, handleFeed, handleWall, handleSearch, handleExamples, start, stop, sources, events, viewerOf, pictures };
 }
 
 module.exports = { createFeedApi, viewerOf, actorsFor, encodeCursor, decodeCursor, KINDS };
