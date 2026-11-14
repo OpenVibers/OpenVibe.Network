@@ -413,7 +413,7 @@ async function loadEmail() {
             </div>
 
             <div class="card" style="padding:16px;margin-bottom:16px">
-                <h3 style="margin-bottom:10px"><i class="fa-solid fa-chart-line"></i> Email Delivery Metrics</h3><p class="admin-intro">These are recorded delivery counts and recent failures. Check them after a test email or a reported delivery problem; more failed messages means more deliveries need investigation.</p>
+                <h3 style="margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span><i class="fa-solid fa-chart-line"></i> Email Delivery Metrics</span><a class="btn btn-secondary btn-sm" style="margin-left:auto" href="https://openvibe.report/stats#email" target="_blank" rel="noopener" title="The same numbers, by kind and day, on openvibe.report (counts only)">On openvibe.report <i class="fa-solid fa-arrow-up-right-from-square"></i></a></h3><p class="admin-intro">These are recorded delivery counts and recent failures. Check them after a test email or a reported delivery problem; more failed messages means more deliveries need investigation.</p>
                 <div class="muted" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
                     <div><strong>Total recorded:</strong> ${Number(summary.total || 0).toLocaleString()}</div>
                     <div><strong>Failed in the last 24 hours:</strong> ${Number(summary.failed_24h || 0).toLocaleString()}</div>
