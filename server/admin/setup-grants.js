@@ -9,7 +9,8 @@
  *                                                                → 201 { grant: { id, ref, service, namespace, keys,
  *                                                                        expires_at } }   the id is shown once
  *   GET    /api/admin/setup/grants        owner                 → the owner's live grants (ref, row, expiry; never ids)
- *   DELETE /api/admin/setup/grants/:ref   owner                 → revoked
+ *   DELETE /api/admin/setup/grants/:ref[?task=tsk_…]  owner     → { state: revoked | spent, task_stopped }: the
+ *                                                                  agent's task is stopped too (11-14 review)
  *   GET    /api/admin/setup/grants/agent/:task         owner  → the agent's work for the Setup row's overlay: { state,
  *                                                                ended, error, needs_you: { what }, desk, page }
  *   GET    /api/admin/setup/grants/agent/:task/still   owner  → its desk's latest picture (image, no-store)
@@ -115,11 +116,33 @@ function createSetupGrants({ db, proxy, isFresh, now = () => Date.now(), log = c
             created_at: new Date(r.created_at).toISOString(), expires_at: new Date(r.expires_at).toISOString() }));
     }
 
-    async function revoke(req, ref) {
+    /** Stop the agent's task (Actor's POST /api/v1/tasks/:id/cancel, the owner's own Bearer). → true, or false when it did not. */
+    async function stopAgent(req, task) {
+        const auth = String(req.headers && req.headers.authorization || '');
+        if (!TASK_RE.test(task) || !/^Bearer\s+\S+/.test(auth) || !actorUrl) return false;
+        try {
+            const res = await fetchImpl(`${actorUrl.replace(/\/+$/, '')}/api/v1/tasks/${encodeURIComponent(task)}/cancel`, {
+                method: 'POST', redirect: 'error', signal: AbortSignal.timeout(10_000),
+                headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: auth }, body: '{}',
+            });
+            return res.ok || res.status === 409;   // 409: it had ended already
+        } catch { return false; }
+    }
+
+    /**
+     * Take a grant back (the 11-14 review): honest about what happened. A grant the agent already spent says so (the key
+     * it saved stays in Setup, for the owner to remove there); a live one is revoked; and with its task the agent's task
+     * is stopped too, so nothing keeps working on the owner's behalf. → { state, task_stopped }
+     */
+    async function revoke(req, ref, task = null) {
         if (!REF_RE.test(ref)) throw new GrantError(404, 'setup_grant.not_found', 'no such grant');
-        const r = await db.prepare(`UPDATE setup_grants SET revoked_at = ? WHERE owner_user_id = ? AND substr(id_hash, 1, 12) = ?
+        await db.prepare(`UPDATE setup_grants SET revoked_at = ? WHERE owner_user_id = ? AND substr(id_hash, 1, 12) = ?
             AND used_at IS NULL AND revoked_at IS NULL`).run(iso(now()), req.user.id, ref);
-        if (!Number(r.changes)) throw new GrantError(404, 'setup_grant.not_found', 'no such grant');
+        const row = await db.prepare('SELECT used_at, revoked_at FROM setup_grants WHERE owner_user_id = ? AND substr(id_hash, 1, 12) = ?').get(req.user.id, ref);
+        if (!row) throw new GrantError(404, 'setup_grant.not_found', 'no such grant');
+        const state = row.used_at ? 'spent' : 'revoked';
+        const task_stopped = task ? await stopAgent(req, String(task)) : null;
+        return { state, task_stopped };
     }
 
     /** The agent's one save. The grant is spent first (atomically), so a replay or a race finds nothing. */
@@ -212,7 +235,9 @@ function createSetupGrants({ db, proxy, isFresh, now = () => Date.now(), log = c
         r.use(express.json({ limit: '8kb' }));
         r.post('/', async (req, res) => { try { res.status(201).json({ ok: true, grant: await create(req, req.body) }); } catch (err) { send(res, err); } });
         r.get('/', async (req, res) => { try { res.set('Cache-Control', 'no-store').json({ ok: true, grants: await list(req) }); } catch (err) { send(res, err); } });
-        r.delete('/:ref', async (req, res) => { try { await revoke(req, String(req.params.ref)); res.json({ ok: true }); } catch (err) { send(res, err); } });
+        r.delete('/:ref', async (req, res) => {
+            try { res.set('Cache-Control', 'no-store').json({ ok: true, ...(await revoke(req, String(req.params.ref), req.query.task ? String(req.query.task) : null)) }); } catch (err) { send(res, err); }
+        });
         r.get('/agent/:task', async (req, res) => { try { res.set('Cache-Control', 'no-store').json({ ok: true, agent: await agentView(req, String(req.params.task)) }); } catch (err) { send(res, err); } });
         r.get('/agent/:task/still', async (req, res) => {
             try {

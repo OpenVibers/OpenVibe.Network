@@ -320,10 +320,24 @@ function setupAgentNotice(li, row, grant) {
     let timer = 0;
     const until = Date.now() + 30 * 60 * 1000;
     const end = (words, tone) => { clearInterval(timer); note.remove(); setupDeskClose(); setupShowResult(li, words, tone); };
+    // Stop says what really happened (11-14 review): it used to say "Stopped" even when the request failed.
     stop.addEventListener('click', async () => {
         stop.disabled = true;
-        try { await api('/api/admin/setup/grants/' + encodeURIComponent(grant.ref), { method: 'DELETE' }); } catch { /* spent or gone already */ }
-        end('Stopped: your agent can no longer save this key.', 'muted');
+        const task = grant.task && grant.task.id ? '?task=' + encodeURIComponent(grant.task.id) : '';
+        let out;
+        try { out = await api('/api/admin/setup/grants/' + encodeURIComponent(grant.ref) + task, { method: 'DELETE' }); } catch (err) {
+            stop.disabled = false;
+            setupShowResult(li, 'It could not be stopped' + (err && err.message ? ': ' + err.message : '') + '. Try again.', 'bad');
+            return;
+        }
+        if (out && out.state === 'spent') {
+            end('Your agent had already saved the key. It stays in Setup: remove it there if you do not want it.', 'muted');
+            try { SETUP.data = await api('/api/admin/setup'); setupRender(document.getElementById('setup-content')); } catch { /* the next load shows it */ }
+            return;
+        }
+        end(out && out.task_stopped === false
+            ? 'Stopped: your agent can no longer save this key. Its task did not stop from here: open it and stop it there.'
+            : 'Stopped: your agent can no longer save this key' + (task ? ', and its task is stopped.' : '.'), 'muted');
     });
     const actions = document.createElement('p');
     actions.className = 'setup-agent-actions';
