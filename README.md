@@ -687,6 +687,13 @@ Google-style account management supporting up to 5 accounts:
   descriptor gives an `origin` only to `live` services (`planned_origin` otherwise), `/status` reads
   "up (loopback only)" for an internal service, and the Frame's nav lists only `live` sites. Change a
   row when a domain stops serving its placeholder; `test/registry-exposure.test.js` pins the states.
+- **The three doors of 2026-11-13** — `openvibe.expert`, `openvibe.markets` and `openvibe.finance` — are in the site
+  list (`server/frame/sites.js`, `DOORS`) before their own services exist: each domain answers with a 302 to the
+  service that holds its content today (Expert → openvibe.design/create, Markets → openvibe.deals, Finance →
+  openvibe.network/wallet), so they are open in the menu, the apps list, `/api/frame/*`, `/sites`, the home page and
+  llms.txt, and their domains are first-party CORS origins (`server/first-party-origins.js`). They have no exposure
+  row and no registry row until their service lands and a Contracts manifest names them; then they are manifest
+  sites like every other one.
 - The registry also answers `GET /api/v1/registry/topics` (every event type from the manifests'
   `eventsProduced`/`eventsConsumed` and the payload contracts, with producers, consumers, the matching
   consumer pattern and the payload contract; filters `service`, `producer`, `consumer`, `prefix`),
