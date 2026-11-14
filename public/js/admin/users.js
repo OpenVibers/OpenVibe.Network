@@ -59,6 +59,7 @@ async function loadUsers() {
                     </tr>
                 `).join('')}</tbody>
             </table>`;
+        adminTableCards(c);
 
         const pages = Math.ceil(total / 50);
         const curPage = Math.floor(usersOffset / 50) + 1;

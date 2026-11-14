@@ -316,15 +316,6 @@ a.btn{text-decoration:none}
     .admin-clarity .input-row > button { width:100%; }
     .admin-clarity .sub-tabs { flex-wrap:wrap; }
 }
-@media(max-width:600px) {
-    #sec-users .admin-table thead { display:none; }
-    #sec-users .admin-table :is(tbody,tr,td) { display:block; min-width:0; width:100%; }
-    #sec-users .admin-table tr { padding:12px; margin:12px 0; border:1px solid var(--border); border-radius:10px; background:var(--bg-card); }
-    #sec-users .admin-table td { border:0; padding:6px 0; }
-    #sec-users .admin-table td::before { content:attr(data-label); display:block; color:var(--text-secondary); font-size:12px; font-weight:600; margin-bottom:4px; }
-    #sec-users .admin-table td:last-child { display:flex!important; gap:8px!important; }
-    #sec-users .admin-table td:last-child::before { flex-basis:100%; }
-}
 body:has(.admin-clarity.active) .ov-sel-search input { min-height:44px; }
 body:has(.admin-clarity.active) .ov-sel-opt { min-height:44px; }
 /* ── The clear admin panel (2026-11-07): machine keys small and grey, Advanced settings folds, forms for objects ── */
@@ -562,3 +553,109 @@ body:has(.admin-clarity.active) .ov-sel-opt { min-height:44px; }
 .setup-purpose{margin:6px 0 0;font-size:14px;line-height:1.5;font-weight:450;color:var(--text-primary)}
 .setup-label{display:block;margin-bottom:1px;font-size:11px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)}
 .setup-row .setup-what{font-weight:400}
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+   11-14, the owner's phone: the admin panel on a small screen.
+   One shared pattern for every admin table (cards under 700 px), one compact filter bar, and every field in
+   the panel's own theme. The old look — a 76 px checkbox column, a title that wrapped, a size column cut off
+   at the right, light-grey filter boxes on a dark page — came from rules that covered only .form-field and
+   .input-row; the fields inside a filter bar had no background at all, so the browser drew its own.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* 1. Every field takes the theme: the panel's own background, border and text, in light and dark. */
+.admin-clarity .admin-field :is(input:not([type=checkbox]):not([type=radio]),select,textarea),
+.admin-filter-bar :is(input:not([type=checkbox]):not([type=radio]),select,textarea){
+    width:100%;max-width:100%;min-height:44px;padding:8px 10px;
+    background:var(--bg-input);border:1px solid var(--border);border-radius:8px;
+    color:var(--text);font-size:14px;font-family:inherit;line-height:1.35;outline:none;
+    color-scheme:dark light;transition:border-color var(--ov-dur-2,.15s) ease;
+}
+.admin-clarity .admin-field :is(input,select,textarea):focus,
+.admin-filter-bar :is(input,select,textarea):focus{border-color:var(--accent)}
+.admin-clarity .admin-field :is(input,select,textarea)::placeholder{color:var(--text-muted);opacity:.85}
+/* The help text under a field is one quiet line, not a paragraph: the panel said too much in too much space. */
+.admin-clarity .admin-help{font-size:12px;line-height:1.45;margin:4px 0 8px;color:var(--text-muted)}
+.admin-clarity .admin-help strong{font-weight:650;color:var(--text-secondary)}
+
+/* 2. Filters: one bar. The inputs sit in a row that wraps; the help is a single hint under the bar. */
+.admin-filter-bar{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:flex-end;margin:0 0 8px;padding:10px 12px;
+    border:1px solid var(--border);border-radius:12px;background:var(--bg-secondary)}
+.admin-filter{display:flex;flex-direction:column;gap:4px;flex:1 1 140px;min-width:0;max-width:240px}
+.admin-filter-label{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted)}
+.admin-filter-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto}
+.admin-filter-hint{margin:0 0 14px;font-size:11.5px;line-height:1.5;color:var(--text-muted);max-width:100ch}
+.admin-filter-hint code{font-size:11px}
+
+/* 3. Status chips: a short word, the long sentence as the tooltip. */
+.admin-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:11px;
+    font-weight:700;letter-spacing:.01em;border:1px solid transparent;white-space:nowrap;text-transform:none}
+.admin-chip.is-ok{color:var(--success-text,var(--success,#22c55e));background:color-mix(in srgb,var(--success,#22c55e) 15%,transparent);border-color:color-mix(in srgb,var(--success,#22c55e) 34%,transparent)}
+.admin-chip.is-warn{color:var(--warning-text,var(--warning,#f59e0b));background:color-mix(in srgb,var(--warning,#f59e0b) 15%,transparent);border-color:color-mix(in srgb,var(--warning,#f59e0b) 34%,transparent)}
+.admin-chip.is-bad{color:var(--danger-text,var(--danger,#ef4444));background:color-mix(in srgb,var(--danger,#ef4444) 14%,transparent);border-color:color-mix(in srgb,var(--danger,#ef4444) 34%,transparent)}
+.admin-chip.is-muted{color:var(--text-secondary);background:var(--bg-tertiary);border-color:var(--border)}
+
+/* 4. The tables: one card per row under 700 px — the main column is the card's title, the rest are
+   "label: value" lines, and a row's checkbox is a small box at the card's top-right. The helper
+   (js/admin/core.js, adminTableCards) sets data-label on every cell from the table's own header. */
+.admin-cards .admin-table input[type=checkbox]{width:24px!important;height:24px!important;min-height:24px!important;
+    flex:0 0 24px;accent-color:var(--accent)}
+@media(max-width:700px){
+    .admin-cards .admin-table{display:block;width:100%;max-width:100%;overflow:visible;border-collapse:separate}
+    .admin-cards .admin-table thead{display:none}
+    .admin-cards .admin-table tbody,.admin-cards .admin-table tr,.admin-cards .admin-table td{display:block;width:100%;min-width:0}
+    .admin-cards .admin-table tr{position:relative;margin:0 0 10px;padding:12px 46px 12px 12px;
+        border:1px solid var(--border);border-radius:12px;background:var(--bg-card)}
+    .admin-cards .admin-table tr:hover{background:var(--bg-card)}
+    .admin-cards .admin-table td{border:0;padding:5px 0;display:flex;gap:10px;align-items:flex-start;
+        font-size:12.5px!important;line-height:1.5;overflow-wrap:anywhere}
+    .admin-cards .admin-table td::before{content:attr(data-label);flex:0 0 38%;max-width:38%;
+        color:var(--text-muted);font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+    /* The main column: the card's title, in its own words. */
+    .admin-cards .admin-table td.admin-cell-title{display:block;padding:0 0 8px;font-size:15px!important;font-weight:700;color:var(--text)}
+    .admin-cards .admin-table td.admin-cell-title::before{display:none}
+    /* A row's checkbox: a small box at the card's top-right. */
+    .admin-cards .admin-table td.admin-cell-check{position:absolute;top:10px;right:10px;width:24px;padding:0}
+    .admin-cards .admin-table td.admin-cell-check::before{display:none}
+    .admin-cards .admin-table td.admin-cell-check input[type=checkbox]{width:24px!important;height:24px!important;min-height:24px!important}
+    /* A cell with controls (buttons, a role menu): its label above, the controls below, all wrapped. */
+    .admin-cards .admin-table td.admin-cell-actions{display:block}
+    .admin-cards .admin-table td.admin-cell-actions::before{display:block;margin-bottom:6px}
+    .admin-cards .admin-table td.admin-cell-actions :is(button,.btn,select){min-height:40px}
+    .admin-cards .admin-table td.admin-cell-actions select{width:100%;margin-bottom:8px}
+    .admin-cards .admin-table td.admin-cell-actions :is(button,.btn){margin:0 6px 6px 0}
+    .admin-cards .admin-table :is(code){font-size:11.5px}
+}
+
+/* 5. A quiet note box: what the panel could not read, in words. */
+.admin-note{padding:11px 13px;border:1px solid var(--border);border-radius:10px;background:var(--bg-secondary);
+    font-size:12.5px;line-height:1.55;color:var(--text-secondary)}
+.admin-note.is-bad{border-color:color-mix(in srgb,var(--danger,#ef4444) 38%,var(--border));color:var(--text)}
+
+/* 6. The operator checklist: the item, its state in words, and where it is done. */
+.checklist-area{margin:16px 0 6px;font-size:13px;font-weight:800}
+.checklist-row{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--border)}
+.checklist-dot{width:10px;height:10px;border-radius:50%;margin-top:6px;flex:none}
+.checklist-name{flex:1 1 260px;min-width:0;font-weight:600;line-height:1.5}
+.checklist-places{display:flex;gap:8px;flex-wrap:wrap;align-items:center;flex:1 1 100%;min-width:0}
+.checklist-places :is(.btn,button,a,code){font-size:11.5px}
+.checklist-gap{color:var(--warning-text,var(--warning,#f59e0b));font-size:11.5px}
+
+/* 7. The card's title is the recording's title: it wraps, it is never cut off. */
+@media(max-width:700px){
+    .admin-cards .admin-table td.admin-cell-title{max-width:100%!important;white-space:normal!important;
+        overflow:visible!important;text-overflow:clip!important;word-break:break-word}
+}
+/* 8. The card leads with its title, then the lines under it. */
+@media(max-width:700px){
+    .admin-cards .admin-table tr{display:flex;flex-direction:column;align-items:stretch}
+    .admin-cards .admin-table td.admin-cell-title{order:-1}
+}
+
+/* 9. A button takes the theme too: the browser's own grey button was never the panel's look. */
+.admin-clarity .btn,.admin-filter-bar .btn{background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text)}
+.admin-clarity .btn:hover,.admin-filter-bar .btn:hover{border-color:var(--accent-dark);color:var(--text)}
+.admin-clarity .btn-primary,.admin-filter-bar .btn-primary{background:var(--accent-strong,var(--accent,#3472d8));border-color:transparent;color:var(--on-accent-strong,var(--on-accent,#fff))}
+.admin-clarity .btn-primary:hover,.admin-filter-bar .btn-primary:hover{background:var(--accent-dark);color:var(--on-accent-strong,var(--on-accent,#fff))}
+.admin-clarity .btn-outline,.admin-filter-bar .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.admin-clarity .btn-danger,.admin-filter-bar .btn-danger{background:rgba(231,76,60,0.1);color:var(--live-red-text,var(--live-red));border:1px solid rgba(231,76,60,0.2)}
+.admin-clarity .btn-success,.admin-filter-bar .btn-success{background:rgba(46,204,113,0.1);color:var(--success-text,var(--success));border:1px solid rgba(46,204,113,0.2)}

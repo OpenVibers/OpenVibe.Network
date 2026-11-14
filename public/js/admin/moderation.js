@@ -102,6 +102,7 @@ async function loadBans() {
                     </tr>
                 `).join('')}</tbody>
             </table>`;
+        adminTableCards(c);
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
 }
 
@@ -267,21 +268,38 @@ async function replayDeliveries(sub, ids) {
     try { const r = await api('/api/admin/events/replay', { method: 'POST', body: { subscription_id: sub, event_ids: eventIds } }); alert(`Queued ${r.queued}`); loadDeliveries(); }
     catch (err) { alert(err.message || 'Replay failed'); }
 }
+// The status words the status page uses (server/status/routes.js): up, degraded, down, not-running, unknown.
+// The panel used to ask for "ready", a word the status service never returns, so every row said the status was
+// unavailable (2026-11-14, the owner's phone).
+const CHECKLIST_STATUS = {
+    up: 'Ready to use.',
+    degraded: 'Working with a problem; check the linked service.',
+    down: 'Unavailable; check the linked service.',
+    'not-running': 'Not running on this host.',
+    unknown: 'Not checked.',
+};
+
 async function loadOperatorChecklist() {
     const c = document.getElementById('checklist-content');
     let areas = [];
     try { areas = (await api('/api/admin/operator-checklist')).areas || []; } catch (err) { c.textContent = 'Could not load: ' + err.message; return; }
     c.replaceChildren();
-    const colour = { ready: 'var(--success, #3ee6b0)', degraded: 'var(--warning, #f5a524)', down: 'var(--danger, #ef4444)' };
+    const colour = { up: 'var(--success, #3ee6b0)', degraded: 'var(--warning, #f5a524)', down: 'var(--danger, #ef4444)', 'not-running': 'var(--text-muted, #888)', unknown: 'var(--text-muted, #888)' };
     for (const a of areas) {
-        const h = document.createElement('h3'); h.textContent = a.area; h.style.margin = '14px 0 6px'; c.appendChild(h);
+        const h = document.createElement('h3'); h.textContent = a.area; h.className = 'checklist-area'; c.appendChild(h);
         for (const it of a.items) {
             const row = document.createElement('div');
-            row.style.cssText = 'display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--border)';
-            const dot = document.createElement('span'); dot.title = (it.service || '') + ': ' + it.status;
-            dot.style.cssText = 'width:10px;height:10px;border-radius:50%;margin-top:6px;flex:none'; dot.style.background = colour[it.status] || 'var(--text-muted, #888)';
-            const name = document.createElement('strong'); name.textContent = it.item + ': ' + ({ready:'Ready to use.',degraded:'Working with a problem; check the linked service.',down:'Unavailable; check the linked service.'}[it.status] || 'Status unavailable.'); name.style.minWidth = '260px';
-            const places = document.createElement('div'); places.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center';
+            row.className = 'checklist-row';
+            const dot = document.createElement('span'); dot.className = 'checklist-dot';
+            dot.title = (it.service || '') + ': ' + (it.status || 'unknown');
+            dot.style.background = colour[it.status] || 'var(--text-muted, #888)';
+            const name = document.createElement('strong'); name.className = 'checklist-name';
+            const word = CHECKLIST_STATUS[it.status] || CHECKLIST_STATUS.unknown;
+            // A service the status service has not answered for says so, and why.
+            let why = (it.status === 'unknown' || it.status === 'not-running') ? String(it.status_reason || '').trim() : '';
+            if (/^not checked/i.test(why)) why = '';   // the word already says it
+            name.textContent = it.item + ': ' + word + (why ? ' ' + why : '');
+            const places = document.createElement('div'); places.className = 'checklist-places';
             for (const w of it.where) {
                 let el;
                 if (w.kind === 'tab') { el = document.createElement('button'); el.type = 'button'; el.className = 'btn'; el.textContent = 'Open ' + w.tab; el.onclick = () => showTab(w.tab, null); }
@@ -290,7 +308,7 @@ async function loadOperatorChecklist() {
                 places.appendChild(el);
                 if (w.note) { const n = document.createElement('span'); n.className = 'muted'; n.textContent = '(' + w.note + ')'; places.appendChild(n); }
             }
-            if (!it.console) { const gap = document.createElement('span'); gap.className = 'muted'; gap.textContent = 'No settings page yet; use the listed command or API.'; gap.style.color = 'var(--warning, #f5a524)'; places.appendChild(gap); }
+            if (!it.console) { const gap = document.createElement('span'); gap.className = 'checklist-gap'; gap.textContent = 'No settings page yet; use the listed command or API.'; places.appendChild(gap); }
             row.append(dot, name, places);
             c.appendChild(row);
         }
@@ -383,9 +401,12 @@ async function loadModLog(reset) {
                 <td style="font-size:11px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.reason || '')}">${esc(e.reason || '-')}</td>
             </tr>`).join('');
         if (reset) {
-            c.innerHTML = items.length ? `<table class="admin-table"><thead><tr><th>When</th><th>Service</th><th>Action</th><th>By</th><th>Target</th><th>Reason</th></tr></thead><tbody id="modlog-rows">${rowsHtml}</tbody></table>` : '<p class="muted">No staff actions match these filters. Clear the filters or return after staff activity.</p>';
+            c.innerHTML = items.length ? `<table class="admin-table" data-title-col="2"><thead><tr><th>When</th><th>Service</th><th>Action</th><th>By</th><th>Target</th><th>Reason</th></tr></thead><tbody id="modlog-rows">${rowsHtml}</tbody></table>` : '<p class="muted">No staff actions match these filters. Clear the filters or return after staff activity.</p>';
+            adminTableCards(c);
         } else {
-            document.getElementById('modlog-rows')?.insertAdjacentHTML('beforeend', rowsHtml);
+            const rows = document.getElementById('modlog-rows');
+            rows?.insertAdjacentHTML('beforeend', rowsHtml);
+            if (rows) adminTableCards(rows);
         }
         _modlogNext = data.next || null;
         more.hidden = !_modlogNext;
@@ -403,7 +424,7 @@ async function loadAudit() {
         const entries = data.entries || [];
         if (!entries.length) { c.innerHTML = '<p class="muted">No administrative changes recorded here. Return after a settings or account change.</p>'; pager.innerHTML = ''; return; }
         c.innerHTML = `
-            <table class="admin-table">
+            <table class="admin-table" data-title-col="2">
                 <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
                 <tbody>${entries.map(e => `
                     <tr>
@@ -414,6 +435,7 @@ async function loadAudit() {
                     </tr>
                 `).join('')}</tbody>
             </table>`;
+        adminTableCards(c);
 
         const hasMore = entries.length >= 50;
         pager.innerHTML = `
