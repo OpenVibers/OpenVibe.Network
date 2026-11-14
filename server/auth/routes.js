@@ -1002,6 +1002,15 @@ router.get('/viewer', viewerHandler);
 
 module.exports = router;
 module.exports.viewerHandler = viewerHandler;
+/**
+ * The shared person card (openvibe-shared user-card.js, on every site) asks GET /api/users/:id/card; the card is this
+ * router's /users/:id/card (mounted at /api/auth). Answered there as well (11-14, the owner: "the user context menu
+ * cross-site shared system doesn't work": every press on a name got a 404, so no card ever opened).
+ */
+module.exports.cardAlias = (req, res, next) => {
+    req.url = `/users/${encodeURIComponent(String(req.params.id || ''))}/card`;
+    return router(req, res, next);
+};
 module.exports.viewerOf = viewerOf;
 // Exported so the admin proxy can re-mint a fresh upstream token that reflects
 // the user's CURRENT role (client tokens can be stale after a role change).

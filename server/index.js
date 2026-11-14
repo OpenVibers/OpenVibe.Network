@@ -847,6 +847,8 @@ app.get('/api/brand', (_req, res) => res.json(BRAND));
 
 // Auth routes (SSO provider)
 app.use('/api/auth', authRoutes);
+// The shared person card's address (openvibe-shared user-card.js asks /api/users/:id/card on every site).
+app.get('/api/users/:id/card', rateLimit({ windowMs: 60_000, max: 240 }), authRoutes.cardAlias);
 // Plan §Z.2: who is looking, for apps (the same model as the shared navbar's OV.viewer()).
 app.get('/api/v1/viewer', rateLimit({ windowMs: 60_000, max: 240 }), authRoutes.viewerHandler);
 
