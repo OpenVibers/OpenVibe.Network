@@ -680,6 +680,9 @@ app.get('/internal/blocks', require('./identity/principals').guard('network.bloc
 // The person's mutual friends as subjects only (network.friend-subjects@1, Contracts 0.431.0): a service
 // holding network.friends.read (Chat's contacts) asks for the person it is acting for.
 app.get('/internal/friends', require('./identity/principals').guard('network.friends.read'), require('./identity/friends').internalHandler(db));
+// Setup done by your agent (plan §AB.44): OpenVibe.Actor saves the key(s) of the one Setup row a live grant names, once.
+app.post('/internal/setup/grants/:id/save', require('./identity/principals').guard('network.setup.grant.save'),
+    ...createAdminRoutes.setupGrantsOf(db, notificationService).internalHandler());
 // Platform mutes and friendships (ask 287): a person's own lists and the changes the card's
 // actions make. Services read them through the internal routes once Contracts names their
 // capabilities; until then the person's own routes are the complete surface.

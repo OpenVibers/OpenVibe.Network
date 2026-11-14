@@ -709,6 +709,9 @@ const DEFAULT_GRANTS = [
     // The row is new (never granted and never revoked before), so it needs no RESTORED_GRANTS entry, and it
     // carries no namespaces, so no CHANGED_DEFAULT_NAMESPACES entry either.
     ['chat', 'network.friends.read', SELF_AUDIENCE, []],
+    // Setup done by your agent (plan §AB.44, Contracts 0.432.0): Actor's setup skill saves the key(s) of the one Setup row
+    // a live, owner-made grant names (POST /internal/setup/grants/:id/save). A new row: no RESTORED_GRANTS entry.
+    ['actor', 'network.setup.grant.save', SELF_AUDIENCE, []],
     ['live', 'chat.live_bridge.write', 'openvibe.chat', []],
     ['live', 'chat.presence.read', 'openvibe.chat', []],
     // Plan T3: Live reads a channel's moderation settings, its moderators and emote count from Chat.
