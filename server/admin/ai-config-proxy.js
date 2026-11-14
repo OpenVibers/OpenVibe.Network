@@ -413,6 +413,23 @@ function createAiConfigProxy(opts = {}) {
         return await callService(req, 'ai', pathName, { method, body, cap });
     }
 
+    // What is left on each AI provider account, read live by AI with the owner's keys (plan §AB.21: "the gift credits
+    // on all the providers need to be detectable"): numbers and words only, never a key.
+    r.get('/balances', async (req, res) => {
+        try {
+            const out = await callService(req, 'ai', '/api/v1/admin/console/provider-balances', { cap: 'ai.config.manage' });
+            if (out.status < 200 || out.status >= 300) return upstreamFailed(res, 'ai', out);
+            const rows = (out.answer && Array.isArray(out.answer.providers) ? out.answer.providers : []).map((p) => ({
+                provider: String(p.provider || '').slice(0, 40), name: String(p.name || p.provider || '').slice(0, 60), currency: String(p.currency || 'USD').slice(0, 3),
+                balance: Number.isFinite(Number(p.balance)) && p.balance !== null ? Number(p.balance) : null,
+                gift: Number.isFinite(Number(p.gift)) && p.gift !== null ? Number(p.gift) : null,
+                paid: Number.isFinite(Number(p.paid)) && p.paid !== null ? Number(p.paid) : null,
+                state: String(p.state || 'unavailable').slice(0, 20), note: p.note ? String(p.note).slice(0, 120) : null, checked_at: p.checked_at || null,
+            }));
+            send(res, 200, { ok: true, providers: rows });
+        } catch (err) { send(res, 502, { ok: false, error: 'AI did not answer' }); }
+    });
+
     r.get('/owner-inference', async (req, res) => {
         try {
             const out = await ownerInfCall(req, 'GET', ownerInfPath(), null, { cap: 'ai.usage.read' });

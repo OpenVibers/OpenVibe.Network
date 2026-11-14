@@ -116,6 +116,16 @@ function summary(service, namespace, extra = {}) {
         const computeRequest = run.seen.find((request) => request.url === '/internal/config/compute-status');
         assert.ok(computeRequest && computeRequest.headers['x-ov-subject']);
 
+        // What is left on the AI provider accounts (plan §AB.21): AI's live read, owner only, numbers and words, never a key.
+        ai.routes['GET /api/v1/admin/console/provider-balances'] = { providers: [
+            { provider: 'deepseek', name: 'DeepSeek', currency: 'USD', balance: 12.5, gift: 10, paid: 2.5, state: 'read', note: null, checked_at: '2026-11-14T15:00:00Z', key: 'sk-should-never-pass' },
+            { provider: 'kimi', name: 'Moonshot (Kimi)', currency: 'USD', balance: null, gift: null, paid: null, state: 'no_key', note: 'No key yet: add it in Setup' }] };
+        assert.strictEqual((await call('staff', 'GET', '/api/admin/ai/config/balances')).status, 403, 'a plain admin never reads the balances');
+        const bal = await ownerCall('GET', '/api/admin/ai/config/balances');
+        assert.strictEqual(bal.status, 200, bal.text);
+        assert.deepStrictEqual(bal.body.providers.map((p) => [p.provider, p.balance, p.gift, p.state]), [['deepseek', 12.5, 10, 'read'], ['kimi', null, null, 'no_key']]);
+        assert.ok(!JSON.stringify(bal.body).includes('sk-should-never-pass'), 'only the fields it names pass');
+
         // ── Only the owner: a user and a plain admin are refused, and nothing reaches a service ──
         let r = await call('alice', 'GET', '/api/admin/ai/config/services');
         assert.strictEqual(r.status, 403, 'a user never gets the owner settings');

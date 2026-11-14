@@ -338,6 +338,8 @@ body:has(.admin-clarity.active) .ov-sel-opt { min-height:44px; }
 .setup-head h2{font-size:20px;font-weight:800;display:flex;align-items:center;gap:9px;margin-bottom:6px}
 .setup-head>p{max-width:820px;font-size:13px;line-height:1.55}
 .setup-summary{margin:12px 0 6px;padding:10px 14px;border-radius:10px;background:var(--bg-card);border:1px solid var(--border);font-size:14px;color:var(--text)}
+.setup-balances{margin:4px 0 8px;font-size:13px;line-height:1.6}
+.setup-bal.is-ok{color:var(--text-primary)}.setup-bal.is-low{color:var(--warning,#f59e0b);font-weight:600}.setup-bal.is-none{color:var(--text-muted)}
 .setup-help{font-size:12px;margin:6px 0 10px}
 .setup-group{margin:0 0 22px;scroll-margin-top:64px}
 .setup-group>h3{font-size:15px;font-weight:800;margin-bottom:8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
