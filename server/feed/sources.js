@@ -157,7 +157,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
                 source_service: 'network', source_type: 'members', source_id: day, kind: 'member',
                 title: day === today ? `${count} ${count === 1 ? 'person' : 'people'} joined today` : `${count} ${count === 1 ? 'person' : 'people'} joined on ${day}`,
                 url: `${config.networkUrl || 'https://openvibe.network'}/stats`, site: 'network', site_name: 'Network',
-                actor_subject: null, origin: 'system', label: 'System',
+                actor_subject: null, origin: 'system', label: 'Network',
                 text: Number(total && total.n) > 0 ? `${Number(total.n).toLocaleString('en-US')} people on OpenVibe so far` : '',
                 occurred_at: day === today ? new Date(at).toISOString() : `${day}T12:00:00.000Z`,
             });
@@ -245,7 +245,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
                 if (!slug || !/^[A-Za-z0-9-]+$/.test(slug) || !title || (e.visibility && e.visibility !== 'public')) continue;
                 const r = await upsert({ source_service: 'meme', source_type: 'meme', source_id: slug, kind: 'meme', title,
                     url: `${urls.meme}/m/${encodeURIComponent(slug)}`, site: 'meme', site_name: 'Meme',
-                    actor_subject: null, origin: 'system', label: 'System',
+                    actor_subject: null, origin: 'system', label: 'Meme',
                     occurred_at: sqlFrom(e.published_at || e.created_at) || new Date(now()).toISOString(),
                     text: clean(e.summary || e.description, 280) });
                 if (r.created) created++;
@@ -448,7 +448,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             const where = [clean(j.company, 80), clean(j.location, 60), j.remote ? 'Remote' : ''].filter(Boolean).join(' · ');
             const r = await upsert({ source_service: 'work', source_type: 'job', source_id: id, kind: 'work',
                 title, text: clean([where, clean(j.excerpt, 200)].filter(Boolean).join(' — '), 280), url,
-                site: 'work', site_name: 'Work', actor_subject: null, origin: 'system', label: 'System',
+                site: 'work', site_name: 'Work', actor_subject: null, origin: 'system', label: 'Work',
                 occurred_at: sqlFrom(j.first_seen_at || j.posted_at) || new Date(now()).toISOString() });
             if (r.created) created++;
         }
@@ -487,7 +487,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             const facts = dealFacts(o);
             const r = await upsert({ source_service: 'deals', source_type: 'offer', source_id: clean(o.id, 100), kind: 'deal',
                 title, text: clean(o.ai_summary || o.description, 280), url, site: 'deals', site_name: 'Deals',
-                actor_subject: null, origin: 'system', label: 'System', media_ratio: null,
+                actor_subject: null, origin: 'system', label: 'Deals', media_ratio: null,
                 ...facts,
                 counts: Number.isSafeInteger(votes) && votes > 0 ? { likes: votes } : {},
                 occurred_at: sqlFrom(o.created_at) || new Date(now()).toISOString() });
@@ -507,7 +507,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             if (!id || !url || !title || (s.status && s.status !== 'published')) continue;
             const r = await upsert({ source_service: 'news', source_type: 'story', source_id: id, kind: 'news', title,
                 text: clean(s.summary || s.excerpt, 280), url, site: 'news', site_name: 'News', actor_subject: null,
-                origin: 'system', label: 'System', occurred_at: sqlFrom(s.published_at || s.created_at) || new Date(now()).toISOString() });
+                origin: 'system', label: 'News', occurred_at: sqlFrom(s.published_at || s.created_at) || new Date(now()).toISOString() });
             if (r.created) created++;
         }
         return created;
@@ -532,7 +532,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             if (!title || !url) continue;
             const r = await upsert({ source_service: 'blog', source_type: 'post', source_id: url, kind: 'update',
                 title: clean(title, 300), text: clean(desc, 280), url, site: 'blog', site_name: 'Blog',
-                actor_subject: null, origin: 'system', label: 'System',
+                actor_subject: null, origin: 'system', label: 'Blog',
                 occurred_at: Number.isFinite(date) ? new Date(date).toISOString() : new Date(now()).toISOString() });
             if (r.created) created++;
         }
@@ -553,7 +553,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             const title = clean(p.title, 300);
             if (!url || !title) continue;
             const r = await upsert({ source_service: 'wiki', source_type: 'page', source_id: clean(p.id, 100), kind: 'wiki',
-                title, text: '', url, site: 'wiki', site_name: 'Wiki', actor_subject: null, origin: 'system', label: 'System',
+                title, text: '', url, site: 'wiki', site_name: 'Wiki', actor_subject: null, origin: 'system', label: 'Wiki',
                 occurred_at: at, touch: true });
             if (r.created) created++;
         }
@@ -604,8 +604,8 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             const key = `peak:${day}`;
             const r = await upsert({ source_service: 'report', source_type: 'peak', source_id: key, kind: 'report',
                 title: `Peak today: ${Number(peak.peak).toLocaleString('en-US')} ${Number(peak.peak) === 1 ? 'person' : 'people'} online at once`,
-                text: 'The most people on OpenVibe at once today', url: `${urls.report}/network`, site: 'report', site_name: 'Report',
-                actor_subject: null, origin: 'system', label: 'System', counts: { people: Number(peak.peak) },
+                text: 'The most people on OpenVibe at once today', url: `${urls.report}/stats`, site: 'report', site_name: 'Report',
+                actor_subject: null, origin: 'system', label: 'Report', counts: { people: Number(peak.peak) },
                 occurred_at: new Date(at).toISOString(), touch: true });
             await db.prepare("UPDATE feed_items SET stat = ? WHERE source_service = 'report' AND source_type = 'peak' AND source_id = ?")
                 .run(JSON.stringify({ at: new Date(peak.peak_at).toISOString(), facts }), key);
@@ -627,8 +627,8 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
                 const key = `where:${day}`;
                 const r = await upsert({ source_service: 'report', source_type: 'where', source_id: key, kind: 'report',
                     title: `Right now: ${online.toLocaleString('en-US')} ${online === 1 ? 'person' : 'people'} on ${by.size > 1 ? `${[...by.keys()].filter(Boolean).length} sites` : 'OpenVibe'}`,
-                    text: 'Where people are on OpenVibe right now', url: `${urls.report}/network`, site: 'report', site_name: 'Report',
-                    actor_subject: null, origin: 'system', label: 'System', counts: { people: online },
+                    text: 'Where people are on OpenVibe right now', url: `${urls.report}/stats`, site: 'report', site_name: 'Report',
+                    actor_subject: null, origin: 'system', label: 'Report', counts: { people: online },
                     occurred_at: new Date(at).toISOString(), touch: true });
                 await db.prepare("UPDATE feed_items SET stat = ? WHERE source_service = 'report' AND source_type = 'where' AND source_id = ?")
                     .run(JSON.stringify({ at: new Date(at).toISOString(), facts: named.map(([name, n]) => ({ label: `on ${name}`, n })) }), key);
@@ -642,10 +642,32 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             const r = await upsert({ source_service: 'report', source_type: 'views', source_id: `views:${day}`, kind: 'report',
                 title: `${views.toLocaleString('en-US')} page views in the last 30 days`,
                 text: [`${Number(totals.sites_open) || 0} sites open`, `${Number(totals.accounts) || 0} accounts`, Number.isFinite(pct) ? `${pct >= 0 ? '+' : ''}${pct}% on the 30 days before` : ''].filter(Boolean).join(' · '),
-                url: `${urls.report}/`, site: 'report', site_name: 'Report', actor_subject: null, origin: 'system', label: 'System',
+                url: `${urls.report}/`, site: 'report', site_name: 'Report', actor_subject: null, origin: 'system', label: 'Report',
                 counts: { people: views }, trend: Number.isFinite(pct) ? { direction: pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat', pct: Math.abs(pct) } : undefined,
                 occurred_at: new Date(at).toISOString(), touch: true });
             if (r.created) created++;
+            // Per site (11-14, the owner: "per site breakdowns … each site tell us how many views it has … what's
+            // trending"): the six busiest sites' views on the card, and a Trending card for the ones growing fastest.
+            const sites = (Array.isArray(stats.sites) ? stats.sites : []).filter((x) => x && x.short && Number.isSafeInteger(Number(x.pageviews)) && Number(x.pageviews) > 0);
+            const busiest = sites.slice().sort((a, b) => Number(b.pageviews) - Number(a.pageviews)).slice(0, 6);
+            if (busiest.length) {
+                await db.prepare("UPDATE feed_items SET stat = ? WHERE source_service = 'report' AND source_type = 'views' AND source_id = ?")
+                    .run(JSON.stringify({ at: new Date(at).toISOString(), facts: busiest.map((x) => ({ label: `on ${x.short}`, n: Number(x.pageviews) })) }), `views:${day}`);
+            }
+            const rising = sites.filter((x) => Number(x.pageviews) >= 150 && Number.isFinite(Number(x.change_pct)) && Number(x.change_pct) >= 20)
+                .sort((a, b) => Number(b.change_pct) - Number(a.change_pct)).slice(0, 6);
+            if (rising.length) {
+                const top = rising[0];
+                const t = await upsert({ source_service: 'report', source_type: 'trending', source_id: `trending:${day}`, kind: 'report',
+                    title: `Trending: ${top.short} is up ${Math.round(Number(top.change_pct))}% this month`,
+                    text: 'The OpenVibe sites growing fastest, by page views against the 30 days before',
+                    url: `${urls.report}/stats`, site: 'report', site_name: 'Report', actor_subject: null, origin: 'system', label: 'Trending',
+                    counts: { people: Number(top.pageviews) }, trend: { direction: 'up', pct: Math.round(Number(top.change_pct)) },
+                    occurred_at: new Date(at).toISOString(), touch: true });
+                await db.prepare("UPDATE feed_items SET stat = ? WHERE source_service = 'report' AND source_type = 'trending' AND source_id = ?")
+                    .run(JSON.stringify({ at: new Date(at).toISOString(), facts: rising.map((x) => ({ label: `${x.short} +${Math.round(Number(x.change_pct))}%`, n: Number(x.pageviews) })) }), `trending:${day}`);
+                if (t.created) created++;
+            }
         }
         return created;
     }

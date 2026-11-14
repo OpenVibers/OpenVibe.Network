@@ -88,6 +88,36 @@ async function listFor(db, subject) {
         }));
 }
 
+/**
+ * The whole picture for one person (11-14, friends across every site: the menu's Chat, profiles, cards, Link): mutual
+ * friends (both added), the requests waiting on them (they added, I did not), and the ones I asked (I added, they did
+ * not), each with a name, a picture and whether they are on an OpenVibe site now (the Frame's 30-minute window).
+ */
+async function circleOf(db, me) {
+    const rows = await db.prepare(`SELECT o.friend_subject AS subject, 'out' AS dir, o.updated_at FROM user_friends o WHERE o.user_subject = ? AND o.active = 1
+        UNION ALL SELECT i.user_subject AS subject, 'in' AS dir, i.updated_at FROM user_friends i WHERE i.friend_subject = ? AND i.active = 1`).all(String(me), String(me));
+    const out = new Map();
+    for (const r of rows) { const e = out.get(r.subject) || { subject: r.subject, out: false, in: false, at: r.updated_at }; e[r.dir] = true; if (String(r.updated_at) > String(e.at)) e.at = r.updated_at; out.set(r.subject, e); }
+    const subs = [...out.keys()];
+    if (!subs.length) return { mutual: [], requests: [], asked: [] };
+    const users = await db.prepare(`SELECT subject_id, username, display_name, avatar_url FROM users WHERE subject_id IN (${subs.map(() => '?').join(',')})`).all(...subs);
+    const by = new Map(users.map((u) => [u.subject_id, u]));
+    let seen = new Map(); try { seen = require('../frame/seen').snapshot().members; } catch { /* no presence here */ }
+    const person = (e) => {
+        const u = by.get(e.subject) || {}; const on = seen.get(e.subject);
+        return { subject: e.subject, username: u.username || null, display_name: u.display_name || u.username || null,
+            avatar_url: u.avatar_url || (u.username ? `https://openvibe.network/avatar/${encodeURIComponent(u.username)}?s=80` : null),
+            online: !!on, site: on && on.site ? on.site : null, since: e.at || null };
+    };
+    const order = (a, b) => Number(b.online) - Number(a.online) || String(a.display_name || '').localeCompare(String(b.display_name || ''));
+    const all = [...out.values()];
+    return {
+        mutual: all.filter((e) => e.out && e.in).map(person).sort(order),
+        requests: all.filter((e) => e.in && !e.out).map(person).sort(order),
+        asked: all.filter((e) => e.out && !e.in).map(person).sort(order),
+    };
+}
+
 /** The signed-in person as a friend, or a FriendError. */
 async function meOf(db, user) {
     if (!user || user.is_anon) throw new FriendError(403, 'friends.guest', 'sign in with an account to add friends');
@@ -111,7 +141,8 @@ function userRouter(requireAuth) {
 
     router.get('/', requireAuth, async (req, res) => await send(req, res, async (db) => {
         const me = await meOf(db, req.user);
-        res.json({ subject: me, friends: await listFor(db, me) });
+        // friends: whom I added (as before); mutual, requests and asked: the whole picture (11-14).
+        res.json({ subject: me, friends: await listFor(db, me), ...await circleOf(db, me) });
     }));
 
     router.put('/:target', requireAuth, async (req, res) => await send(req, res, async (db) => {
@@ -120,8 +151,20 @@ function userRouter(requireAuth) {
         if (!u) throw new FriendError(404, 'friends.unknown_person', 'no such person');
         if (u.is_anon) throw new FriendError(400, 'friends.guest', 'guests cannot be friended');
         if (u.subject_id === me) throw new FriendError(400, 'friends.self', 'you cannot friend yourself');
+        const blocks = require('./blocks');
+        if (await blocks.isBlocked(db, me, u.subject_id) || await blocks.isBlocked(db, u.subject_id, me)) throw new FriendError(403, 'friends.blocked', 'you cannot add this person');
         const out = await setFriend(db, me, u.subject_id, true);
         res.status(out.changed ? 201 : 200).json({ changed: out.changed, friend: view(u, out, await stateOf(db, me, u.subject_id)) });
+    }));
+
+    // Accept a request: add them back (they added me first). 404 when they did not.
+    router.post('/:target/accept', requireAuth, async (req, res) => await send(req, res, async (db) => {
+        const me = await meOf(db, req.user);
+        const u = await target(db, req.params.target);
+        if (!u || !u.subject_id) throw new FriendError(404, 'friends.unknown_person', 'no such person');
+        if (!await outgoing(db, u.subject_id, me)) throw new FriendError(404, 'friends.no_request', 'that person has not added you');
+        const out = await setFriend(db, me, u.subject_id, true);
+        res.json({ changed: out.changed, friend: view(u, out, await stateOf(db, me, u.subject_id)) });
     }));
 
     router.delete('/:target', requireAuth, async (req, res) => await send(req, res, async (db) => {
@@ -136,4 +179,17 @@ function userRouter(requireAuth) {
     return router;
 }
 
-module.exports = { MAX_ACTIVE, FriendError, ensureSchema, setFriend, outgoing, stateOf, listFor, userRouter };
+/** GET /internal/friends?subject=usr_… (behind principals.guard('network.friends.read')): mutual friends' subjects. */
+function internalHandler(db) {
+    return async (req, res) => {
+        const subject = String(req.query.subject || '');
+        if (!SUBJECT_RE.test(subject)) return res.status(400).json({ error: 'subject must be a usr_ subject' });
+        try {
+            const rows = await db.prepare(`SELECT o.friend_subject AS s FROM user_friends o JOIN user_friends i ON i.user_subject = o.friend_subject AND i.friend_subject = o.user_subject AND i.active = 1
+                WHERE o.user_subject = ? AND o.active = 1 LIMIT ?`).all(subject, MAX_ACTIVE);
+            res.set('Cache-Control', 'no-store').json({ subject, friends: rows.map((r) => r.s) });
+        } catch (err) { console.error('[Friends] internal:', err.message); res.status(500).json({ error: 'failed' }); }
+    };
+}
+
+module.exports = { MAX_ACTIVE, FriendError, ensureSchema, setFriend, outgoing, stateOf, listFor, circleOf, userRouter, internalHandler };

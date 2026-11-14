@@ -677,6 +677,7 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/internal', machineInternal.internal);
 }
 app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read'), require('./identity/blocks').internalHandler(db));
+// /internal/friends (identity/friends.js internalHandler) is mounted once Contracts names network.friends.read.
 // Platform mutes and friendships (ask 287): a person's own lists and the changes the card's
 // actions make. Services read them through the internal routes once Contracts names their
 // capabilities; until then the person's own routes are the complete surface.
