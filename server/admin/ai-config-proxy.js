@@ -718,6 +718,26 @@ function createAiConfigProxy(opts = {}) {
         } catch (err) { fail(res, err); }
     });
 
+    /**
+     * A key saved for the owner by the owner's own agent, through a one-time setup grant (server/admin/setup-grants.js,
+     * plan §AB.44): the same secret path a hand-made save takes (fresh, sealed by the owning service), as the grant's
+     * owner, audited and announced as saved by the owner's agent. The value is never returned or logged.
+     */
+    r.saveSecretAsOwner = async (ownerReq, { service, namespace, key, value }) => {
+        if (!SERVICES.includes(service)) throw new ProxyError(404, 'config.service_not_found', 'no such service');
+        const ns = namespaceOf({ ...ownerReq, params: { namespace } }, service);
+        if (!KEY_RE.test(String(key || ''))) throw new ProxyError(400, 'config.bad_request', 'that is not a configuration key');
+        const body = { value: String(value) };
+        const checked = contracts.validate('common.config-secret-put@1', body);
+        if (!checked.valid) throw new ProxyError(400, 'config.bad_request', 'the secret is not valid');
+        const out = await callService(ownerReq, service, `/internal/config/${encodeURIComponent(ns)}/secrets/${encodeURIComponent(key)}`, {
+            method: 'PUT', body, fresh: true, secret: body.value,
+        });
+        if (out.status < 200 || out.status >= 300) throw new ProxyError(502, 'config.upstream_failed', `${label(service)} did not save it`);
+        await audit(ownerReq, { service, namespace: ns, keys: [key], action: 'secret.put.by_agent' });
+        await announce(ownerReq, { service, namespace: ns, keys: [key], action: 'secret.put' });
+        return { service, namespace: ns, key };
+    };
     return r;
 }
 
