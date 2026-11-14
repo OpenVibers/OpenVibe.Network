@@ -210,8 +210,10 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
     router.get('/examples', handleExamples);
     router.get('/search', handleSearch);
     router.get('/picture', (req, res, next) => pictures.handle(req, res).catch(next));
+    // 11-14: the cards a person saw, as views in Media's one store (feed/views-beacon.js); a beacon, so text/plain is read too.
+    router.post('/views', express.json({ limit: '8kb' }), express.text({ type: 'text/plain', limit: '8kb' }), require('./views-beacon').handler());
     router.options('*', (req, res) => {
-        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Max-Age': '600' });
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Max-Age': '600' });
         res.status(204).end();
     });
 
