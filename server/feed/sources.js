@@ -604,7 +604,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             const key = `peak:${day}`;
             const r = await upsert({ source_service: 'report', source_type: 'peak', source_id: key, kind: 'report',
                 title: `Peak today: ${Number(peak.peak).toLocaleString('en-US')} ${Number(peak.peak) === 1 ? 'person' : 'people'} online at once`,
-                text: 'The most people on OpenVibe at once today', url: `${urls.report}/network`, site: 'report', site_name: 'Report',
+                text: 'The most people on OpenVibe at once today', url: `${urls.report}/stats`, site: 'report', site_name: 'Report',
                 actor_subject: null, origin: 'system', label: 'System', counts: { people: Number(peak.peak) },
                 occurred_at: new Date(at).toISOString(), touch: true });
             await db.prepare("UPDATE feed_items SET stat = ? WHERE source_service = 'report' AND source_type = 'peak' AND source_id = ?")
@@ -627,7 +627,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
                 const key = `where:${day}`;
                 const r = await upsert({ source_service: 'report', source_type: 'where', source_id: key, kind: 'report',
                     title: `Right now: ${online.toLocaleString('en-US')} ${online === 1 ? 'person' : 'people'} on ${by.size > 1 ? `${[...by.keys()].filter(Boolean).length} sites` : 'OpenVibe'}`,
-                    text: 'Where people are on OpenVibe right now', url: `${urls.report}/network`, site: 'report', site_name: 'Report',
+                    text: 'Where people are on OpenVibe right now', url: `${urls.report}/stats`, site: 'report', site_name: 'Report',
                     actor_subject: null, origin: 'system', label: 'System', counts: { people: online },
                     occurred_at: new Date(at).toISOString(), touch: true });
                 await db.prepare("UPDATE feed_items SET stat = ? WHERE source_service = 'report' AND source_type = 'where' AND source_id = ?")
