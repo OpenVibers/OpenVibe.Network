@@ -114,6 +114,21 @@ function machineOf(m) {
     out.can_run = out.roles.map((role) => ({ 'codes.worker': 'worker', 'desks.host': 'browser', 'ai.host': 'models', 'bot.robot': 'robot' }[role] || role));
     if (typeof m.last_seen_at === 'string' && m.last_seen_at) out.last_seen_at = m.last_seen_at;
     if (typeof m.node_version === 'string' && m.node_version) out.node_version = m.node_version;
+    // What the machine is, in one line (Bot's specs_words, Link v0.66: CPU, threads, memory, GPU, OS), and the few facts
+    // a picker weighs. Bot has bounded them; only these pass.
+    if (typeof m.specs_words === 'string' && m.specs_words) out.specs_words = m.specs_words.slice(0, 200);
+    if (m.specs && typeof m.specs === 'object') {
+        const s = m.specs, gpu = Array.isArray(s.gpus) && s.gpus[0] && typeof s.gpus[0] === 'object' ? s.gpus[0] : null;
+        const v = s.virtualization && typeof s.virtualization === 'object' ? s.virtualization : {};
+        out.specs = {
+            memory_mb: Number.isFinite(s.memory_mb) ? s.memory_mb : null,
+            threads: s.cpu && Number.isFinite(s.cpu.threads) ? s.cpu.threads : null,
+            gpu: gpu && typeof gpu.model === 'string' ? gpu.model.slice(0, 120) : null,
+            gpu_vram_mb: gpu && Number.isFinite(gpu.vram_mb) ? gpu.vram_mb : null,
+            disk_free_gb: Number.isFinite(s.disk_free_gb) ? s.disk_free_gb : null,
+            vm: v.kvm === true ? 'kvm' : v.apple_vz === true ? 'apple' : v.hyperv === true ? 'hyperv' : null,
+        };
+    }
     if (typeof m.node_id === 'string' && PRINCIPAL.test(m.node_id)) out.principal_id = m.node_id;
     // Bot has already bounded this Link heartbeat. Keep only the readiness facts the
     // owner's machine card needs; never pass a login, key, or account through.
