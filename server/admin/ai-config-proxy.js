@@ -45,14 +45,17 @@ const { isFreshSignIn } = require('../identity/reauth');
 // The nine AI Exchange services (D11), then every other service that holds an owner input (the Setup tab,
 // 2026-11-07). A service that has not mounted openvibe-shared/config's routes yet answers 404 or does not answer;
 // the panel says it "has not published settings yet".
+// `network` is Network's own settings (network.signin, plan §AB.20): the same handlers answer in process, because
+// Contracts gives Network no network.config.manage (openvibe-contracts/test/run.js). It is last on purpose: the
+// owner's usual tabs stay first, and the Setup tab groups by its own order anyway.
 const SERVICES = ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor',
-    'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run', 'mail'];
+    'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run', 'mail', 'network'];
 const LABELS = {
     ai: 'OpenVibe.AI', billing: 'OpenVibe.Billing', services: 'OpenVibe.Services', watch: 'OpenVibe.Watch',
     bench: 'OpenVibe.Bench', report: 'OpenVibe.Report', host: 'OpenVibe.Host', codes: 'OpenVibe.Codes',
     actor: 'OpenVibe.Actor', chat: 'OpenVibe.Chat', connect: 'OpenVibe Connect', deals: 'OpenVibe.Deals',
     work: 'OpenVibe.Work', sources: 'OpenVibe.Sources', design: 'OpenVibe.Design', domains: 'OpenVibe.Domains',
-    media: 'OpenVibe.Media', run: 'OpenVibe.Run', mail: 'OpenVibe.Mail',
+    media: 'OpenVibe.Media', run: 'OpenVibe.Run', mail: 'OpenVibe.Mail', network: 'OpenVibe.Network',
 };
 const TEST_TIMEOUT_MS = 20000;   // the service gives its tester 15 s; this leaves it time to answer
 const TEST_MESSAGE_MAX = 300;
@@ -128,6 +131,7 @@ function secretMarkers(secrets) {
     if (!secrets || typeof secrets !== 'object' || Array.isArray(secrets)) return {};
     const out = {};
     for (const [key, m] of Object.entries(secrets)) {
+        // Keys may be dotted (network.signin's `google.client_secret`): the same charset, a dot allowed inside.
         if (!KEY_RE.test(key) || !m || typeof m !== 'object') continue;
         out[key] = {
             hint: typeof m.hint === 'string' && m.hint.length <= 4 ? m.hint : null,
@@ -190,6 +194,13 @@ function createServiceCaller(opts = {}) {
 
     async function callService(req, service, pathName, { method = 'GET', body = null, cap = `${service}.config.manage`, fresh = false, secret = null, timeout = 8000 } = {}) {
         const st = state(req);
+        // Network's own settings (openvibe-shared/config, `network.signin`): Contracts gives Network no
+        // `network.config.manage` (it uses its own admin routes), so the same handlers answer in process instead of
+        // over a hop. Nothing changes in the shapes below.
+        if (service === 'network') {
+            const out = await require('../auth/providers/owner-config').local(req.app, req, pathName, { method, body });
+            return { status: out.status, answer: secret ? redact(out.answer, secret) : out.answer };
+        }
         const entry = st.services && st.services[service];
         const base = entry && entry.internalUrl;
         if (!base) throw new ProxyError(503, 'config.service_unavailable', `${label(service)} is not configured`);

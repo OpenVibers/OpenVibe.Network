@@ -261,3 +261,18 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
     .tab-bar button{font-size:12px;padding:8px 6px}
 }
 
+
+/* Sign-in apps (plan §AB.20): the provider buttons, in the page's HTML so it stays indexable. Phone first: one column
+   of full-width buttons, two at 520px and up. */
+.providers{margin-bottom:8px}
+.providers-head{font-size:13px;font-weight:600;color:var(--text-muted);line-height:1.45;margin-bottom:12px;text-align:center}
+.provider-list{display:grid;grid-template-columns:1fr;gap:8px}
+.provider-btn{
+    display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 14px;border-radius:10px;
+    border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px;font-weight:600;
+    text-decoration:none;transition:border-color var(--ov-dur-2, .2s), background var(--ov-dur-2, .2s);
+}
+.provider-btn:hover{border-color:var(--accent-dark);background:rgba(139,92,246,0.06)}
+.provider-btn i{font-size:16px;line-height:1}
+.providers-note{font-size:11px;color:var(--text-muted);line-height:1.5;margin-top:10px;text-align:center}
+@media (min-width:520px){.provider-list{grid-template-columns:1fr 1fr}}

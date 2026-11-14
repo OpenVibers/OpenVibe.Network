@@ -144,6 +144,7 @@ async function loadUser() {
             loadLabelPrefs();
             loadNotifPrefs(); loadQuietHours();
             loadLinked();
+            loadSignInMethods();
             loadSessions();
             loadMfaSettings();
             loadPasskeySettings();

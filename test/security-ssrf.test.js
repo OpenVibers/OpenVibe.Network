@@ -131,6 +131,16 @@ const REVIEWED = {
     'server/feed/sources.js fetch': [3, 'the public APIs and feeds of OpenVibe.Community, Today, Quest, Play, Meme, Pics, Live, Space, Work, Deals, News, Blog and Wiki at operator-configured bases (OV_*_URL; Community and Live default to their loopback internal URL), fixed paths with encoded, validated ids; never a request value'],
     'server/admin/routes.js fetch': [1, 'registry refresh: POSTs to the service refresh targets resolved from the registry (admin-set service URLs, staff only)'],
     'server/auth/discord-link.js fetch': [2, 'fixed Discord API host (discord.com/api)'],
+    // Sign in with other apps (plan §AB.20): the provider endpoints are the presets' own fixed hosts (server/auth/
+    // providers/presets.js) or the endpoints in the provider's discovery document, which is fetched from that fixed
+    // issuer; no request value names a host, every call refuses redirects (except the two owner "Test" reads, which
+    // use redirect: manual and only look at the status), and each has a 6-15 s timeout.
+    'server/auth/providers/index.js fetch': [1, 'the token endpoint from the provider preset or its discovery document'],
+    'server/auth/providers/internal.js fetch': [3, 'Setup\'s Test on a provider row: the fixed discovery, authorize or OpenID endpoint'],
+    'server/auth/providers/oauth2.js fetch': [3, 'the fixed token, profile and emails endpoints of an OAuth2 preset'],
+    'server/auth/providers/oidc.js fetch': [2, 'discovery and JWKS from the fixed issuer (Microsoft\'s common tenant)'],
+    'server/auth/providers/openid2.js fetch': [2, 'Steam\'s fixed OpenID endpoint and GetPlayerSummaries'],
+    'server/auth/providers/routes.js fetch': [2, 'the owner\'s verify read: the fixed authorize or OpenID endpoint'],
     'server/developer/event-relay.js sdk client': [4, 'OV_EVENTS_INTERNAL_URL (operator config)'],
     'server/discord/discord-service.js fetch': [2, 'discord.js channels.fetch: Discord API only'],
     'server/discord/discord-service.js discord.js': [1, 'discord.js login: Discord gateway only'],

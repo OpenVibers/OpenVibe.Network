@@ -126,7 +126,9 @@ function summary(service, namespace, extra = {}) {
         // ── GET /services: the seventeen services and their operator-set internal URLs ──
         r = await ownerCall('GET', '/api/admin/ai/config/services');
         assert.strictEqual(r.status, 200, r.text);
-        assert.deepStrictEqual(r.body.services.map((s) => s.service), ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor', 'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run', 'mail']);
+        // `network` is last: its own settings (network.signin, plan §AB.20) answer in process rather than over a hop.
+        assert.deepStrictEqual(r.body.services.map((s) => s.service), ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor', 'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run', 'mail', 'network']);
+        assert.strictEqual(r.body.services.find((s) => s.service === 'network').name, 'OpenVibe.Network');
         assert.strictEqual(r.body.services.find((s) => s.service === 'deals').name, 'OpenVibe.Deals');
         assert.strictEqual(r.body.services.find((s) => s.service === 'deals').capability, 'deals.config.manage');
         assert.strictEqual(r.body.services.find((s) => s.service === 'ai').internal_url, ai.url);

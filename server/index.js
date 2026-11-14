@@ -859,8 +859,21 @@ if (qrSignin.enabled) {
 // Email verification (status / resend / consume)
 app.use('/api/auth', require('./auth/email-verify').routes(requireAuth));
 
-// Discord account linking (OAuth2 flow)
-app.use('/api/auth/discord', requireAuth, require('./auth/discord-link'));
+// Sign in with anything (plan §AB.20): one provider layer for Google, Discord, Steam, Twitch, GitHub, Apple,
+// Microsoft, Kick, X, Roblox and Facebook. GET /api/auth/connect lists what is switched on; /connect/:id starts a
+// sign-in (no session) or a link (mode=link, session); /connect/:id/callback is the provider's answer. The old
+// /api/auth/discord/link and /api/auth/discord/callback keep working as aliases of the Discord flow, and
+// /api/auth/discord/status is kept for the account page's existing calls.
+{
+    const signIn = require('./auth/providers/routes').createRouter({
+        requireAuth, signToken: authRoutes.signToken, config,
+    });
+    app.locals.signIn = signIn;
+    app.use('/api/auth/connect', signIn.router);
+    // The old Discord paths (an app registration and the account page already point at them): the same two flows under
+    // their old names, /link needing the session it always needed. Their callback path is the one the old app lists.
+    app.use('/api/auth/discord', signIn.discordAlias);
+}
 app.use('/chat-apps', require('./chat-apps/links').pageRouter(requireAuth));
 // The account page's chat-app list and removal (the person's own links; no token is returned).
 app.use('/api/v1/me/chat-apps', rateLimit({ windowMs: 60_000, max: 60 }), require('./chat-apps/links').userRouter(requireAuth));
@@ -1312,8 +1325,16 @@ app.get('/api/auth/return-origins', (req, res) => {
     res.json({ origins: [...buildAllowedOriginsSet()].filter((o) => o.startsWith('https://')).sort() });
 });
 
-app.get(['/login', '/forgot-password', '/reset-password'], (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'public', 'login.html'));
+app.get(['/login', '/forgot-password', '/reset-password'], async (req, res, next) => {
+    // The sign-in page carries its provider buttons in the HTML, so it stays indexable (plan §AB.20).
+    try {
+        // Only the sign-in view carries the buttons: /forgot-password and /reset-password are the same file, and a
+        // reset page that says "sign in with Google" would be a trap.
+        const { html } = await require('./auth/providers/page').signInPage({ db: app.locals.db, baseUrl: config.baseUrl, providers: req.path === '/login' });
+        // A minute of shared caching: the provider list changes only when the owner sets a key, and the page stays
+        // indexable (no private, no no-store).
+        res.type('html').set('Cache-Control', cache.htmlHeaders({ maxAge: 60 })).send(html);
+    } catch (err) { next(err); }
 });
 
 // The publication reviewer queue: a server-rendered staff page (openvibe-shared/kit) before the
