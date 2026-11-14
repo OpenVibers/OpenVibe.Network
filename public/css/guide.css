@@ -52,3 +52,22 @@
     .guide-fold > summary { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .guide-bar > span { transition: none; } }
+
+/* A key step's rows (11-14): the Setup tab's own rows, inside the card. One column (the card is narrow), the field
+   under the words; the service's internal names stay on the Setup tab. A provider with several fields is one box. */
+.guide-setup { display: grid; gap: 10px; }
+.guide-setup-part { display: grid; gap: 10px; }
+.guide-setup .setup-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.guide-setup .setup-row { grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 12px; border-radius: 12px; }
+.guide-setup .setup-from { display: none; }
+.guide-setup .setup-what { margin: 2px 0 0; font-size: 13.5px; color: var(--text-secondary); }
+.guide-setup .setup-where a { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; font-weight: 650; }
+.guide-setup .setup-input { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; align-items: end; }
+.guide-setup .setup-input-label { grid-column: 1 / -1; font-size: 12.5px; color: var(--text-secondary); }
+.guide-setup .setup-input input:not([type=checkbox]) { min-height: 44px; }
+.guide-provider { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 14px; background: color-mix(in srgb, var(--bg-secondary) 70%, transparent); }
+.guide-provider > h4 { margin: 2px 4px; font-size: 15px; }
+.guide-later { border: 1px solid var(--border); border-radius: 12px; padding: 0 12px; }
+.guide-later > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 650; color: var(--text-secondary); }
+.guide-later[open] { padding-bottom: 12px; }
+.guide-items li small { color: var(--text-secondary); line-height: 1.45; }
