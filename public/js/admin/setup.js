@@ -308,17 +308,18 @@ function setupAgentNotice(li, row, grant) {
     note.setAttribute('role', 'status');
     const text = document.createElement('p');
     text.textContent = 'Your agent is making the key. When the page asks you to sign in or confirm, it hands you its screen: take it, then give it back.';
-    const watch = document.createElement('a');
+    // Its screen opens beside the step (plan §AB.44); its own page stays one tap away for taking over.
+    const watch = document.createElement('button');
+    watch.type = 'button';
     watch.className = 'btn btn-primary btn-sm';
-    watch.href = grant.task && grant.task.url ? grant.task.url : '#';
-    watch.target = '_blank'; watch.rel = 'noopener';
     watch.textContent = 'Watch it work';
+    watch.addEventListener('click', () => setupDeskOpen(row, grant));
     const stop = document.createElement('button');
     stop.type = 'button'; stop.className = 'btn btn-secondary btn-sm';
     stop.textContent = 'Stop';
     let timer = 0;
     const until = Date.now() + 30 * 60 * 1000;
-    const end = (words, tone) => { clearInterval(timer); note.remove(); setupShowResult(li, words, tone); };
+    const end = (words, tone) => { clearInterval(timer); note.remove(); setupDeskClose(); setupShowResult(li, words, tone); };
     stop.addEventListener('click', async () => {
         stop.disabled = true;
         try { await api('/api/admin/setup/grants/' + encodeURIComponent(grant.ref), { method: 'DELETE' }); } catch { /* spent or gone already */ }
@@ -469,4 +470,91 @@ async function setupTask(li, row, button, done) {
         setupShowResult(li, err.message || 'It was not saved.', 'bad');
         button.disabled = false;
     }
+}
+
+
+// ── The agent's screen beside the step (plan §AB.44) ──
+// A panel at the side (a sheet from the bottom on a phone) with the desk's latest picture, what the agent is doing and
+// what it needs from you, read every two seconds through Network (GET /api/admin/setup/grants/agent/:task, /still).
+// Taking over (signing in, a code, a payment) happens on the agent's own page, which can drive its desk.
+let setupDesk = null;
+function setupDeskClose() {
+    if (!setupDesk) return;
+    clearTimeout(setupDesk.timer);
+    if (setupDesk.url) URL.revokeObjectURL(setupDesk.url);
+    setupDesk.box.remove();
+    if (setupDesk.from && setupDesk.from.isConnected) setupDesk.from.focus();
+    setupDesk = null;
+}
+function setupDeskOpen(row, grant) {
+    const task = grant && grant.task && grant.task.id;
+    if (!task) return;
+    if (setupDesk && setupDesk.task === task) { setupDesk.box.querySelector('button').focus(); return; }
+    setupDeskClose();
+    const box = document.createElement('aside');
+    box.className = 'setup-desk';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-label', 'Your agent at work on ' + (row.title || 'this step'));
+    const head = document.createElement('header');
+    const title = document.createElement('b');
+    title.textContent = 'Your agent · ' + (row.title || 'Setup');
+    const close = document.createElement('button');
+    close.type = 'button'; close.className = 'setup-desk-close'; close.setAttribute('aria-label', 'Close'); close.textContent = '×';
+    close.addEventListener('click', setupDeskClose);
+    head.append(title, close);
+    const screen = document.createElement('div');
+    screen.className = 'setup-desk-screen';
+    const img = document.createElement('img');
+    img.alt = 'Your agent\'s screen';
+    img.hidden = true;
+    const wait = document.createElement('p');
+    wait.textContent = 'Its screen shows here when it opens one.';
+    screen.append(img, wait);
+    const state = document.createElement('p');
+    state.className = 'setup-desk-state';
+    state.setAttribute('aria-live', 'polite');
+    state.textContent = 'Starting…';
+    const needs = document.createElement('p');
+    needs.className = 'setup-desk-needs';
+    needs.hidden = true;
+    const actions = document.createElement('p');
+    actions.className = 'setup-desk-actions';
+    const page = document.createElement('a');
+    page.className = 'btn btn-secondary btn-sm';
+    page.href = grant.task.url || '#'; page.target = '_blank'; page.rel = 'noopener';
+    page.textContent = 'Take over on its page';
+    actions.append(page);
+    box.append(head, screen, state, needs, actions);
+    document.body.append(box);
+    setupDesk = { box, task, timer: 0, url: '', from: document.activeElement };
+    close.focus();
+    box.addEventListener('keydown', (e) => { if (e.key === 'Escape') setupDeskClose(); });
+    const WORDS = { queued: 'Waiting for a desk…', running: 'Working…', waiting: 'Waiting for you', succeeded: 'Done', failed: 'It stopped', cancelled: 'Stopped' };
+    const tick = async () => {
+        if (!setupDesk || setupDesk.task !== task) return;
+        let view = null;
+        try { view = (await api('/api/admin/setup/grants/agent/' + encodeURIComponent(task))).agent; } catch { view = null; }
+        if (!setupDesk || setupDesk.task !== task) return;
+        if (view) {
+            state.textContent = view.error ? 'It stopped: ' + view.error : view.needs_you ? WORDS.waiting : (WORDS[view.state] || view.state || 'Working…');
+            needs.hidden = !view.needs_you;
+            needs.textContent = view.needs_you ? 'It needs you: ' + view.needs_you.what : '';
+            box.classList.toggle('needs-you', Boolean(view.needs_you));
+            // When it waits for you, taking over is the one thing to do.
+            page.className = 'btn btn-sm ' + (view.needs_you ? 'btn-primary' : 'btn-secondary');
+            if (view.desk) {
+                try {
+                    const res = await fetch(API + '/api/admin/setup/grants/agent/' + encodeURIComponent(task) + '/still', { headers: token ? { Authorization: 'Bearer ' + token } : {}, credentials: 'include' });
+                    if (res.ok && setupDesk && setupDesk.task === task) {
+                        const url = URL.createObjectURL(await res.blob());
+                        if (setupDesk.url) URL.revokeObjectURL(setupDesk.url);
+                        setupDesk.url = url; img.src = url; img.hidden = false; wait.hidden = true;
+                    }
+                } catch { /* the next tick tries again */ }
+            }
+            if (view.ended) return;
+        }
+        if (setupDesk && setupDesk.task === task) setupDesk.timer = setTimeout(tick, 2000);
+    };
+    tick();
 }

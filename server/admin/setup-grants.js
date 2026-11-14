@@ -10,6 +10,9 @@
  *                                                                        expires_at } }   the id is shown once
  *   GET    /api/admin/setup/grants        owner                 → the owner's live grants (ref, row, expiry; never ids)
  *   DELETE /api/admin/setup/grants/:ref   owner                 → revoked
+ *   GET    /api/admin/setup/grants/agent/:task         owner  → the agent's work for the Setup row's overlay: { state,
+ *                                                                ended, error, needs_you: { what }, desk, page }
+ *   GET    /api/admin/setup/grants/agent/:task/still   owner  → its desk's latest picture (image, no-store)
  *   POST   /internal/setup/grants/:id/save   network.setup.grant.save (OpenVibe.Actor only)
  *                                                                { values: { key: value }, run? } → 200
  *                                                                network.setup-grant-saved@1 { saved, service,
@@ -25,6 +28,9 @@ const crypto = require('crypto');
 const express = require('express');
 
 const TTL_MS = 30 * 60 * 1000;
+const TASK_RE = /^tsk_[0-9A-HJKMNP-TV-Z]{26}$/;
+const STILL_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const STILL_MAX = 4 * 1024 * 1024;
 const KEY_RE = /^[a-z][a-z0-9_.-]{0,79}$/;
 const SERVICE_RE = /^[a-z][a-z0-9-]{0,39}$/;
 const NAMESPACE_RE = /^[a-z][a-z0-9_.-]{0,79}$/;
@@ -149,6 +155,51 @@ function createSetupGrants({ db, proxy, isFresh, now = () => Date.now(), log = c
         return { saved: true, service: grant.service, namespace: grant.namespace, keys: out };
     }
 
+    /**
+     * The agent's work as the Setup row's overlay shows it (plan §AB.44: its screen beside the step, not another tab):
+     * read from Actor with the owner's own Bearer, so Actor decides the task is theirs. Only Actor's configured address
+     * is ever fetched, on paths built here from a checked task id; a picture's address in Actor's answer is not followed.
+     */
+    function actorGet(req, path) {
+        const auth = String(req.headers && req.headers.authorization || '');
+        if (!/^Bearer\s+\S+/.test(auth) || !actorUrl) throw new GrantError(409, 'setup_grant.agent_unavailable', 'sign in again to watch your agent');
+        return fetchImpl(`${actorUrl.replace(/\/+$/, '')}${path}`, {
+            method: 'GET', redirect: 'error', signal: AbortSignal.timeout(8000), headers: { Accept: 'application/json', Authorization: auth },
+        }).catch(() => null);
+    }
+    async function deskOf(req, task) {
+        const res = await actorGet(req, `/api/v1/tasks/${task}/desks`);
+        const body = res && res.ok ? await res.json().catch(() => null) : null;
+        return body && Array.isArray(body.desks) && body.desks[0] ? body.desks[0] : null;
+    }
+    async function agentView(req, task) {
+        if (!TASK_RE.test(task)) throw new GrantError(404, 'setup_grant.no_task', 'no such task');
+        const [res, desk] = await Promise.all([actorGet(req, `/api/v1/tasks/${task}`), deskOf(req, task)]);
+        if (!res) throw new GrantError(502, 'setup_grant.agent_silent', 'your agent did not answer');
+        if (!res.ok) throw new GrantError(res.status === 404 || res.status === 403 ? 404 : 502, 'setup_grant.no_task', res.status === 404 || res.status === 403 ? 'no such task' : 'your agent did not answer');
+        const t = await res.json().catch(() => ({}));
+        return {
+            state: String(t.state || ''),
+            ended: Boolean(t.finished_at),
+            error: t.error ? String(t.error.detail || t.error.code || '').slice(0, 200) : null,
+            needs_you: t.needs_you && t.needs_you.what ? { what: String(t.needs_you.what).slice(0, 300) } : null,
+            desk: desk ? { where: desk.where === 'run' ? 'run' : 'link', kind: desk.kind === 'browser' ? 'browser' : 'desktop', driving: Boolean(desk.driving) } : null,
+            page: `${actorPublicUrl.replace(/\/+$/, '')}/chat/${task}`,
+        };
+    }
+    async function agentStill(req, task) {
+        if (!TASK_RE.test(task)) throw new GrantError(404, 'setup_grant.no_task', 'no such task');
+        const desk = await deskOf(req, task);
+        if (!desk) throw new GrantError(404, 'setup_grant.no_still', 'no screen yet');
+        const name = /^[A-Za-z0-9_-]{1,40}$/.test(String(desk.desk || '')) ? desk.desk : 'private';
+        const res = await actorGet(req, desk.where === 'run' ? `/api/v1/tasks/${task}/still` : `/api/v1/tasks/${task}/desk-still?desk=${encodeURIComponent(name)}`);
+        const type = res ? String(res.headers.get('content-type') || '').split(';')[0].trim() : '';
+        if (!res || !res.ok || !STILL_TYPES.has(type)) throw new GrantError(404, 'setup_grant.no_still', 'no screen yet');
+        const bytes = Buffer.from(await res.arrayBuffer());
+        if (!bytes.length || bytes.length > STILL_MAX) throw new GrantError(404, 'setup_grant.no_still', 'no screen yet');
+        return { type, bytes };
+    }
+
     const send = (res, err) => {
         if (err instanceof GrantError) return res.status(err.status).json({ ok: false, code: err.code, error: err.message });
         const status = Number(err && err.status) || 502;
@@ -162,6 +213,14 @@ function createSetupGrants({ db, proxy, isFresh, now = () => Date.now(), log = c
         r.post('/', async (req, res) => { try { res.status(201).json({ ok: true, grant: await create(req, req.body) }); } catch (err) { send(res, err); } });
         r.get('/', async (req, res) => { try { res.set('Cache-Control', 'no-store').json({ ok: true, grants: await list(req) }); } catch (err) { send(res, err); } });
         r.delete('/:ref', async (req, res) => { try { await revoke(req, String(req.params.ref)); res.json({ ok: true }); } catch (err) { send(res, err); } });
+        r.get('/agent/:task', async (req, res) => { try { res.set('Cache-Control', 'no-store').json({ ok: true, agent: await agentView(req, String(req.params.task)) }); } catch (err) { send(res, err); } });
+        r.get('/agent/:task/still', async (req, res) => {
+            try {
+                const still = await agentStill(req, String(req.params.task));
+                res.set('Cache-Control', 'private, no-store'); res.set('X-Content-Type-Options', 'nosniff');
+                res.type(still.type).send(still.bytes);
+            } catch (err) { send(res, err); }
+        });
         return r;
     }
     function internalHandler() {
@@ -172,7 +231,7 @@ function createSetupGrants({ db, proxy, isFresh, now = () => Date.now(), log = c
             try { res.json(await save(req, String(req.params.id), req.body)); } catch (err) { send(res, err); }
         }];
     }
-    return { create, list, revoke, save, ownerRouter, internalHandler, TTL_MS };
+    return { create, list, revoke, save, agentView, agentStill, ownerRouter, internalHandler, TTL_MS };
 }
 
 module.exports = { createSetupGrants, GrantError, TTL_MS, hashOf, AGENT_PROVIDERS };
