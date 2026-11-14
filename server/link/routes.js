@@ -65,7 +65,7 @@ function llmsTxt() {
     return [
         '# OpenVibe Link',
         '',
-        '> OpenVibe Link is one program (openvibe-link) that runs on your computer, server, phone or robot. It connects out to OpenVibe, needs no open ports, keeps a local kill switch, and does nothing you did not turn on.',
+        '> OpenVibe Link is one program (openvibe-link) that runs on your computer, server, phone or robot. It connects out to OpenVibe, needs no open ports, keeps a local Stop, and does nothing you did not turn on.',
         '',
         '## The page',
         '',
