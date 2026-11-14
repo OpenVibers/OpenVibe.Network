@@ -50,7 +50,11 @@ assert.deepStrictEqual(p.groups.map(g => g.name), ['Watch & stream', 'Talk & bel
 assert.deepStrictEqual(p.groups.map(g => g.id), ['watch', 'talk', 'play', 'read', 'shop', 'tools', 'make', 'build']);
 assert.deepStrictEqual(GROUPS.find(g => g.id === 'talk').sites, ['community', 'chat', 'tips', 'vip', 'mail', 'help', 'network'], 'Email sits with Chat in the talk group');
 assert.ok(p.nav.every(n => p.groups.some(g => g.id === n.group)), 'every entry has a group');
-assert.deepStrictEqual(p.nav.filter(n => n.of).map(n => [n.id, n.of, n.url]), [['pics', 'media-hub', 'https://openvibe.pics/'], ['download', 'media-hub', 'https://openvibe.download/']]);
+assert.deepStrictEqual(p.nav.filter(n => n.of === 'media-hub').map(n => [n.id, n.of, n.url]), [['pics', 'media-hub', 'https://openvibe.pics/'], ['download', 'media-hub', 'https://openvibe.download/']]);
+assert.ok(p.nav.filter(n => n.of === 'network').every((n) => n.id === 'link' && n.url === 'https://openvibe.link/'), 'Network\'s one product is Link');
+// Link is Network's product (11-14): listed for every other site's menu, and openvibe.link belongs to Network.
+assert.ok(LISTED.some((x) => x.id === 'link' && x.of === 'network' && x.status === 'open'));
+assert.equal(siteForHost('openvibe.link').id, 'network');
 const at = (id) => p.nav.findIndex(n => n.id === id);
 assert.ok(at('pics') === at('media-hub') + 1 && at('download') === at('media-hub') + 2, 'Pics and Download follow their site');
 assert.deepStrictEqual([p.nav[at('media-hub')].icon, p.nav[at('media-hub')].group, p.nav[at('tools')].group], ['video', 'watch', 'tools'], 'Video draws the video icon (there is no media-hub icon)');
