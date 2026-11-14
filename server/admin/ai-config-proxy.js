@@ -194,7 +194,7 @@ function createServiceCaller(opts = {}) {
         const base = entry && entry.internalUrl;
         if (!base) throw new ProxyError(503, 'config.service_unavailable', `${label(service)} is not configured`);
         let token = null;
-        try { token = typeof st.selfToken === 'function' ? st.selfToken(`openvibe.${service}`, [cap]) : null; } catch { token = null; }
+        try { token = typeof st.selfToken === 'function' ? st.selfToken((entry && entry.audience) || `openvibe.${service}`, [cap]) : null; } catch { token = null; }
         if (!token) throw new ProxyError(503, 'config.token_unavailable', `Network cannot mint a token for ${label(service)}`);
         const subject = String((req.user && req.user.subject_id) || '');
         if (!SUBJECT_RE.test(subject)) throw new ProxyError(403, 'config.actor_required', 'the owner has no usr_ subject');

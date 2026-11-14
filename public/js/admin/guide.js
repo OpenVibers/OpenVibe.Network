@@ -50,6 +50,54 @@ async function loadGuide() {
     guideDraw();
 }
 
+/**
+ * A key step's rows, drawn by the Setup tab (js/admin/setup.js): each with its field, Save, Test and "Where to get it"
+ * (11-14, the owner: the steps were lists of links that "don't bring you to where you need to configure this"). The
+ * fields of one provider (Polly's id, secret and region) sit together under its name; the optional ones fold under
+ * Later, what is set under Set.
+ */
+function guideRows(s) {
+    const box = gEl('div', 'guide-setup');
+    if (typeof setupRowsInto !== 'function' || !guideData.setup) return box;
+    if (typeof SETUP !== 'undefined') SETUP.data = guideData.setup;
+    const byId = new Map((guideData.setup.rows || []).map((r) => [r.id, r]));
+    const rows = s.rows.map((id) => byId.get(id)).filter(Boolean);
+    const part = (rs) => {
+        const groups = new Map();
+        for (const r of rs) { const k = r.required_for || r.id; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(r); }
+        const wrap = gEl('div', 'guide-setup-part');
+        for (const [k, g] of groups) {
+            const ol = gEl('ol', 'setup-rows guide-setup-rows');
+            setupRowsInto(ol, g);
+            wrap.append(g.length > 1 ? gEl('section', 'guide-provider', [gEl('h4', '', [k]), ol]) : ol);
+        }
+        return wrap;
+    };
+    const waiting = rows.filter((r) => r.state === 'needed' || r.state === 'not_working');
+    const later = rows.filter((r) => r.state === 'optional');
+    const set = rows.filter((r) => r.state === 'connected');
+    if (waiting.length) box.append(part(waiting));
+    if (later.length) {
+        const d = gEl('details', 'guide-later', [gEl('summary', '', [`Later · ${later.length}: add them when you want what they unlock`]), part(later)]);
+        if (!waiting.length) d.open = true;
+        box.append(d);
+    }
+    if (set.length) box.append(gEl('details', 'guide-later', [gEl('summary', '', [`Set · ${set.length}`]), part(set)]));
+    for (const li of box.querySelectorAll('[data-setup-row]')) setupAttachControls(li);
+    box.onclick = setupClick;
+    if (window.OVForms && window.OVForms.enhance) window.OVForms.enhance(box);
+    return box;
+}
+
+/** Read everything again and stay on the same step (after a save here or on the Setup tab, or "Read again"). */
+async function guideReread(button) {
+    if (guideBusy) return;
+    guideBusy = true;
+    if (button) button.disabled = true;
+    try { await guideRead(); guideDraw(); } catch { /* the step on screen stays */ } finally { guideBusy = false; if (button) button.disabled = false; }
+}
+document.addEventListener('ov-setup-changed', () => { if (guideModel && document.getElementById('guide-content')) guideReread(null); });
+
 async function guideSaveProgress(change) {
     const p = guideData.progress;
     const next = { skipped: change.skipped || p.skipped || [], seen: change.seen || p.seen || [] };
@@ -103,6 +151,12 @@ function guideDraw() {
             if (it.why) li.append(gEl('small', '', [it.why]));
             return li;
         })));
+    }
+    if (s.rows && s.rows.length) card.append(guideRows(s));
+    if (s.reread) {
+        const again = gEl('button', 'btn btn-outline guide-reread', [gIcon('fa-rotate'), ' Read again'], { type: 'button' });
+        again.addEventListener('click', () => guideReread(again));
+        card.append(gEl('div', 'guide-acts', [again]));
     }
     if (s.recommended) {
         const rec = gEl('div', 'guide-rec', [gEl('p', 'guide-rec-h', [gIcon('fa-wand-magic-sparkles'), ' We recommend']), gEl('p', 'guide-rec-l', [s.recommended.label])]);

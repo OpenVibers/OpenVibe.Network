@@ -108,8 +108,10 @@
             'The guide reads each service’s settings. A service that does not answer cannot be set up from here yet.',
             {
                 state: !setup ? 'unknown' : down.length ? 'needs_you' : 'done',
-                items: down.map((s) => ({ text: `${s.name} did not answer`, state: 'bad' })),
-                why: down.length ? 'Try again in a minute; if it stays down, it needs a look on the server.' : `${reach.length} services answered.`,
+                // Each one with why, in plain words (11-14, the owner: "what do you mean connect? This doesn't explain").
+                items: down.map((s) => ({ text: `${s.name}: its settings could not be read`, why: s.why || 'It did not answer.', state: 'bad' })),
+                why: down.length ? `${reach.length - down.length} of ${reach.length} services answered. The ones below cannot be set up from here until they answer; nothing else waits on them.` : `${reach.length} services answered.`,
+                reread: true,
             }));
 
         // ── AI: keys, models, caps, Decisions, credits ──
@@ -198,8 +200,8 @@
 
         // ── Agents ──
         steps.push(step('agents', 'Agents', 'Your agents',
-            'Vibe is your first agent. You can make more, share them, and install other people’s: each one says in plain words what it may do before you install it.',
-            { state: 'optional', open: { label: 'Open your agents', href: 'https://openvibe.actor' } }));
+            'Your agents live on OpenVibe.Actor (openvibe.actor). Vibe is your first one. Make more, give each a name and a face, share them, and install other people’s: each says in plain words what it may do before you install it.',
+            { state: 'optional', open: { label: 'Open OpenVibe.Actor', href: 'https://openvibe.actor' } }));
 
         // ── Everything else only the owner can give, a step per group ──
         for (const g of arr(setup && setup.groups)) {
@@ -208,13 +210,14 @@
             const needed = rows.filter((r) => r.state === 'needed' || r.state === 'not_working');
             const optional = rows.filter((r) => r.state === 'optional');
             steps.push(step(`keys-${g.id}`, 'Keys and accounts', g.label,
-                needed.length ? `${needed.length} thing${needed.length === 1 ? '' : 's'} here wait${needed.length === 1 ? 's' : ''} on you.` : optional.length ? 'Nothing waits on these; add them when you want what they unlock.' : 'All connected.',
+                needed.length ? `${needed.length} thing${needed.length === 1 ? '' : 's'} here wait${needed.length === 1 ? 's' : ''} on you. Paste each one below; “Where to get it” opens the page where it is made.` : optional.length ? 'Nothing waits on these; add them when you want what they unlock.' : 'All connected.',
                 {
                     state: needed.length ? 'needs_you' : optional.length ? 'optional' : 'done',
-                    items: [...needed, ...optional].slice(0, 12).map((r) => ({
-                        text: `${r.title} (${r.service_name})${r.state === 'not_working' ? ': not working' : r.required_for ? `: needed for ${r.required_for}` : r.unlocks ? `: ${r.unlocks}` : ''}`,
-                        href: r.get_it_at || null, state: r.state === 'optional' ? 'optional' : 'todo',
-                    })),
+                    // The rows themselves (11-14, the owner: "bring you to a place to actually configure it while also having a
+                    // link to where to actually obtain it"): the guide draws them with the Setup tab's field, Save, Test and
+                    // "Where to get it". Waiting first, then the optional ones, then what is set.
+                    rows: [...needed, ...optional, ...rows.filter((r) => r.state === 'connected')].map((r) => r.id),
+                    count: needed.length,
                     open: { label: 'Open in Setup', href: `/admin/setup#${g.id}` },
                 }));
         }
@@ -225,7 +228,7 @@
         const open = counted.filter((s) => s.state === 'todo' || s.state === 'needs_you');
         steps.push(step('finish', 'Finish', open.length ? 'What is left' : 'All set',
             open.length ? `${done} of ${counted.length} steps are done. These still want you:` : 'Everything the guide covers is set up. Come back any time: it rereads the live state each time.',
-            { state: open.length ? 'todo' : 'done', items: open.map((s) => ({ text: s.title, step: s.id, state: s.state })) }));
+            { state: open.length ? 'todo' : 'done', items: open.map((s) => ({ text: s.count ? `${s.title} · ${s.count} waiting` : s.items && s.items.length ? `${s.title} · ${s.items.length} to do` : s.title, step: s.id, state: s.state })) }));
         const next = steps.find((s) => s.id !== 'welcome' && (s.state === 'todo' || s.state === 'needs_you')) || null;
         return { steps, done, total: counted.length, next: next ? next.id : 'finish' };
     }
