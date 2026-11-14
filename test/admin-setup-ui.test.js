@@ -65,4 +65,12 @@ assert.strictEqual(S.setupAgentProvider({ ...keyRow, secret: false }), null, 'no
 assert.strictEqual(S.setupAgentProvider({ ...keyRow, get_it_at: '' }), null, 'no page to make it on');
 assert.strictEqual(S.setupAgentProvider({ ...keyRow, key: 'cloudflare_token', title: 'Cloudflare token' }), null, 'a provider the agent cannot read');
 assert.match(setup, /setupButton\('Let my agent do it', 'agent'\)/);
+// The agent's screen beside the step (plan §AB.44): "Watch it work" opens a panel on this page, read every two seconds
+// through Network's own routes; its page is one tap away for taking over, and Escape or × closes the panel.
+assert.match(setup, /watch\.addEventListener\('click', \(\) => setupDeskOpen\(row, grant\)\)/, 'Watch it work opens the panel here');
+assert.ok(!/watch\.target = '_blank'/.test(setup), 'not another tab');
+assert.match(setup, /'\/api\/admin\/setup\/grants\/agent\/' \+ encodeURIComponent\(task\)/, 'the task through Network');
+assert.match(setup, /'\/still'/, 'and its desk picture');
+assert.match(setup, /textContent = 'Take over on its page'/, 'taking over on the agent\'s page');
+assert.match(setup, /e\.key === 'Escape'\) setupDeskClose\(\)/, 'Escape closes it');
 console.log('admin-setup-ui: the summary, the states, the glossary and the owner-only tab read as designed');

@@ -104,6 +104,45 @@ const { createSetupGrants, TTL_MS, hashOf } = require('../server/admin/setup-gra
             assert.ok((await db.prepare('SELECT revoked_at FROM setup_grants WHERE id_hash = ?').get(hashOf(last))).revoked_at, 'a failed start revokes its grant');
         } finally { s2.close(); }
 
+        // The agent's screen beside the step (AB.44): its task and desk picture, read from Actor with the owner's
+        // Bearer, on paths built here; a bad id never reaches Actor and Actor's own picture address is not followed.
+        const TASK = 'tsk_01JABCDEFGHJKMNPQRSTVWXYZ0';
+        const PNG = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]);
+        const seen = [];
+        const watching = createSetupGrants({ db, proxy, isFresh: () => true, now: () => clock, log, actorUrl: 'http://actor.test',
+            fetchImpl: async (url, init) => {
+                seen.push({ url, auth: init.headers.Authorization });
+                if (url.endsWith('/desks')) return new Response(JSON.stringify({ desks: [{ where: 'run', desk: 'd1', kind: 'desktop', driving: true, still: 'https://evil.example/x.png' }] }), { status: 200 });
+                if (url.endsWith('/still')) return new Response(PNG, { status: 200, headers: { 'content-type': 'image/png' } });
+                if (url === `http://actor.test/api/v1/tasks/${TASK}`) return new Response(JSON.stringify({ id: TASK, state: 'running', finished_at: null, needs_you: { what: 'Sign in to DeepSeek', url: 'https://platform.deepseek.com' } }), { status: 200 });
+                return new Response('{}', { status: 404 });
+            } });
+        const watchApp = express();
+        watchApp.use('/g', (req, res, next) => { req.user = { id: owner.id, subject_id: subject }; next(); }, watching.ownerRouter());
+        const s3 = await new Promise((ok) => { const x = watchApp.listen(0, '127.0.0.1', () => ok(x)); });
+        const b3 = `http://127.0.0.1:${s3.address().port}`;
+        const look = (path, auth = 'Bearer owner-token') => fetch(b3 + path, { headers: auth ? { authorization: auth } : {} });
+        try {
+            let r = await look(`/g/agent/${TASK}`);
+            const view = (await r.json()).agent;
+            assert.strictEqual(r.status, 200);
+            assert.deepStrictEqual(view, { state: 'running', ended: false, error: null, needs_you: { what: 'Sign in to DeepSeek' },
+                desk: { where: 'run', kind: 'desktop', driving: true }, page: `https://openvibe.actor/chat/${TASK}` }, 'what the overlay shows, and nothing more');
+            r = await look(`/g/agent/${TASK}/still`);
+            assert.strictEqual(r.status, 200);
+            assert.strictEqual(r.headers.get('content-type'), 'image/png');
+            assert.strictEqual(r.headers.get('cache-control'), 'private, no-store');
+            assert.ok(Buffer.from(await r.arrayBuffer()).equals(PNG), 'the desk picture');
+            assert.ok(seen.every((x) => x.url.startsWith('http://actor.test/api/v1/tasks/') && x.auth === 'Bearer owner-token'), 'only Actor, with the owner\'s Bearer');
+            assert.ok(seen.some((x) => x.url === `http://actor.test/api/v1/tasks/${TASK}/still`) && !seen.some((x) => x.url.includes('evil')), 'the picture path is built here, never taken from the answer');
+            const before = seen.length;
+            assert.strictEqual((await look('/g/agent/tsk_..%2F..%2Fadmin')).status, 404, 'a bad task id');
+            assert.strictEqual((await look('/g/agent/not-a-task/still')).status, 404);
+            assert.strictEqual(seen.length, before, 'and Actor is never asked');
+            assert.strictEqual((await look(`/g/agent/${TASK}`, null)).status, 409, 'no Bearer: nothing to watch');
+            assert.strictEqual((await look(`/g/agent/tsk_01JABCDEFGHJKMNPQRSTVWXYZ1`)).status, 404, 'a task Actor does not know (or not theirs)');
+        } finally { s3.close(); }
+
         assert.ok(!logs.some((m) => m.includes(VALUE)), 'a value is never logged');
         assert.ok(!JSON.stringify(await db.prepare('SELECT * FROM setup_grants').all()).includes(VALUE), 'nor stored here');
         console.log('setup grants: fresh-made, one row, Actor only, once, expiring, revocable, values never back');
