@@ -8,6 +8,9 @@
  *   POST   /api/admin/ai/setup/test/:step         one tiny request through the step's route
  *   PUT    /api/admin/ai/setup/routes/:step       pin the model a route uses
  *   PUT    /api/admin/ai/setup/caps/:step         the monthly cap per kind
+ *   GET    /api/admin/ai/setup/decisions          the owner's decisions settings, per kind
+ *   GET    /api/admin/ai/setup/decisions/models   the models that can answer a decision
+ *   PUT    /api/admin/ai/setup/decisions/:kind    the model, the ladder and the threshold of one kind
  *   POST   /api/admin/ai/setup/recommended        fill every route with its recommended model
  *
  * Every route is owner only: API keys and money are the owner's, never any admin's. Network keeps
@@ -61,6 +64,11 @@ function createAiSetup({ fetchImpl = globalThis.fetch, log = console } = {}) {
     r.post('/test/:step', (req, res) => forward(req, res, `/api/v1/setup/test/${encodeURIComponent(req.params.step)}`, { body: req.body || {} }));
     r.put('/routes/:step', (req, res) => forward(req, res, `/api/v1/setup/routes/${encodeURIComponent(req.params.step)}`, { body: req.body || {} }));
     r.put('/caps/:step', (req, res) => forward(req, res, `/api/v1/setup/caps/${encodeURIComponent(req.params.step)}`, { body: req.body || {} }));
+    // The decisions settings (2026-11-14): the model that answers each kind of question, the ladder to
+    // escalate along and the confidence below which an answer is escalated, and the models that can answer.
+    r.get('/decisions', (req, res) => forward(req, res, '/api/v1/setup/decisions'));
+    r.get('/decisions/models', (req, res) => forward(req, res, '/api/v1/decisions/models'));
+    r.put('/decisions/:kind', (req, res) => forward(req, res, `/api/v1/setup/decisions/${encodeURIComponent(req.params.kind)}`, { body: req.body || {} }));
     r.post('/recommended', (req, res) => forward(req, res, '/api/v1/setup/recommended', { body: req.body || {} }));
     return r;
 }

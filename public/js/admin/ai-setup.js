@@ -9,6 +9,7 @@ let aiSetupState = null;
 let aiSetupStep = 'start';
 let aiSetupChoice = {};      // step id -> { provider, model }
 let aiSetupBusy = false;
+let aiSetupModels = null;    // the models that can answer a decision (OpenVibe.AI's list)
 
 const AI_SETUP_DEFAULT = 'defaults';
 // 2026-11-12 (the owner: "finish the guided easy step by step setup for owners"): the setup opens on a Start page (what
@@ -34,6 +35,35 @@ function aiSetupShortPrice(price) {
     return price.text || 'price not published';
 }
 
+/** The kinds of decision the owner may set a model for (OpenVibe.AI names them). */
+const AI_SETUP_DECISION_NAMES = {
+    routing: 'Routing a request',
+    moderation: 'Checking a post or a message',
+    grading: 'Grading an answer',
+    tool_choice: 'Choosing the next tool',
+    other: 'Any other question',
+};
+
+/** One model in a sentence: its name, its price, its measured speed and whether its answers are calibrated. */
+function aiSetupModelLabel(m) {
+    const price = m.price_in_per_mtok == null
+        ? 'free'
+        : '$' + Number(m.price_in_per_mtok).toFixed(4) + ' in · $' + Number(m.price_out_per_mtok == null ? 0 : m.price_out_per_mtok).toFixed(4) + ' out per 1M tokens';
+    const speed = m.speed_p50_ms == null ? 'speed not measured yet' : Math.round(Number(m.speed_p50_ms)) + ' ms';
+    return (m.name || m.id) + ' · ' + price + ' · ' + speed + ' · ' + (m.calibrated ? 'calibrated' : 'estimated');
+}
+
+/** The models that can answer a decision, read once from OpenVibe.AI. */
+async function loadAiSetupModels() {
+    if (aiSetupModels) return aiSetupModels;
+    try {
+        const out = await api('/api/admin/ai/setup/decisions/models');
+        aiSetupModels = (out && out.models) || [];
+    } catch (err) { aiSetupModels = []; }
+    return aiSetupModels;
+}
+
+
 function aiSetupStepById(id) {
     return (aiSetupState && aiSetupState.steps || []).find((s) => s.id === id) || null;
 }
@@ -46,6 +76,53 @@ function aiSetupSelected(step) {
         if (hit) return hit;
     }
     return step.recommended;
+}
+
+/** The Decisions step's own table: the model that answers each kind, the one to ask when unsure, and how sure is enough. */
+function aiSetupDecisionsHtml() {
+    const values = (aiSetupState && aiSetupState.decisions) || {};
+    const kinds = (aiSetupState && aiSetupState.decision_kinds) || Object.keys(AI_SETUP_DECISION_NAMES);
+    const models = aiSetupModels || [];
+    const options = (current) => {
+        const auto = '<option value="" ' + (!current ? 'selected' : '') + '>OpenVibe picks the best offer</option>';
+        return auto + models.map((m) => '<option value="' + esc(m.id) + '" ' + (current === m.id ? 'selected' : '') + '>' + esc(aiSetupModelLabel(m)) + (m.available ? '' : ' — not available now') + '</option>').join('');
+    };
+    const rows = kinds.map((kind) => {
+        const v = values[kind] || {};
+        const ladder = (v.ladder || [])[0] || '';
+        const threshold = Number(v.threshold == null ? 0.75 : v.threshold);
+        return '<tr>'
+            + '<td data-label="Kind"><strong>' + esc(AI_SETUP_DECISION_NAMES[kind] || kind) + '</strong><div class="muted setup-route">' + esc(kind) + '</div></td>'
+            + '<td data-label="The model that answers"><select aria-label="The model that answers ' + esc(kind) + '" onchange="saveAiSetupDecision(\'' + esc(kind) + '\',\'default_model\',this.value)">' + options(v.default_model || '') + '</select></td>'
+            + '<td data-label="Asked when unsure"><select aria-label="The model asked when the answer is unsure for ' + esc(kind) + '" onchange="saveAiSetupDecision(\'' + esc(kind) + '\',\'ladder\',this.value)">' + options(ladder) + '</select></td>'
+            + '<td data-label="How sure is enough"><input type="number" min="0" max="1" step="0.05" value="' + threshold + '" aria-label="How sure an answer must be for ' + esc(kind) + '" onchange="saveAiSetupDecision(\'' + esc(kind) + '\',\'threshold\',this.value)"></td>'
+            + '</tr>';
+    }).join('');
+    if (!rows) return '';
+    return '<section class="setup-decisions" aria-label="Which model answers a decision">'
+        + '<h4>Which model answers</h4>'
+        + '<p class="muted">One model per kind of question, with its price, its measured speed and whether its answers are calibrated. A model whose answer is not sure enough is asked again of the next one.</p>'
+        + '<div class="setup-table-wrap"><table class="setup-table"><thead><tr><th>Kind</th><th>The model that answers</th><th>Asked when unsure</th><th>How sure is enough</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+        + '<p class="setup-help">“OpenVibe picks” is today’s order: Google’s Decisions API first when its key is there, the cheapest structured model after it. The confidence runs from 0 to 1; 0.75 is the default.</p>'
+        + '</section>';
+}
+
+/** Save one kind's decision setting: the model, the model to ask when unsure, or the confidence. */
+async function saveAiSetupDecision(kind, field, value) {
+    const body = {};
+    if (field === 'default_model') body.default_model = value || null;
+    else if (field === 'ladder') body.ladder = value ? [value] : [];
+    else if (field === 'threshold') {
+        const t = Number(value);
+        if (!Number.isFinite(t) || t < 0 || t > 1) { toast('The confidence is a number from 0 to 1', 'error'); return; }
+        body.threshold = t;
+    } else return;
+    try {
+        await api('/api/admin/ai/setup/decisions/' + encodeURIComponent(kind), { method: 'PUT', body });
+        toast('Saved for ' + (AI_SETUP_DECISION_NAMES[kind] || kind));
+        aiSetupState = null;
+        await loadAiSetup(true);
+    } catch (err) { toast(err.message || 'The setting was not saved', 'error'); }
 }
 
 function aiSetupIsChoice(step, offer) {
@@ -166,6 +243,12 @@ function renderAiSetupStep() {
     const step = aiSetupStepById(aiSetupStep) || (aiSetupState.steps[0] || null);
     const main = document.getElementById('setup-main');
     if (!step || !main) return;
+    // The Decisions step picks a model out of the list of the models that can answer one: it is read once.
+    if (step.id === 'decide' && !aiSetupModels) {
+        main.innerHTML = '<div class="loading">Loading the models that can answer…</div>';
+        loadAiSetupModels().then(() => renderAiSetup());
+        return;
+    }
     const selected = aiSetupSelected(step);
     const index = aiSetupState.steps.findIndex((s) => s.id === step.id);
     const state = step.ready ? 'ready' : step.state;
@@ -215,6 +298,8 @@ function renderAiSetupStep() {
                     </div>`).join('')}
                 </div>
             </details>` : ''}
+
+            ${step.id === 'decide' ? aiSetupDecisionsHtml() : ''}
 
             <section class="setup-do">
                 <div class="setup-do-head"><span class="setup-num">1</span><div><h4>Get a key</h4>

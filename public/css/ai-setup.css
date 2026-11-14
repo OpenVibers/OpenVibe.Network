@@ -92,6 +92,11 @@
 .setup-cap{display:flex;align-items:center;gap:4px}
 .setup-cap span{color:var(--text-muted);font-size:12px}
 .setup-cap input{width:92px;padding:7px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font:inherit}
+.setup-decisions{margin:0 0 18px;padding:14px;border:1px solid var(--border);border-radius:12px;background:var(--bg-secondary)}
+.setup-decisions h4{margin:0 0 4px;font-size:13px}
+.setup-decisions p{margin:0 0 10px}
+.setup-decisions select{max-width:320px}
+.setup-decisions input[type=number]{width:92px;padding:7px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font:inherit}
 .setup-error{display:flex;gap:12px;padding:20px;border:1px solid color-mix(in srgb,var(--danger) 40%,var(--border));border-radius:12px;background:var(--bg-card)}
 .setup-error i{color:var(--danger);font-size:18px;margin-top:2px}
 .setup-error p{margin:6px 0 10px}
