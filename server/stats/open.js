@@ -51,6 +51,19 @@ const fmt = (n) => {
 const exact = (n) => (n == null ? '—' : Math.round(Number(n)).toLocaleString('en-US'));
 /** Change against the window before, as a percentage, or null when there is nothing to compare with. */
 const change = (now, before) => (before > 0 && now != null ? Math.round(((now - before) / before) * 100) : null);
+// An email's kind in words, as Network's Email tab says it (public/js/admin/content.js emailKindWords), never the
+// machine word ("notification:OPERATOR_ALERT" is "Operator alert").
+const EMAIL_KINDS = { email_verification: 'Email check', password_reset: 'Password reset', password_changed: 'Password changed',
+    account_security: 'Account security', notification_digest: 'Notification digest', test: 'Test email' };
+function emailKind(type) {
+    const raw = String(type || '').trim();
+    const words = (t) => { const w = String(t || '').replace(/[_:.-]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase(); return w ? w.charAt(0).toUpperCase() + w.slice(1) : 'Other'; };
+    if (EMAIL_KINDS[raw]) return EMAIL_KINDS[raw];
+    if (raw.startsWith('notification_digest:')) return 'Notification digest';
+    if (raw.startsWith('notification:')) return words(raw.slice('notification:'.length));
+    if (raw.startsWith('webhook:')) return 'Provider report';
+    return words(raw).slice(0, 60);
+}
 function windowOf(q) { const d = parseInt(q, 10); return WINDOWS.includes(d) ? d : 30; }
 
 function createOpenStats({ db, selfToken = () => null, statusRows = () => [], prometheusUrl, liveUrl, release = null, fetchImpl = globalThis.fetch, now = () => Date.now(), toolsOf = toolsCatalog }) {
@@ -305,6 +318,26 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
             });
         }
         tools.sort((a, b) => (b.opens_7d || 0) - (a.opens_7d || 0) || String(a.name).localeCompare(String(b.name)));
+        // Email (plan §AB.38; the owner: "email stuff should be on openvibe.report as well"): what the network sent, by kind
+        // and by day, sent or failed. Counts only, never an address, a subject or a person.
+        let email = null;
+        try {
+            const rows = await db.prepare(`SELECT email_type, status, substr(created_at, 1, 10) AS day, count(*) AS n FROM email_delivery_log
+                WHERE created_at >= ? GROUP BY email_type, status, substr(created_at, 1, 10)`).all(`${window[0]} 00:00:00`);
+            const kinds = new Map();
+            const byDay = new Map(window.map((d) => [d, { day: d, sent: 0, failed: 0 }]));
+            let sent = 0, failed = 0;
+            for (const r of rows) {
+                const n = Number(r.n) || 0, ok = r.status === 'sent';
+                const label = emailKind(r.email_type);
+                const k = kinds.get(label) || { kind: label, sent: 0, failed: 0 };
+                if (ok) { k.sent += n; sent += n; } else { k.failed += n; failed += n; }
+                kinds.set(label, k);
+                const d = byDay.get(r.day);
+                if (d) { if (ok) d.sent += n; else d.failed += n; }
+            }
+            email = { sent, failed, by_kind: [...kinds.values()].sort((a, b) => (b.sent + b.failed) - (a.sent + a.failed) || a.kind.localeCompare(b.kind)), daily: [...byDay.values()] };
+        } catch { email = null; }
         // Network-wide page views per day: every navbar site's beacon (Live counts its own; its days are not split out).
         const daily = window.map((d) => ({ day: d, n: [...(pv ? pv.values() : [])].reduce((a, e) => a + (e.daily.get(d) || 0), 0) }));
         const pvTotal = sites.reduce((a, s) => a + (s.pageviews || 0), 0);
@@ -322,6 +355,7 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
             busiest_pages_24h: tr ? tr.top : null,
             sites,
             ...(tools.length ? { tools } : {}),
+            ...(email ? { email } : {}),
         };
     }
     /** The numbers for a window, held TTL_MS; one computation at a time. `refresh` (the boot warm-up, just before the
