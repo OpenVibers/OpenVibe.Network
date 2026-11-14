@@ -135,6 +135,11 @@ function fakeFetch(routes) {
     assert.ok(Number.isFinite(Date.parse(stat.at)), 'the moment, for the reader\'s clock');
     assert.deepStrictEqual(stat.facts, [{ label: 'people today', n: 1240 }, { label: 'signed in today', n: 40 }, { label: 'page views today', n: 2031 }, { label: 'new accounts today', n: 9 }, { label: 'live now', n: 2 }]);
     const peakCard = require('../server/feed/card').cardOf(peakRow);
+    // Where people are now (11-14): the online count and the sites they are on.
+    const whereRow = (await rows()).find((r) => r.source_type === 'where');
+    assert.ok(whereRow && /^Right now: \d+ (people|person) on /.test(whereRow.title), 'the where card');
+    const whereStat = typeof whereRow.stat === 'string' ? JSON.parse(whereRow.stat) : whereRow.stat;
+    assert.deepStrictEqual(whereStat.facts[0], { label: 'on Live', n: 1 }, 'a site and how many are on it');
     assert.deepStrictEqual(peakCard.stat.facts[0], { label: 'people today', n: 1240 });
 
     console.log('feed sources: community, today, quest, play, meme, pics, live, rundown, watch, space, work, deals, news and report map to feed.item@1');
