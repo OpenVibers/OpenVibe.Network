@@ -885,14 +885,19 @@ router.delete('/apps/:family', requireAuth, async (req, res) => {
 // GET /api/users/:id/card — public user card data for context menus
 router.get('/users/:id/card', async (req, res) => {
     const db = await getDb(req);
-    const userId = req.params.id;
+    // 11-14: a site that knows a person by name or subject (Chat's own ids are not Network's) asks with that: a usr_
+    // subject, @username or a username; a number is Network's id as before.
+    const key = String(req.params.id || '').replace(/^@/, '');
+    const where = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(key) ? 'subject_id = ?' : /^\d{1,15}$/.test(key) ? 'id = ?' : /^[A-Za-z0-9_]{2,32}$/.test(key) ? 'lower(username) = lower(?)' : null;
+    if (!where) return res.status(404).json({ error: 'User not found' });
 
     const user = await db.prepare(`
         SELECT id, username, display_name, avatar_url, bio, role, profile_color,
                name_effect, particle_effect, is_anon, anon_number, created_at, subject_id
-        FROM users WHERE id = ?
-    `).get(userId);
+        FROM users WHERE ${where}
+    `).get(key);
     if (!user) return res.status(404).json({ error: 'User not found' });
+    const userId = user.id;
 
     // Linked services
     const linked = await db.prepare('SELECT service, service_username FROM linked_accounts WHERE user_id = ?').all(userId);
