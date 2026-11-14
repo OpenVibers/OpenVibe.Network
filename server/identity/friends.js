@@ -179,7 +179,7 @@ function userRouter(requireAuth) {
     return router;
 }
 
-/** GET /internal/friends?subject=usr_… (behind principals.guard('network.friends.read')): mutual friends' subjects. */
+/** GET /internal/friends?subject=usr_… (behind the friends-read capability, once Contracts names it): mutual friends' subjects. */
 function internalHandler(db) {
     return async (req, res) => {
         const subject = String(req.query.subject || '');
