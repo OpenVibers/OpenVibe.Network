@@ -31,6 +31,14 @@ const { createOpenStats, render } = require('../server/stats/open');
     await user.run(9006, 'ovprobe_os', 'x', at(1), 0, 0);
     await db.prepare('UPDATE users SET is_test = 1 WHERE id = 9006').run();
 
+    // Email: what was sent, by kind and day (plan §AB.38); one row older than the window never counts.
+    const mail = db.prepare('INSERT INTO email_delivery_log (email_type, recipient, subject, status, created_at) VALUES (?, ?, ?, ?, ?)');
+    await mail.run('notification:OPERATOR_ALERT', 'ops@openvibe.test', 'Disk 91%', 'sent', at(0));
+    await mail.run('notification:OPERATOR_ALERT', 'ops@openvibe.test', 'Disk 92%', 'sent', at(1));
+    await mail.run('email_verification', 'a@openvibe.test', 'Confirm', 'sent', at(1));
+    await mail.run('email_verification', 'b@openvibe.test', 'Confirm', 'failed', at(2));
+    await mail.run('password_reset', 'c@openvibe.test', 'Reset', 'sent', at(20));
+
     // Live's analytics and home numbers; Prometheus down.
     const asked = [];
     const fetchImpl = async (url, opts) => {
@@ -58,6 +66,10 @@ const { createOpenStats, render } = require('../server/stats/open');
     assert.strictEqual(d.sites[0].id, 'live', 'most visited first');
     assert.strictEqual(d.totals.pageviews, d.sites.reduce((a, s) => a + (s.pageviews || 0), 0));
     assert.strictEqual(d.accounts.new, 2, 'two new accounts this week (no guests, no banned, no test accounts)');
+    assert.deepStrictEqual([d.email.sent, d.email.failed], [3, 1], 'what was sent and what failed in the window');
+    assert.deepStrictEqual(d.email.by_kind, [{ kind: 'Email check', sent: 1, failed: 1 }, { kind: 'Operator alert', sent: 2, failed: 0 }], 'by kind, in words');
+    assert.deepStrictEqual(d.email.daily.slice(-3).map((x) => [x.sent, x.failed]), [[0, 1], [2, 0], [1, 0]], 'one point a day, oldest first');
+    assert.ok(!JSON.stringify(d.email).includes('@') && !JSON.stringify(d.email).includes('Disk'), 'never an address or a subject');
     assert.strictEqual(d.accounts.total, 3, 'a test account is not in the public account count');
     assert.strictEqual(d.accounts.daily.reduce((a, p) => a + p.n, 0), 2, 'the daily series leaves test accounts out too');
     assert.strictEqual(d.accounts.prev, 1);
