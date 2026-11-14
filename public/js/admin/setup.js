@@ -71,6 +71,8 @@ async function loadSetup() {
     try {
         SETUP.data = await api('/api/admin/setup');
         setupRender(root);
+        // The guided setup draws these rows too: it reads again when one changes (js/admin/guide.js).
+        document.dispatchEvent(new CustomEvent('ov-setup-changed'));
     } catch (err) {
         root.innerHTML = setupHead('') + '<p class="pai-error">Setup could not be read: ' + esc(err.message || 'the request failed') + '</p>';
     } finally {
@@ -124,7 +126,10 @@ function setupRowHtml(row) {
     const where = row.get_it_at
         ? '<p class="setup-where"><a href="' + esc(row.get_it_at) + '" target="_blank" rel="noopener noreferrer">' + (row.kind === 'task' ? 'Where to do it' : 'Where to get it') + ' <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i></a>' + (row.get_it_how ? ' <span>' + esc(row.get_it_how) + '</span>' : '') + '</p>'
         : (row.get_it_how ? '<p class="setup-where"><span>' + esc(row.get_it_how) + '</span></p>' : '');
-    const what = row.description || row.unlocks || '';
+    // What it does first, then why (the state line says what waits on it), then the details (11-14, the owner: "way
+    // better descriptions on what the purpose is, what it does, why I should set it up").
+    const purpose = row.unlocks || row.description || '';
+    const about = row.unlocks && row.description && row.description !== row.unlocks ? row.description : '';
     const from = row.kind === 'task'
         ? 'Kept by OpenVibe.Network'
         : esc(row.service_name) + ' <code>' + esc(row.namespace) + '</code> <code>' + esc(row.key) + '</code>';
@@ -132,14 +137,20 @@ function setupRowHtml(row) {
         + '<div class="setup-row-main">'
         + '<div class="setup-row-title"><strong>' + esc(row.title) + '</strong> <span class="setup-state is-' + st.tone + '">' + esc(stateLabel) + '</span>'
         + (row.danger ? ' <span class="pai-chip-danger">Money</span>' : '') + '</div>'
-        + (what ? '<p class="setup-what">' + esc(what) + '</p>' : '')
+        + (purpose ? '<p class="setup-purpose"><span class="setup-label">' + (row.kind === 'task' ? 'Why' : 'What it does') + '</span>' + esc(purpose) + '</p>' : '')
         + '<p class="setup-state-line is-' + st.tone + '">' + esc(setupStateLine(row)) + '</p>'
+        + (about ? '<p class="setup-what">' + esc(about) + '</p>' : '')
         + where
         + '<p class="setup-from">' + from + '</p>'
         + '</div>'
         + '<div class="setup-row-actions" data-setup-actions></div>'
         + '<p class="setup-result" data-setup-result role="status" hidden></p>'
         + '</li>';
+}
+
+/** Rows drawn into a list somewhere else (the guided setup's key steps, js/admin/guide.js); every value escaped. */
+function setupRowsInto(list, rows) {
+    list.innerHTML = rows.map(setupRowHtml).join('');
 }
 
 function setupRowOf(el) {

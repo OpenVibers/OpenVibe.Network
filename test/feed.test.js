@@ -52,7 +52,10 @@ const envelope = (type, payload, over = {}) => ({
     const run = foldCards([card({ at: iso(now - 3 * 60000) }), card({ at: iso(now - 2 * 60000) }), card({ at: iso(now - 60000) })]);
     assert.strictEqual(run.length, 1);
     assert.strictEqual(run[0].group.count, 3);
-    assert.match(run[0].title, /Alex added 3 videos/);
+    assert.strictEqual(run[0].title, 'Alex posted 3 videos');
+    // Said the way the single card says it (11-14, the owner: "added 2 quests" under "finished a quest" is weird).
+    const quest = (id, at) => cardOf({ source_service: 'quest', source_type: 'badge', source_id: id, kind: 'quest', title: 'Finished a quest: X', url: 'https://openvibe.quest/', site: 'quest', site_name: 'Quest', actor_subject: A, counts: {}, occurred_at: at }, { name: 'krissy', avatar: null });
+    assert.strictEqual(foldCards([quest('q1', iso(now - 60000)), quest('q2', iso(now))])[0].title, 'krissy finished 2 quests');
     const one = foldCards([card({ at: iso(now - 3600000) }), card({ at: iso(now) })]);
     assert.strictEqual(one.length, 2, 'an hour apart is not a run');
     const jobs = foldCards([1, 2, 3].map((n) => cardOf({ source_service: 'work', source_type: 'job', source_id: `j${n}`, kind: 'work', title: `Job ${n}`, url: 'https://openvibe.work/jobs', site: 'work', site_name: 'Work', counts: {}, occurred_at: '2026-11-12T09:00:00.000Z' })));
@@ -62,6 +65,9 @@ const envelope = (type, payload, over = {}) => ({
     const deals = foldCards([1, 2, 3].map((n) => cardOf({ source_service: 'deals', source_type: 'offer', source_id: `d${n}`, kind: 'deal', title: `Deal ${n}`, url: 'https://openvibe.deals/d/x', site: 'deals', site_name: 'Deals', counts: {}, occurred_at: '2026-11-12T09:00:00.000Z' })));
     assert.strictEqual(deals.length, 1, 'a poll of deals is one card');
     assert.strictEqual(deals[0].title, '3 new deals');
+    const pictured = foldCards([1, 2].map((n) => cardOf({ source_service: 'deals', source_type: 'offer', source_id: `p${n}`, kind: 'deal', title: `Deal ${n}`, url: 'https://openvibe.deals/d/x', site: 'deals', site_name: 'Deals', picture_url: 'https://m.media-amazon.com/images/I/x.jpg', counts: {}, occurred_at: '2026-11-12T09:00:00.000Z' })));
+    assert.strictEqual(pictured[0].media, null, 'a run of deals has no one picture over it (11-14: an empty frame over "321 new deals")');
+    assert.ok(pictured[0].group.items[0].media.thumb, 'each row keeps its own');
     assert.strictEqual(deals[0].group.count, 3);
     assert.match(deals[0].id, /^g:deal:deals:\d{4}-\d\d-\d\dT\d\d$/, 'a burst has one id per site and hour, the same on every page (11-12: three "112 new deals")');
     assert.strictEqual(deals[0].label, undefined, 'named by its site, never "System"');

@@ -16,6 +16,14 @@ function mcEl(tag, cls, kids, attrs) {
     return n;
 }
 const mcIcon = (name) => mcEl('i', `fa-solid ${name}`, [], { 'aria-hidden': 'true' });
+// A machine's system as its maker's mark (§Y.1 A3, 11-13: the cards showed blank icons). Apple, Linux, Windows and Android
+// are brand glyphs, so they need fa-brands: as fa-solid they resolve to nothing. Windows has no mark on purpose (Microsoft
+// asked that its marks not be redistributed; Shared's brands.js leaves them out), so it is a laptop, like anything else.
+function mcOsIcon(os) {
+    const o = String(os || '').toLowerCase();
+    const brand = /mac|darwin|ios/.test(o) ? 'fa-apple' : /android/.test(o) ? 'fa-android' : /linux|ubuntu|debian|fedora|arch/.test(o) ? 'fa-linux' : null;
+    return brand ? mcEl('i', `fa-brands ${brand}`, [], { 'aria-hidden': 'true' }) : mcIcon('fa-laptop');
+}
 function mcAgo(at) {
     const t = Date.parse(at);
     if (!Number.isFinite(t)) return '';
@@ -45,8 +53,7 @@ function mcCard(m) {
     const name = mcEl('h4', 'mc-name', [m.name || MC_KIND[m.kind] || 'A machine']);
     const state = mcEl('span', 'mc-state', [m.online ? 'Online' : (m.last_seen_at ? `Offline · seen ${mcAgo(m.last_seen_at)}` : 'Offline')]);
     const os = String(m.os || '').toLowerCase();
-    const osIcon = os.includes('mac') || os.includes('darwin') ? 'fa-apple' : os.includes('linux') ? 'fa-linux' : 'fa-laptop';
-    const meta = mcEl('p', 'mc-meta', [mcIcon(osIcon), ' ', [MC_KIND[m.kind], m.os, m.node_version ? `Node ${m.node_version}` : ''].filter(Boolean).join(' · ')]);
+    const meta = mcEl('p', 'mc-meta', [mcOsIcon(os), ' ', [MC_KIND[m.kind], m.os, m.node_version ? `Node ${m.node_version}` : ''].filter(Boolean).join(' · ')]);
     const head = mcEl('div', 'mc-head', [dot, mcEl('div', 'mc-title', [name, state]), meta]);
     card.append(head);
     const on = mcOnNow(m);

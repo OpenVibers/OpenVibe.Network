@@ -567,10 +567,17 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
         const online = snap.members.size + snap.guests;
         if (!Number.isFinite(online) || online <= 0) return 0;
         const day = new Date(now()).toISOString().slice(0, 10);
-        await db.prepare(`INSERT INTO feed_peaks (day, peak, peak_at) VALUES (?, ?, now())
+        // The day's distinct people beside the peak (seen.today: counts only); the larger count wins, so a restart that
+        // empties the memory never lowers it.
+        const t = typeof presence.today === 'function' ? presence.today(now()) : null;
+        const dayMembers = t && t.day === day ? Number(t.members) || 0 : 0;
+        const dayGuests = t && t.day === day ? Number(t.guests) || 0 : 0;
+        await db.prepare(`INSERT INTO feed_peaks (day, peak, peak_at, members_day, guests_day) VALUES (?, ?, now(), ?, ?)
             ON CONFLICT (day) DO UPDATE SET peak = GREATEST(feed_peaks.peak, excluded.peak),
                 peak_at = CASE WHEN excluded.peak > feed_peaks.peak THEN excluded.peak_at ELSE feed_peaks.peak_at END,
-                updated_at = now()`).run(day, online);
+                members_day = GREATEST(feed_peaks.members_day, excluded.members_day),
+                guests_day = GREATEST(feed_peaks.guests_day, excluded.guests_day),
+                updated_at = now()`).run(day, online, dayMembers, dayGuests);
         return 1;
     }
 
@@ -579,16 +586,54 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
         let stats = null;
         try { stats = await getJson(`${urls.report}/api/v1/stats`); } catch (err) { log.warn && log.warn('[Feed sources] Report stats:', err.message); }
         const day = new Date(at).toISOString().slice(0, 10);
-        const peak = await db.prepare('SELECT peak, peak_at FROM feed_peaks WHERE day = ?').get(day);
+        const peak = await db.prepare('SELECT peak, peak_at, members_day, guests_day FROM feed_peaks WHERE day = ?').get(day);
         let created = 0;
         if (peak && Number(peak.peak) > 0) {
-            const when = new Date(peak.peak_at).toISOString().slice(11, 16);
-            const r = await upsert({ source_service: 'report', source_type: 'peak', source_id: `peak:${day}`, kind: 'report',
-                title: `Peak today: ${Number(peak.peak).toLocaleString('en-US')} ${Number(peak.peak) === 1 ? 'person' : 'people'} online at ${when} UTC`,
+            // The time is not in the words: each reader's own clock says it (feed.item@1 1.2.0 stat.at, openvibe-shared
+            // 4.248.0). The side numbers are today's: people (signed in and guests), signed in, page views, new
+            // accounts, streaming now. Each is there only when its source answered.
+            const todayOf = (daily) => { const d = (Array.isArray(daily) ? daily : []).find((x) => x && x.day === day); return d && Number.isSafeInteger(Number(d.n)) ? Number(d.n) : null; };
+            const people = Number(peak.members_day || 0) + Number(peak.guests_day || 0);
+            const facts = [
+                people > 0 ? { label: 'people today', n: people } : null,
+                Number(peak.members_day) > 0 ? { label: 'signed in today', n: Number(peak.members_day) } : null,
+                stats ? (todayOf(stats.pageviews_daily) != null ? { label: 'page views today', n: todayOf(stats.pageviews_daily) } : null) : null,
+                stats && stats.accounts ? (todayOf(stats.accounts.daily) != null ? { label: 'new accounts today', n: todayOf(stats.accounts.daily) } : null) : null,
+                stats && stats.live && Number.isSafeInteger(Number(stats.live.live_now)) ? { label: 'live now', n: Number(stats.live.live_now) } : null,
+            ].filter(Boolean);
+            const key = `peak:${day}`;
+            const r = await upsert({ source_service: 'report', source_type: 'peak', source_id: key, kind: 'report',
+                title: `Peak today: ${Number(peak.peak).toLocaleString('en-US')} ${Number(peak.peak) === 1 ? 'person' : 'people'} online at once`,
                 text: 'The most people on OpenVibe at once today', url: `${urls.report}/network`, site: 'report', site_name: 'Report',
                 actor_subject: null, origin: 'system', label: 'System', counts: { people: Number(peak.peak) },
                 occurred_at: new Date(at).toISOString(), touch: true });
+            await db.prepare("UPDATE feed_items SET stat = ? WHERE source_service = 'report' AND source_type = 'peak' AND source_id = ?")
+                .run(JSON.stringify({ at: new Date(peak.peak_at).toISOString(), facts }), key);
             if (r.created) created++;
+        }
+        // Where people are right now (11-14, the owner: "show which sites people are on with this breakdown … across
+        // sites"): the online count, and up to six sites with how many are on each (signed-in people and guests, counts
+        // only), one card that keeps its place through the day.
+        if (presence && typeof presence.snapshot === 'function') {
+            const snap = presence.snapshot(at);
+            const by = new Map();
+            for (const e of snap.members.values()) { const k = e && e.site ? String(e.site) : ''; by.set(k, (by.get(k) || 0) + 1); }
+            for (const [k, n] of (snap.guestSites || new Map())) by.set(k || '', (by.get(k || '') || 0) + n);
+            const online = snap.members.size + snap.guests;
+            const SITES = require('../frame/sites').SITES;
+            const named = [...by.entries()].filter(([k]) => k).map(([k, n]) => [k === 'tools' ? 'Tools' : ((SITES.find((x) => x.id === k) || {}).name || ''), n]).filter(([name]) => name)
+                .sort((x, y) => y[1] - x[1]).slice(0, 6);
+            if (online > 0 && named.length) {
+                const key = `where:${day}`;
+                const r = await upsert({ source_service: 'report', source_type: 'where', source_id: key, kind: 'report',
+                    title: `Right now: ${online.toLocaleString('en-US')} ${online === 1 ? 'person' : 'people'} on ${by.size > 1 ? `${[...by.keys()].filter(Boolean).length} sites` : 'OpenVibe'}`,
+                    text: 'Where people are on OpenVibe right now', url: `${urls.report}/network`, site: 'report', site_name: 'Report',
+                    actor_subject: null, origin: 'system', label: 'System', counts: { people: online },
+                    occurred_at: new Date(at).toISOString(), touch: true });
+                await db.prepare("UPDATE feed_items SET stat = ? WHERE source_service = 'report' AND source_type = 'where' AND source_id = ?")
+                    .run(JSON.stringify({ at: new Date(at).toISOString(), facts: named.map(([name, n]) => ({ label: `on ${name}`, n })) }), key);
+                if (r.created) created++;
+            }
         }
         const totals = stats && stats.totals;
         if (totals && Number.isSafeInteger(Number(totals.pageviews))) {

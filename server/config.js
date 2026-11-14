@@ -243,6 +243,9 @@ module.exports = {
         // Media are above; these are the rest.
         connect: {
             internalUrl: process.env.OV_CONNECT_INTERNAL_URL || 'http://127.0.0.1:5240',
+            // Connect verifies service tokens for its own audience, CONNECT_AUDIENCE (default openvibe.website): a token
+            // for openvibe.connect was refused with 401, and the guide said "OpenVibe Connect did not answer" (11-14).
+            audience: process.env.OV_CONNECT_AUDIENCE || 'openvibe.website',
         },
         deals: {
             internalUrl: process.env.OV_DEALS_INTERNAL_URL || 'http://127.0.0.1:4840',

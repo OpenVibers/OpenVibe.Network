@@ -602,8 +602,9 @@ const DEFAULT_GRANTS = [
     ['codes', 'ai.run.create', 'openvibe.ai', ['ai.messages', 'ai.complete']],
     // Actor (plan L55 C3): a person chooses the model their tasks run on, with their own provider key when they have
     // one (the key lives in OpenVibe.AI, never in Actor). Actor runs the call through AI's OpenAI-compatible endpoint
-    // (workflow ai.complete), the same one Codes' harnesses use. Nothing else of AI's.
-    ['actor', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
+    // (workflow ai.complete), the same one Codes' harnesses use. 11-13 (plan §Z.9): and video.analyze, so an agent can
+    // watch a video the person may read (AI checks the namespace; the person rides as on_behalf_of). Nothing else of AI's.
+    ['actor', 'ai.run.create', 'openvibe.ai', ['ai.complete', 'video.analyze']],
     // A streamer's daily AI-viewer budget is an AI quota on their attribution (live:user:<id>), which Live sets.
     ['live', 'ai.quota.attribution.manage', 'openvibe.ai', []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
@@ -1018,6 +1019,8 @@ const RESTORED_GRANTS = [
 ];
 
 const CHANGED_DEFAULT_NAMESPACES = [
+    // 11-13 (plan §Z.9): an agent's video_analyze tool runs AI's video.analyze.
+    ['actor', 'ai.run.create', 'openvibe.ai', ['ai.complete'], ['ai.complete', 'video.analyze']],
     ['chat', 'ai.run.create', 'openvibe.ai', ['chat.*'], ['chat.*', 'ai.complete']],
     ['live', 'network.modules.write', SELF_AUDIENCE, ['chat.preferences', 'chat.tts_defaults', 'live.profile'], ['chat.tts_defaults', 'live.profile']],
     ['live', 'network.modules.write', SELF_AUDIENCE, ['chat.tts_defaults', 'live.profile'], ['live.profile', 'live.stats']],
