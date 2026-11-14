@@ -135,7 +135,11 @@ async function apiFetch(path, opts = {}) {
     const headers = { 'Content-Type':'application/json', ...opts.headers };
     const authToken = getAuthToken();
     if (authToken) headers.Authorization = 'Bearer ' + authToken;
-    const res = await fetchWithTimeout(API + path, { ...opts, headers, credentials: API_CREDENTIALS });
+    // Never through the HTTP cache: an account answer is private and no-store anyway, and a browser keeps a 301 it
+    // once saw for good. openvibe.link sent /api/v1/me/nodes/* to openvibe.network with a 301 until 11-12; a browser
+    // that saw it still went there without this host's session, so the machine switches read 401 ("Sign in again")
+    // two days after nginx was fixed (11-14). A cached redirect is not followed in no-store mode.
+    const res = await fetchWithTimeout(API + path, { cache: 'no-store', ...opts, headers, credentials: API_CREDENTIALS });
     // Sliding sessions: the server hands back a renewed token when the old one is due.
     try { const fresh = res.headers.get('X-OV-Token'); if (fresh) { localStorage.setItem('ov_token', fresh); document.cookie = `ov_token=${fresh};path=/;max-age=${60*60*24*90};SameSite=Lax${location.protocol === 'https:' ? ';Secure' : ''}`; } } catch { /* */ }
     let data = {};

@@ -66,6 +66,20 @@ assert.match(CORE, /hash === 'pair' \? 'machines'/, '#pair opens Machines');
 assert.match(CORE, /if \(routeSection === 'machines' && hash === 'pair'\) setTimeout\(\(\) => mcPair\(\), 0\)/, '#pair starts pairing');
 assert.match(CORE, /if \(id === 'machines' && typeof loadMachines === 'function'\) loadMachines\(\);/, 'it loads when opened');
 assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the account hub, not a 404');
+{
+    // Every hub call skips the HTTP cache (11-14): a browser kept openvibe.link's old 301 to openvibe.network for
+    // /api/v1/me/nodes/*, so the machine switches read 401 long after nginx stopped sending it.
+    const vm = require('node:vm');
+    const fn = (name) => { const at = CORE.indexOf(`async function ${name}(`); assert.ok(at >= 0, name); let depth = 0; for (let i = CORE.indexOf(') {', at) + 2; i < CORE.length; i++) { if (CORE[i] === '{') depth++; else if (CORE[i] === '}' && --depth === 0) return CORE.slice(at, i + 1); } return ''; };
+    const seen = [];
+    const ctx = { API: 'https://openvibe.link', API_CREDENTIALS: 'include', getAuthToken: () => null, localStorage: { setItem() {} }, document: {}, location: { protocol: 'https:' },
+        AbortController, setTimeout, clearTimeout, fetch: async (url, o) => { seen.push([url, o.cache, o.credentials]); return { ok: true, headers: { get: () => null }, json: async () => ({}) }; } };
+    vm.createContext(ctx);
+    vm.runInContext(`${fn('fetchWithTimeout')}\n${fn('apiFetch')}\nthis.apiFetch = apiFetch;`, ctx);
+    ctx.apiFetch('/api/v1/me/nodes/lnk_x/access-settings').then(() => {
+        assert.deepStrictEqual(seen[0], ['https://openvibe.link/api/v1/me/nodes/lnk_x/access-settings', 'no-store', 'include'], 'a hub call never follows a cached redirect');
+    }).catch((e) => { console.error(e); process.exit(1); });
+}
 
 (async () => {
     // ── Two machines: the online one first, its roles as switches ──
