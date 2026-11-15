@@ -74,6 +74,7 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         if (u.pathname === '/api/v1/runs' && req.method === 'GET') return sendJson(res, 200, { runs: [run], next: null });
         if (u.pathname === '/api/v1/runs/tsk_ACTOR1') return sendJson(res, 200, run);
         if (u.pathname === '/api/v1/runs' && req.method === 'POST') { const b = await readBody(req); seen.at(-1).body = b; return sendJson(res, 201, { ...run, id: 'tsk_MACHINE1', kind: b.kind || 'task', status: 'planning' }); }
+        if (u.pathname === '/api/v1/runs/tsk_ACTOR1/messages' && req.method === 'POST') { const b = await readBody(req); seen.at(-1).body = b; return sendJson(res, 202, { ok: true, run: { ...run, turns: 2 } }); }
         if (u.pathname === '/api/v1/runs/tsk_ACTOR1/approvals/apr_1') { const b = await readBody(req); return sendJson(res, 200, { run_id: 'tsk_ACTOR1', step_seq: 3, what: 'post', options: [{ id: 'approve', label: 'Approve' }], answer: b.answer }); }
         return sendJson(res, 404, { error: 'not found' });
     });
@@ -162,8 +163,15 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         // Start: by kind or target; words are required.
         ({ r, d } = await go('/', { method: 'POST', body: { kind: 'chat' } }));
         assert.strictEqual(r.status, 422);
+        // Words with no kind are a conversation with the person's Actor (11-15: the old Vibe character is gone).
         ({ r, d } = await go('/', { method: 'POST', body: { text: 'What happened in tech news today?' } }));
-        assert.strictEqual(r.status, 201); assert.strictEqual(d.ref, 'chat:c_new'); assert.strictEqual(d.status, 'running', 'Vibe is writing its answer');
+        assert.strictEqual(r.status, 201); assert.strictEqual(d.ref, 'actor:tsk_MACHINE1'); assert.strictEqual(r.headers.get('x-ov-placed'), 'actor');
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body, { text: 'What happened in tech news today?', kind: 'task' }, 'Actor gets the words');
+        // Actor down: Chat's Vibe still answers, so nobody is left with nothing.
+        actorDown = true;
+        ({ r, d } = await go('/', { method: 'POST', body: { text: 'What happened in tech news today?' } }));
+        actorDown = false;
+        assert.strictEqual(r.status, 201); assert.strictEqual(d.ref, 'chat:c_new'); assert.strictEqual(r.headers.get('x-ov-placed'), 'vibe');
         ({ r, d } = await go('/', { method: 'POST', body: { text: 'Add a goal bar', kind: 'code', target: 'openvibe' } }));
         assert.strictEqual(r.status, 422, 'Codes needs a repository until Create and OpenVibe ship');
         assert.match(d.error, /repository/);
@@ -179,16 +187,16 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         assert.deepStrictEqual(p.slice(0, 3), [201, 'codes', 'code'], 'a change to a repository of yours goes to Codes');
         assert.deepStrictEqual(seen.filter((x) => x.svc === 'codes' && x.method === 'POST').at(-1).body, { mode: 'make', text: 'Fix the login on my-site' }, 'in its make mode, with the words');
         p = await place('Build a landing page for my bakery');
-        assert.deepStrictEqual(p.slice(0, 2), [201, 'vibe'], 'something new Codes has no repository for is a conversation with Vibe');
+        assert.deepStrictEqual(p.slice(0, 2), [201, 'actor'], 'something new Codes has no repository for is a conversation with your Actor');
         p = await place('Open my email on my computer and file the receipts');
         assert.deepStrictEqual(p.slice(0, 3), [201, 'machine', 'machine'], 'work on your own computer is a machine run');
         assert.strictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body.kind, 'machine');
         p = await place('Remind me to fix the login tomorrow at 9');
-        assert.deepStrictEqual(p.slice(0, 2), [201, 'vibe'], 'a reminder is Vibe\'s, whatever it is about');
+        assert.deepStrictEqual(p.slice(0, 2), [201, 'actor'], 'a reminder is your Actor\'s, whatever it is about');
         p = await place('How do I fix my login page?');
-        assert.deepStrictEqual(p.slice(0, 2), [201, 'vibe'], 'a question is Vibe\'s');
+        assert.deepStrictEqual(p.slice(0, 2), [201, 'actor'], 'a question is your Actor\'s');
         p = await place('test');
-        assert.deepStrictEqual(p.slice(0, 2), [201, 'vibe'], 'a word on its own starts a conversation');
+        assert.deepStrictEqual(p.slice(0, 2), [201, 'actor'], 'a word on its own starts a conversation');
 
         // The composer's choice (Shared 4.259.0; the owner, 11-15: "choose your harness … configure your model … choose a
         // node"): a harness goes to Codes with it, the model and the computer; your Actor goes to Actor whatever the words.
@@ -205,6 +213,13 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         assert.deepStrictEqual([toActor.kind, toActor.agent, toActor.model], ['task', undefined, { id: 'deepseek/deepseek-chat', source: 'openvibe' }], 'a task for your default agent, on the model you picked');
         q = await pick({ text: 'Tidy my downloads folder', agent: 'auto', where: { kind: 'machine', id: 'dev_01K9R2V6M8Q4T0B7C3D5E9F2GH' } });
         assert.deepStrictEqual(q, [201, 'machine'], 'Auto on your computer is a machine run');
+
+        // Your Actor's conversation (Actor#517): read whole, and the next words come back as the step the thread reads.
+        assert.ok(seen.some((x) => x.svc === 'actor' && x.method === 'GET' && /^\/api\/v1\/runs\?limit=\d+&conversations=1/.test(x.url)), 'the list asks Actor for conversations');
+        ({ r, d } = await go('/actor:tsk_ACTOR1/messages', { method: 'POST', body: { text: 'And the second one?', attachments: [{ id: 'med_01K9R2V6M8Q4T0B7C3D5E9F2GH', name: 'shot.png', url: 'https://cdn.openvibe.media/f/shot.png' }] } }));
+        assert.strictEqual(r.status, 201, JSON.stringify(d));
+        assert.deepStrictEqual([d.from, d.seq, d.kind], ['person', 1000001, 'message'], 'the second turn\'s words, numbered as Actor numbers them');
+        assert.strictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body.text, 'And the second one?\n\nAttached:\n- shot.png: https://cdn.openvibe.media/f/shot.png', 'a file rides as its link');
 
         // Say, stop, approvals.
         ({ r, d } = await go('/chat:c_keys/messages', { method: 'POST', body: { text: 'Under $70?' } }));
