@@ -63,6 +63,7 @@ const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 
         if (u.pathname === '/api/v1/agent/kill-switch' && req.method === 'POST') return res.end(JSON.stringify({ ok: true }));
         if (/^\/api\/v1\/tasks\/[A-Za-z0-9._~-]+\/(takeover|giveback)$/.test(u.pathname) && req.method === 'POST') return res.end(JSON.stringify({ ok: true }));
         if (u.pathname === '/api/v1/me/actor' && req.method === 'GET') return res.end(JSON.stringify({ id: 'act_1', name: 'My Actor', status: 'resting', asks: [] }));
+        if (u.pathname === '/api/v1/me/actor' && req.method === 'PATCH') return res.end(JSON.stringify({ id: 'act_1', ...JSON.parse(req.body || '{}') }));
         if (u.pathname === '/api/v1/me/agents/faces' && req.method === 'GET') return res.end(JSON.stringify({ agents: [{ id: 'agt_1', name: 'Juniper', avatar_url: null, hue: 258, glyph: 'spark', state: 'working', step: 'Read the job posts', asks: 0 }] }));
         if (/^\/api\/v1\/me\/actor\/(pause|resume|tell)$/.test(u.pathname) && req.method === 'POST') return res.end(JSON.stringify({ ok: true }));
         if (/^\/api\/v1\/me\/actor\/asks\/[A-Za-z0-9._~-]+\/(answer|decline)$/.test(u.pathname) && req.method === 'POST') return res.end(JSON.stringify({ ok: true }));
@@ -156,6 +157,16 @@ const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 
     ({ r, d } = await get('/actor', { Authorization: TOKEN }));
     assert.strictEqual(r.status, 200);
     assert.strictEqual(d.name, 'My Actor');
+    // Your Actor's name and face, changed in the menu (11-15): the body goes to Actor as it is, as the person.
+    {
+        const pr = await fetch(`${base}/actor`, { method: 'PATCH', headers: { Authorization: TOKEN, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Juniper', avatar: { blob: { hue: 300, shape: 'pebble' } } }) });
+        const pd = await pr.json();
+        assert.strictEqual(pr.status, 200);
+        assert.deepStrictEqual([pd.name, pd.avatar], ['Juniper', { blob: { hue: 300, shape: 'pebble' } }]);
+        assert.ok(asked.some((x) => x.url === '/api/v1/me/actor' && x.method === 'PATCH'), 'PATCH reaches Actor');
+        const anon = await fetch(`${base}/actor`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        assert.strictEqual(anon.status, 401, 'never without the person');
+    }
     // Your agents' faces for the menu's stack.
     ({ r, d } = await get('/actor/faces', { Authorization: TOKEN }));
     assert.strictEqual(r.status, 200);
