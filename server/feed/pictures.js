@@ -27,11 +27,20 @@ const CACHE_ITEMS = 300;
 const CACHE_BYTES = 48 * 1024 * 1024;
 const CACHE_MS = 60 * 60 * 1000;
 const TYPES = /^image\/(jpeg|png|webp|gif|avif)$/;
-// OpenVibe's own hosts are drawn as they are: every site allows them already (or they are the site itself).
+// An OpenVibe host (a preview video from one is kept: media-src is each site's own business).
 const OURS = /(^|\.)openvibe\.[a-z]{2,24}$/;
+// The hosts every site's img-src allows, so a picture there is drawn as it is. 11-15 (the owner's phone, "Fix
+// thumbnail"): a live card's thumbnail on openvibe.live showed the placeholder on openvibe.actor, whose img-src allows
+// only openvibe.network and openvibe.media, as do Codes', Tools' and others'. Every other host, OpenVibe's own
+// included, goes through Network.
+const EVERYWHERE = new Set(['openvibe.network', 'openvibe.media']);
 
 function ours(url) {
     try { const u = new URL(url); return u.protocol === 'https:' && OURS.test(u.hostname.toLowerCase()); } catch { return false; }
+}
+
+function everywhere(url) {
+    try { const u = new URL(url); return u.protocol === 'https:' && !u.port && EVERYWHERE.has(u.hostname.toLowerCase()); } catch { return false; }
 }
 
 function createPictures({ privateKey = '', baseUrl = 'https://openvibe.network', now = () => Date.now(), request = null } = {}) {
@@ -39,10 +48,10 @@ function createPictures({ privateKey = '', baseUrl = 'https://openvibe.network',
     const sign = (url) => crypto.createHmac('sha256', key).update(String(url)).digest('base64url').slice(0, 27);
     const base = String(baseUrl || '').replace(/\/+$/, '');
 
-    /** The address a card shows for a picture: an OpenVibe host's own, anything else through Network. */
+    /** The address a card shows for a picture: as it is on a host every site allows, anything else through Network. */
     function addressOf(url) {
         const s = String(url || '');
-        if (!/^https:\/\//.test(s) || ours(s)) return s;
+        if (!/^https:\/\//.test(s) || everywhere(s)) return s;
         return `${base}/api/v1/feed/picture?u=${encodeURIComponent(s)}&s=${sign(s)}`;
     }
     const media = (m) => (m && typeof m === 'object' && m.thumb ? { ...m, thumb: addressOf(m.thumb), ...(m.preview && !ours(m.preview) ? { preview: undefined } : {}) } : m);
@@ -122,7 +131,7 @@ function createPictures({ privateKey = '', baseUrl = 'https://openvibe.network',
     async function handle(req, res) {
         const url = String(req.query.u || '');
         const sig = String(req.query.s || '');
-        const good = url.length <= 2048 && /^https:\/\//.test(url) && !ours(url) && sig.length === 27
+        const good = url.length <= 2048 && /^https:\/\//.test(url) && !everywhere(url) && sig.length === 27
             && crypto.timingSafeEqual(Buffer.from(sig.padEnd(27).slice(0, 27)), Buffer.from(sign(url)));
         if (!good) return res.status(404).set('Cache-Control', 'no-store').end();
         try {
@@ -148,7 +157,7 @@ function createPictures({ privateKey = '', baseUrl = 'https://openvibe.network',
         }
     }
 
-    return { addressOf, card, handle, sign, ours };
+    return { addressOf, card, handle, sign, ours, everywhere };
 }
 
-module.exports = { createPictures, ours, PICTURE_MAX_BYTES };
+module.exports = { createPictures, ours, everywhere, PICTURE_MAX_BYTES };

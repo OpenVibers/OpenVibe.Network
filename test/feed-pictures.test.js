@@ -3,7 +3,7 @@
 // from OpenVibe's hosts, so a card's picture from anywhere else is served by Network under a signature, never as an
 // open proxy; and the day's distinct people for the Report card are counted in memory, counts only.
 const assert = require('assert');
-const { createPictures, ours } = require('../server/feed/pictures');
+const { createPictures, ours, everywhere } = require('../server/feed/pictures');
 const seen = require('../server/frame/seen');
 
 const res = () => {
@@ -31,6 +31,17 @@ const res = () => {
     assert.ok(ours('https://cdn.openvibe.media/a/1.jpg'));
     assert.ok(!ours('https://m.media-amazon.com/images/I/x.jpg'));
     assert.ok(!ours('https://openvibe.community.evil.example/x.jpg'));
+    assert.ok(everywhere('https://openvibe.media/a/1.jpg') && everywhere('https://openvibe.network/avatars/x.png'));
+    assert.ok(!everywhere('https://cdn.openvibe.media/a/1.jpg') && !everywhere('https://openvibe.live/api/thumbnails/x.jpg') && !everywhere('https://openvibe.network:8443/x.png'));
+
+    // 11-15, the owner's phone ("Fix thumbnail"): a live card on openvibe.actor showed the placeholder, because Actor's
+    // img-src allows only openvibe.network and openvibe.media. A thumbnail on any other OpenVibe host goes through
+    // Network too, and its preview video stays.
+    const live = 'https://openvibe.live/api/thumbnails/stream-3030-1794764970143.jpg';
+    assert.match(pics.addressOf(live), /^https:\/\/openvibe\.network\/api\/v1\/feed\/picture\?u=https%3A%2F%2Fopenvibe\.live%2F/);
+    const liveCard = pics.card({ id: 'l', kind: 'live', media: { thumb: live, preview: 'https://openvibe.live/hls/x/index.m3u8', ratio: 16 / 9 } });
+    assert.strictEqual(liveCard.media.thumb, pics.addressOf(live));
+    assert.strictEqual(liveCard.media.preview, 'https://openvibe.live/hls/x/index.m3u8', 'an OpenVibe preview is kept');
 
     const ext = 'https://m.media-amazon.com/images/I/71Nl13pK-4L._AC_SR768,1024_.jpg';
     const addr = pics.addressOf(ext);
