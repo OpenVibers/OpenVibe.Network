@@ -1177,7 +1177,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         if (req.get('dnt')) headers.DNT = req.get('dnt');
         if (req.get('sec-gpc')) headers['Sec-GPC'] = req.get('sec-gpc');
         fetch(new URL('/api/v1/searched', svcUrl('search', 'http://127.0.0.1:4710')).href, {
-            method: 'POST', headers, body: JSON.stringify({ q: b.q.slice(0, 200), ...(typeof b.site === 'string' ? { site: b.site.slice(0, 120) } : {}) }), signal: AbortSignal.timeout(5000),
+            method: 'POST', headers, body: JSON.stringify({ q: b.q.slice(0, 200), ...(typeof b.site === 'string' ? { site: b.site.slice(0, 120) } : {}) }), redirect: 'error', signal: AbortSignal.timeout(5000),
         }).catch(() => {});
     });
 
