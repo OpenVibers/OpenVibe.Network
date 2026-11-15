@@ -123,6 +123,10 @@ const { createOpenStats, render } = require('../server/stats/open');
     }
     // Nothing answered yet: the page still renders, saying so.
     assert.ok(render(null, 30).includes('The numbers are being gathered'));
+    // A change of 1,000 % or more reads as a multiple (the owner's shot of /stats, 11-15: "10773%").
+    const { pill } = require('../server/stats/open');
+    assert.ok(pill(10773, 7).includes('▲ 109×') && pill(10773, 7).includes('109 times the 7 days before'), 'a big rise is a multiple');
+    assert.ok(pill(-50, 7).includes('▼ 50%') && pill(240, 7).includes('▲ 240%'), 'an ordinary change stays a percentage');
     console.log('open stats: all checks passed');
     process.exit(0);
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -431,7 +431,9 @@ function bars(points, label, unit = '') {
 // data-icon and data-ovi name it: the page's icon script re-draws every .ov-icon by its data-icon, and one without a
 // name became the OpenVibe "V" on every site (the owner's /stats shot, 11-15).
 const mark = (name, size, cls) => `<span class="ov-icon ${cls}" data-icon="${esc(name)}" data-ovi="${esc(name)}" data-fx="none" style="--ovi-size:${size}px">${icons.svg(name, size)}</span>`;
-const pill = (pct, days) => (pct == null ? '' : `<span class="os-pill ${pct > 0 ? 'is-up' : pct < 0 ? 'is-down' : 'is-flat'}" title="Against the ${days} days before">${pct > 0 ? '▲' : pct < 0 ? '▼' : '–'} ${Math.abs(pct)}%</span>`);
+// A change of 1,000 % or more reads as a multiple ("▲ 109×", not "▲ 10773%": the owner's shot of /stats, 11-15).
+const pillWords = (pct) => (pct >= 1000 ? `${Math.round(pct / 100 + 1)}×` : `${Math.abs(pct)}%`);
+const pill = (pct, days) => (pct == null ? '' : `<span class="os-pill ${pct > 0 ? 'is-up' : pct < 0 ? 'is-down' : 'is-flat'}" title="${pct >= 1000 ? `${Math.round(pct / 100 + 1)} times the ${days} days before` : `Against the ${days} days before`}">${pct > 0 ? '▲' : pct < 0 ? '▼' : '–'} ${pillWords(pct)}</span>`);
 const tile = (label, value, sub, extra = '') => `<div class="os-tile"><span class="os-tile-l">${esc(label)}</span><b class="os-tile-v">${value}</b>${sub ? `<span class="os-tile-s">${sub}</span>` : ''}${extra}</div>`;
 
 function render(data, days, { releaseId } = {}) {
@@ -590,4 +592,4 @@ const CSS = `
 .os-sites{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.os-pre{display:none}.os-site{padding:10px;gap:6px;border-radius:14px}.os-site-name small,.os-site-l{display:none}.os-site-name b{font-size:.86rem}.os-site-n{font-size:1.15rem}.os-site-meta{grid-template-columns:1fr 1fr;padding-top:6px}.os-site-meta div:nth-child(n+3){display:none}.os-site-meta dt{font-size:.75rem}.os-site-meta dd{font-size:.8rem}.os-site-own{height:26px;font-size:.7rem}.os-site .os-spark{height:26px}.os-axis span:nth-child(2){display:none}}
 `;
 
-module.exports = { createOpenStats, render, sparkline, bars, windowOf };
+module.exports = { createOpenStats, render, sparkline, bars, windowOf, pill };
