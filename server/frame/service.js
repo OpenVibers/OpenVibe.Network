@@ -1191,8 +1191,14 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         const auth = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? String(req.headers.authorization) : '';
         const got = await choices.get(task, { token: auth.slice(7), signedIn: Boolean(auth) });
         if (got.error) { res.set('Cache-Control', 'no-store'); return res.status(400).json({ error: got.detail, code: 'frame.task_invalid' }); }
-        res.set('Cache-Control', got.cache ? 'public, max-age=60' : 'private, no-store');
-        res.send(JSON.stringify(got.body));
+        // 2026-11-15: an ETag on every answer (a repeat costs a 304), and a person's answer may be used for 30 s and then
+        // shown while the browser asks again (the composer also keeps its own copy, openvibe-shared 4.261.0).
+        const body = JSON.stringify(got.body);
+        const etag = `W/"${require('crypto').createHash('sha256').update(body).digest('base64url').slice(0, 27)}"`;
+        res.set('ETag', etag);
+        res.set('Cache-Control', got.cache ? 'public, max-age=60, stale-while-revalidate=600' : 'private, max-age=30, stale-while-revalidate=600');
+        if (String(req.headers['if-none-match'] || '') === etag) return res.status(304).end();
+        res.send(body);
     });
 
     // GET /api/frame/run-options — an agent's box: who does a run (your Actor, Codes, a coding harness) and where it runs

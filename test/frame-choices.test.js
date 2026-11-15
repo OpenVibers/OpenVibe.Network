@@ -25,6 +25,7 @@ const TOKEN = `Bearer ${'a'.repeat(40)}.${'b'.repeat(40)}.${'c'.repeat(20)}`;
                 openvibe: [
                     { model: 'openai/gpt-5-mini', source: 'openvibe', name: 'GPT-5 Mini', maker: 'openai', price_estimate_usd: 0.003, speed_ms: 900, quality: 0.8, adult: false },
                     { model: 'abliteratedmodels/uncensored', source: 'openvibe', name: 'Uncensored', maker: 'abliteratedmodels', adult: true },
+                    { model: 'elevenlabs/eleven_voice', source: 'openvibe', name: 'ElevenLabs voice', maker: 'elevenlabs' },
                 ],
                 keys: [{ model: 'openai/gpt-5-mini', source: 'keys', name: 'GPT-5 Mini', maker: 'openai', price_estimate_usd: 0 }],
                 machines: [{ model: 'llama3.1:8b', source: 'machines', machine: 'dev_01J8Z3Q4R5S6T7V8W9X0Y1Z2A3', name: 'llama3.1:8b', maker: null }],
@@ -39,7 +40,8 @@ const TOKEN = `Bearer ${'a'.repeat(40)}.${'b'.repeat(40)}.${'c'.repeat(20)}`;
             id: 'openai/gpt-5-mini', name: 'OpenAI: GPT-5 Mini', provider: 'openai', provider_name: 'OpenAI',
             status: 'available', routing_enabled: true, type: 'chat',
             price: { input_per_million: 0.25, output_per_million: 2 }, offers: [{ price: { in: 0.25, out: 2 }, speed: { p50_ms: 750 } }],
-        }] }));
+            supports: { vision: true, tools: true }, context_window: 400000,
+        }, { id: 'elevenlabs/eleven_voice', name: 'ElevenLabs voice', provider: 'elevenlabs', status: 'available', routing_enabled: true, type: 'speech', price: { input_per_million: 80 } }] }));
     });
     await new Promise((r) => exchange.listen(0, '127.0.0.1', r));
     const report = http.createServer((req, res) => {
@@ -65,7 +67,12 @@ const TOKEN = `Bearer ${'a'.repeat(40)}.${'b'.repeat(40)}.${'c'.repeat(20)}`;
         // Signed out: only OpenVibe, enriched from Exchange and Report, held 60 s.
         let { r, d } = await get('?task=chat');
         assert.strictEqual(r.status, 200);
-        assert.strictEqual(r.headers.get('cache-control'), 'public, max-age=60');
+        assert.strictEqual(r.headers.get('cache-control'), 'public, max-age=60, stale-while-revalidate=600');
+        // 11-15: a chat sheet lists chat models only (a voice was offered), and each row says what it can do.
+        assert.ok(!d.groups[0].rows.some((x) => /eleven/.test(x.model)), 'no voice on a chat sheet');
+        { const g = d.groups[0].rows.find((x) => x.model === 'openai/gpt-5-mini'); assert.deepStrictEqual([g.vision, g.tools, g.context], [true, true, 400000], 'vision, tools and its context'); }
+        // An ETag on every answer; a repeat with it costs a 304.
+        { const tag = r.headers.get('etag'); assert.match(tag, /^W\/"/); const again = await fetch(`${base}?task=chat`, { headers: { 'If-None-Match': tag } }); assert.strictEqual(again.status, 304); }
         assert.deepStrictEqual(d.groups.map((g) => g.id), ['openvibe'], 'keys and machines need a person');
         assert.deepStrictEqual(d.recommended, { model: 'openai/gpt-5-mini', source: 'openvibe' });
         const row = d.groups[0].rows[0];
@@ -81,9 +88,10 @@ const TOKEN = `Bearer ${'a'.repeat(40)}.${'b'.repeat(40)}.${'c'.repeat(20)}`;
         await get('?task=chat');
         assert.deepStrictEqual(asked.map((x) => x.path), firstUrls, 'the anonymous sheet is answered from memory');
 
-        // Signed in: the person's token goes to AI, all four groups are named, and nothing is kept.
+        // Signed in: the person's token goes to AI, all four groups are named; their answer is kept a minute (by a hash
+        // of the token) and the browser may use it 30 s (11-15: the sheet sat on "Loading the models…").
         ({ r, d } = await get('?task=chat', { Authorization: TOKEN }));
-        assert.strictEqual(r.headers.get('cache-control'), 'private, no-store');
+        assert.strictEqual(r.headers.get('cache-control'), 'private, max-age=30, stale-while-revalidate=600');
         assert.deepStrictEqual(d.groups.map((g) => g.id), ['openvibe', 'keys', 'machines', 'plans']);
         assert.strictEqual(asked[asked.length - 1].auth, TOKEN, "the person's token goes along");
         assert.strictEqual(d.groups.find((g) => g.id === 'keys').rows[0].source, 'keys');
@@ -94,7 +102,7 @@ const TOKEN = `Bearer ${'a'.repeat(40)}.${'b'.repeat(40)}.${'c'.repeat(20)}`;
         assert.strictEqual(d.groups.find((g) => g.id === 'plans').rows.length, 0);
         assert.match(d.groups.find((g) => g.id === 'plans').note, /Codes/);
         await get('?task=chat', { Authorization: TOKEN });
-        assert.strictEqual(asked.filter((x) => x.auth === TOKEN).length, 2, 'a person is always asked fresh');
+        assert.strictEqual(asked.filter((x) => x.auth === TOKEN).length, 1, 'a person\'s answer is kept a minute, not asked again');
 
         // The task maps to AI's task for it; a malformed token is a signed-out ask, never a person's.
         await get('?task=code', { Authorization: 'Bearer short' });
