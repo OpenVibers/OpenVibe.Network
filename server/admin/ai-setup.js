@@ -66,6 +66,8 @@ function createAiSetup({ fetchImpl = globalThis.fetch, log = console } = {}) {
     r.post('/test/:step', (req, res) => forward(req, res, `/api/v1/setup/test/${encodeURIComponent(req.params.step)}`, { body: req.body || {} }));
     r.put('/routes/:step', (req, res) => forward(req, res, `/api/v1/setup/routes/${encodeURIComponent(req.params.step)}`, { body: req.body || {} }));
     r.put('/caps/:step', (req, res) => forward(req, res, `/api/v1/setup/caps/${encodeURIComponent(req.params.step)}`, { body: req.body || {} }));
+    // The pictures each person may make a day (plan §AD.9 step 4): AI's picture task daily cap.
+    r.put('/free/pictures', (req, res) => forward(req, res, '/api/v1/setup/free/pictures', { body: req.body || {} }));
     // The decisions settings (2026-11-14): the model that answers each kind of question, the ladder to
     // escalate along and the confidence below which an answer is escalated, and the models that can answer.
     r.get('/decisions', (req, res) => forward(req, res, '/api/v1/setup/decisions'));
