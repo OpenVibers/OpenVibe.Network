@@ -1141,6 +1141,46 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         res.send(body);
     });
 
+    // GET /api/frame/trending?site=&limit= and POST /api/frame/searched — trending searches on every search box (plan
+    // 2026-11-13 §AD.13 (1); openvibe-shared ov-trending.js): OpenVibe.Search's GET /api/v1/trending (kept 60 s) and its
+    // beacon, asked through Network for the same connect-src reason as /suggest. The beacon goes on with the browser's own
+    // Origin (Search counts only the network's own sites), its address, user agent, Do Not Track and Global Privacy
+    // Control; it is always 204 and Search not answering loses one count, never an error.
+    const trendingKept = new Map();
+    router.get('/trending', async (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=60', 'Content-Type': 'application/json; charset=utf-8' });
+        const site = /^[a-z0-9.-]{3,120}$/.test(String(req.query.site || '').toLowerCase()) ? String(req.query.site).toLowerCase() : '';
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 8, 1), 20);
+        const key = `${site}|${limit}`;
+        const kept = trendingKept.get(key);
+        if (kept && Date.now() - kept.at < 60_000) return res.send(kept.body);
+        const u = new URL('/api/v1/trending', svcUrl('search', 'http://127.0.0.1:4710'));
+        if (site) u.searchParams.set('site', site);
+        u.searchParams.set('limit', String(limit));
+        const d = await getJson(u.href);
+        const body = JSON.stringify({ site: (d && d.site) || null, trending: d && Array.isArray(d.trending) ? d.trending.slice(0, limit) : [] });
+        if (d) {
+            if (trendingKept.size >= 500) trendingKept.clear();
+            trendingKept.set(key, { at: Date.now(), body });
+        }
+        res.send(body);
+    });
+    router.post('/searched', express.text({ type: ['text/plain', 'application/json'], limit: '2kb' }), (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' });
+        res.status(204).end();
+        let b = req.body;
+        if (typeof b === 'string') { try { b = JSON.parse(b); } catch { b = null; } }
+        if (!b || typeof b !== 'object' || typeof b.q !== 'string') return;
+        const headers = { 'Content-Type': 'application/json', 'User-Agent': String(req.get('user-agent') || '').slice(0, 200) };
+        if (req.ip) headers['X-Forwarded-For'] = req.ip;
+        if (req.get('origin')) headers.Origin = req.get('origin');
+        if (req.get('dnt')) headers.DNT = req.get('dnt');
+        if (req.get('sec-gpc')) headers['Sec-GPC'] = req.get('sec-gpc');
+        fetch(new URL('/api/v1/searched', svcUrl('search', 'http://127.0.0.1:4710')).href, {
+            method: 'POST', headers, body: JSON.stringify({ q: b.q.slice(0, 200), ...(typeof b.site === 'string' ? { site: b.site.slice(0, 120) } : {}) }), redirect: 'error', signal: AbortSignal.timeout(5000),
+        }).catch(() => {});
+    });
+
     // GET /api/frame/query?q=&scopes=&freshness=&depth=&limit=&owner=&type= — the navbar's full results (openvibe-shared
     // search.js, Enter): OpenVibe.Search's fabric (Contracts 0.225.0 search.fabric.query), asked through Network for the same
     // connect-src reason as /suggest. The restricted CORS above lets only OpenVibe's own sites send a person's token: with
