@@ -216,7 +216,7 @@ function mcOnNow(m) {
     if (c.agent_computer) out.push('My agents may use it');
     if (c.shared_desks) out.push('Lends browsers to others');
     if (c.shared_desktops) out.push('Lends desktops to others');
-    if (c.shared_jobs) out.push('Runs other people\u2019s tasks');
+    if (c.shared_jobs) out.push('Runs other people\u2019s tasks and tools');
     if (c.computer && c.ai && c.ai.offered) out.push('Shares its AI models');
     return out;
 }
@@ -312,9 +312,9 @@ function mcForOthers(m) {
     const w = c.worker || null;
     if (w || (m.roles || []).includes('codes.worker')) {
         const canJobs = !!(w && w.serve_others && w.classes && w.classes.length);
-        field.append(mcRow(`mc-${m.id}-jobs`, 'fa-people-group', 'Run other people\u2019s coding tasks and agents',
-            'Coding tasks and agents that anyone on OpenVibe starts may run here, each in its own locked box with only the public internet. They never get your sign-ins or your keys.',
-            c.shared_jobs, (box) => mcSaveSwitch(m, box, 'shared-jobs', `Saved. ${m.name || 'This computer'} ${box.checked ? 'runs other people\u2019s coding tasks and agents.' : 'runs only yours.'}`),
+        field.append(mcRow(`mc-${m.id}-jobs`, 'fa-people-group', 'Run other people\u2019s coding tasks, agents and tools',
+            'Coding tasks, agents and the tools people make on openvibe.tools may run here, each in its own locked box: tasks and agents with only the public internet, tools with no network at all. They never get your sign-ins or your keys.',
+            c.shared_jobs, (box) => mcSaveSwitch(m, box, 'shared-jobs', `Saved. ${m.name || 'This computer'} ${box.checked ? 'runs other people\u2019s coding tasks, agents and tools.' : 'runs only yours.'}`),
             { disabled: !canJobs && !c.shared_jobs, hint: canJobs ? '' : 'This computer runs only your own tasks. Set it up again with: openvibe-link install --worker --serve-others' }));
     }
     if (typeof mcAccessSwitches === 'function') field.append(...[mcAccessSwitches(m, 'others')].filter(Boolean));

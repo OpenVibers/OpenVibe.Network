@@ -268,7 +268,7 @@ assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the a
     const [gcard, wcard] = p.ids['mc-list'].children;
     const box = (card, suffix) => card.all((n) => n.tagName === 'INPUT' && new RegExp(`-${suffix}$`).test(n.getAttribute('id') || ''))[0];
     assert.match(gcard.textContent, /Lend desktops to other people\u2019s agents.*A desktop counts as a whole desk: up to 7 at once/);
-    assert.match(gcard.textContent, /Run other people\u2019s coding tasks and agents.*never get your sign-ins or your keys/);
+    assert.match(gcard.textContent, /Run other people\u2019s coding tasks, agents and tools.*never get your sign-ins or your keys/);
     const flip = async (suffix, route, said) => {
         const b = box(gcard, suffix);
         assert.ok(b && b.disabled !== true, `${suffix}: a machine that can, may`);
@@ -278,7 +278,7 @@ assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the a
         assert.match(p.ids['mc-status'].textContent, said);
     };
     await flip('lend-desktops', 'shared-desktops', /lends desktops to other people\u2019s agents/);
-    await flip('jobs', 'shared-jobs', /runs other people\u2019s coding tasks and agents/);
+    await flip('jobs', 'shared-jobs', /runs other people\u2019s coding tasks, agents and tools/);
     assert.strictEqual(box(wcard, 'lend-desktops').disabled, true, 'a host that lends no desktops cannot');
     assert.match(wcard.textContent, /openvibe-link install --desk-host --shared --desktops/);
     assert.strictEqual(box(wcard, 'jobs').disabled, true, 'a worker that serves only its owner cannot');
