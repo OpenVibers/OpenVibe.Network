@@ -77,10 +77,16 @@ function createAiSetup({ fetchImpl = globalThis.fetch, log = console } = {}) {
         const config = req.app.locals.config || {};
         const base = String((config.services && config.services.codes && config.services.codes.internalUrl) || 'http://127.0.0.1:4900').replace(/\/+$/, '');
         try {
-            const upstream = await fetchImpl(`${base}/api/v1/harnesses`, { headers: { Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(5000) });
+            // ?all=1 (Codes' codes.harnesses): every agent, the ones turned off marked, with the model each runs by default.
+            const upstream = await fetchImpl(`${base}/api/v1/harnesses?all=1`, { headers: { Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(5000) });
             const j = upstream.ok ? await upstream.json() : null;
             const harnesses = (j && Array.isArray(j.harnesses) ? j.harnesses : []).filter((h) => h && typeof h.id === 'string' && /^[a-z0-9][a-z0-9._-]{0,63}$/.test(h.id))
-                .map((h) => ({ id: h.id, name: String(h.name || h.id).slice(0, 80), provider: String(h.provider || '').slice(0, 40), price: h.price && typeof h.price === 'object' ? { text: String(h.price.text || '').slice(0, 120) } : null }));
+                .map((h) => ({
+                    id: h.id, name: String(h.name || h.id).slice(0, 80), provider: String(h.provider || '').slice(0, 40), price: h.price && typeof h.price === 'object' ? { text: String(h.price.text || '').slice(0, 120) } : null,
+                    off: h.off === true,
+                    default_agent: typeof h.default_agent === 'string' ? h.default_agent.slice(0, 64) : null,
+                    agents: (Array.isArray(h.agents) ? h.agents : []).filter((x) => x && typeof x.id === 'string').slice(0, 20).map((x) => ({ id: x.id.slice(0, 64), model: String(x.model || x.id).slice(0, 80) })),
+                }));
             res.set('Cache-Control', 'private, no-store');
             return res.json({ harnesses });
         } catch (err) {
