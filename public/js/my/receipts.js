@@ -66,9 +66,10 @@ function renderReceipts(doc) {
     const enabled = !!(doc && doc.enabled === true);
     const rows = (doc && Array.isArray(doc.receipts) ? doc.receipts : []).map(rcRow).filter(Boolean);
     body.replaceChildren();
+    // 2026-11-15 (the owner's shot of openvibe.my: a card that only said "Turn on Inbox AI" sat near the top): with
+    // Inbox AI off there is nothing to show, so the card stays out; it comes when receipts can.
     if (!enabled) {
-        body.append(rcEl('a', 'rc-quiet', ['Turn on Inbox AI on openvibe.email to see receipts here'], { href: RC_SETTING }));
-        box.hidden = false;
+        box.hidden = true;
         return;
     }
     if (!rows.length) {
