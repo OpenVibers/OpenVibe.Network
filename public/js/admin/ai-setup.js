@@ -658,16 +658,36 @@ function renderAiSetupFree() {
                     <span class="muted">tokens · <span id="setup-free-words">${esc(words(tokens))}</span></span>
                     ${pinned ? '<span class="setup-pill">Set in the server\'s settings file</span>' : '<button class="btn btn-primary btn-sm" onclick="saveAiSetupFree()">Save</button>'}</div>
             </div>`;
+    // Pictures each person may make a day (AI's picture task daily cap; the setup state's `free`, 2026-11-15).
+    const pf = aiSetupState.free || null;
+    const pictures = !pf ? '<p class="setup-note">OpenVibe.AI\'s next release adds this setting.</p>'
+        : `<div class="setup-free">
+                <label for="setup-free-pictures"><strong>Each person, each day</strong><span class="muted">The most pictures one person can make in a day, with any model. ${pf.pictures_set ? '' : `The server's default is ${esc(String(pf.pictures_default))}.`}</span></label>
+                <div class="setup-free-row"><input id="setup-free-pictures" type="number" min="0" max="1000" step="1" value="${esc(String(pf.pictures_per_day == null ? '' : pf.pictures_per_day))}">
+                    <span class="muted">pictures${Number(pf.pictures_per_day) === 0 ? ' · making pictures is off' : ''}</span>
+                    <button class="btn btn-primary btn-sm" onclick="saveAiSetupFreePictures()">Save</button></div>
+            </div>`;
     main.innerHTML = `<article class="setup-card">
         <header class="setup-card-head"><div><span class="setup-kicker">For everyone</span><h3 id="setup-step-title">Free use and budgets</h3>
             <p class="setup-what">What people get free, what the server spends at most, and what happens past it.</p></div></header>
         <section class="setup-free-sec"><h4>Free AI</h4>${free}</section>
+        <section class="setup-free-sec"><h4>Pictures</h4>${pictures}</section>
         <section class="setup-free-sec"><h4>Most the server spends a month</h4>
             <p>${caps.length ? `<strong>${aiSetupMoney(total)}</strong> across ${caps.length} job${caps.length === 1 ? '' : 's'} with a cap.` : 'No job has a cap yet: the server spends what the jobs use.'}</p>
             <button class="btn btn-outline btn-sm" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')">Change each job's cap</button></section>
         <section class="setup-free-sec"><h4>Past the free part</h4>
             <p>People use their own key${credits ? ', or their Credits (Credits are on).' : '. Credits are off, so nothing is charged.'}</p></section>
     </article>`;
+}
+async function saveAiSetupFreePictures() {
+    const input = document.getElementById('setup-free-pictures');
+    const n = Math.max(0, Math.min(1000, Math.round(Number(input && input.value) || 0)));
+    try {
+        const out = await api('/api/admin/ai/setup/free/pictures', { method: 'PUT', body: { per_day: n } });
+        if (aiSetupState && out && out.free) aiSetupState.free = out.free;
+        toast(n > 0 ? `Each person can make ${n} picture${n === 1 ? '' : 's'} a day` : 'Making pictures is off');
+    } catch (err) { toast((err && err.message) || 'That did not save', 'error'); }
+    if (aiSetupStep === AI_SETUP_FREE) renderAiSetup();
 }
 function aiSetupFreeWords(v) { const n = Math.max(0, Number(v) || 0); return n > 0 ? `about ${Math.round(n * 0.75).toLocaleString()} words` : 'free AI is off'; }
 async function saveAiSetupFree() {

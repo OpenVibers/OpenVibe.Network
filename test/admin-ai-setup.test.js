@@ -84,6 +84,9 @@ function upstream() {
         assert.strictEqual(ai.seen.at(-1).url, '/api/v1/setup/routes/chat');
         r = await call(owner, 'PUT', '/api/admin/ai/setup/caps/chat', { cap_usd: 5 });
         assert.strictEqual(ai.seen.at(-1).url, '/api/v1/setup/caps/chat');
+        r = await call(owner, 'PUT', '/api/admin/ai/setup/free/pictures', { per_day: 6 });
+        assert.strictEqual(ai.seen.at(-1).url, '/api/v1/setup/free/pictures', 'the pictures each person may make a day');
+        assert.deepStrictEqual(ai.seen.at(-1).body, { per_day: 6 });
         r = await call(owner, 'POST', '/api/admin/ai/setup/recommended', {});
         assert.strictEqual(ai.seen.at(-1).url, '/api/v1/setup/recommended');
 

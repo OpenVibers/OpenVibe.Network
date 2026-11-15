@@ -33,6 +33,7 @@ const ctx = {
         if (p === '/api/admin/ai/config/providers') return { providers: PROVIDERS };
         if (p === '/api/admin/ai/setup/agents') return { harnesses: [{ id: 'claude-code', name: 'Claude Code', provider: 'anthropic', off: false, default_model: 'sonnet', models: [{ id: 'opus', name: 'Opus', note: 'the strongest' }, { id: 'sonnet', name: 'Sonnet', note: 'fast and capable' }, { id: 'claude-opus-5-5', name: 'Claude Opus 5.5', note: '200K context' }] }, { id: 'codex', name: 'Codex', provider: 'openai', off: true, models: [{ id: 'gpt-6.1-sol', name: 'GPT-6.1 Sol', note: '' }] }, { id: 'opencode', name: 'OpenCode', provider: 'opencode-go' }, { id: 'openvibe-ai', name: 'OpenVibe.AI', provider: 'openvibe' }] };
         if (p === '/api/admin/ai/config/ai/ai.exchange' && !o.method) return { service: 'ai', namespace: 'ai.exchange', revision: 3, values: { free_daily_tokens: 20000, credits: false }, pins: [], schema: { properties: { free_daily_tokens: { title: 'Free AI per person per day', description: 'How many tokens a verified person may use free each day.', 'x-example': 20000 } } } };
+        if (p === '/api/admin/ai/setup/free/pictures' && o.method === 'PUT') return { ok: true, free: { pictures_per_day: o.body.per_day, pictures_set: true, pictures_default: 24 } };
         if (p === '/api/v1/machines') return { machines: [{ id: 'dev_1', name: 'ov-node-01', online: true, controls: { shared_jobs: true, worker: { serve_others: true } } }] };
         return {};
     },
@@ -56,7 +57,7 @@ S.set({
         { id: 'code', name: 'Code agents (plans)', what: 'Plans work.', uses: 'Codes.', ready: true, state: 'ready', route: 'space.build',
             recommended: offer('deepseek', 'deepseek-chat', 'DeepSeek Chat', { configured: true }), alternatives: [], options: [] },
     ],
-    summary: { total: 3, ready: 3 }, defaults: [],
+    summary: { total: 3, ready: 3 }, defaults: [], free: { pictures_per_day: 24, pictures_set: true, pictures_default: 24 },
 });
 
 (async () => {
@@ -149,5 +150,17 @@ S.set({
     const freePost = calls.find(([m, p]) => m === 'POST' && p === '/api/admin/ai/config/ai/ai.exchange');
     assert.ok(freePost, 'Save writes ai.exchange');
     assert.deepStrictEqual(JSON.parse(JSON.stringify(freePost[2].values)), { free_daily_tokens: 50000 });
+    // Pictures each person may make a day (AI's picture task daily cap): shown beside free AI, saved through the setup API.
+    S.render();
+    main = els['setup-main'].innerHTML;
+    assert.match(main, /<h4>Pictures<\/h4>/, 'a Pictures section');
+    assert.match(main, /id="setup-free-pictures" type="number" min="0" max="1000" step="1" value="24"/);
+    el('setup-free-pictures').value = '6';
+    calls.length = 0;
+    await ctx.saveAiSetupFreePictures();
+    const picPut = calls.find(([m, p]) => m === 'PUT' && p === '/api/admin/ai/setup/free/pictures');
+    assert.ok(picPut, 'Save writes the setup API');
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(picPut[2])), { per_day: 6 });
+    assert.match(els['setup-main'].innerHTML, /value="6"/, 'the saved number shows');
     console.log('admin-ai-control-room: providers and keys, every model per job, keyless says so, coding agents and their computers');
 })().catch((err) => { console.error(err); process.exit(1); });
