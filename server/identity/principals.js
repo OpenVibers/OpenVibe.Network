@@ -623,6 +623,10 @@ const DEFAULT_GRANTS = [
     // Tools people make (plan 2026-11-13 §AD.7 step 2, Tools #364): a prompt tool runs through AI's ai.complete as the
     // person who runs it (on_behalf_of: their allowance, Vibes or keys pay, never the tool's maker). Nothing else of AI's.
     ['tools', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
+    // Agents run the tools people make (plan §AD.12 (b), Contracts 0.437.0 tools.made.run): Actor's and Codes' agents list
+    // a person's tools and run one as them (X-OV-Subject), paid from that person's allowance; they never make or change one.
+    ['actor', 'tools.made.run', 'openvibe.tools', []],
+    ['codes', 'tools.made.run', 'openvibe.tools', []],
     // A streamer's daily AI-viewer budget is an AI quota on their attribution (live:user:<id>), which Live sets.
     ['live', 'ai.quota.attribution.manage', 'openvibe.ai', []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
