@@ -57,6 +57,7 @@
                 <button class="admin-tab-btn" onclick="showTab('streams',this)"><i class="fa-solid fa-broadcast-tower"></i> Streams</button>
                 <button class="admin-tab-btn" onclick="showTab('lineage',this)"><i class="fa-solid fa-diagram-project"></i> Lineage</button>
                 <button class="admin-tab-btn" onclick="showTab('bans',this)"><i class="fa-solid fa-ban"></i> Bans</button>
+                <button class="admin-tab-btn" onclick="showTab('flagged-speech',this)"><i class="fa-solid fa-flag"></i> Flagged speech</button>
                 <button class="admin-tab-btn" onclick="showTab('chat-logs',this)"><i class="fa-solid fa-message"></i> Chat Logs</button>
                 <button class="admin-tab-btn" onclick="showTab('moderators',this)"><i class="fa-solid fa-shield-halved"></i> Moderators</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('settings',this)"><i class="fa-solid fa-gear"></i> Settings</button>
@@ -135,6 +136,13 @@
     <div class="section admin-clarity admin-cards" id="sec-bans">
         <p class="admin-intro">These people are currently banned on Live. Review the reason before restoring access; allowing access again removes the restriction, and a new ban can be applied from Users if needed.</p>
         <div id="bans-content"><div class="loading">Loading...</div></div>
+    </div>
+
+    <!-- Flagged speech: transcript windows OpenVibe.AI's hard floor flagged (Live GET /api/mod/transcript-flags) -->
+    <div class="section admin-clarity admin-cards" id="sec-flagged-speech">
+        <p class="admin-intro">Moments in streams whose transcribed words read as one of the hard lines: sexual content involving a minor, non-consensual sexual content, or weapons of mass harm. The words are not kept. Open the recording at that moment and listen, act with the usual tools (remove the recording, ban), then mark it.</p>
+        <div class="sub-tabs" id="flagged-speech-filter" role="tablist" aria-label="Which flags"></div>
+        <div id="flagged-speech-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Chat Logs -->
