@@ -613,7 +613,7 @@ async function applyAiSetupRecommended() {
    The AI control room's own parts (2026-11-15, plan §AD.9; the owner, step by step: "missing tons of models … can't
    even see configuring OpenRouter key and all the other keys", "you forgot all types of models … hella platforms",
    "missing configuration for our tons of providers and different methods", "missing all the different agents … the
-   shared OpenVibe node", "needs all to be configured with OpenVibe.exchange as well"):
+   shared … node", "needs all to be configured with OpenVibe.exchange as well"):
      · Providers and keys: every provider OpenVibe.AI knows, grouped, with how it is reached, its key, a test, on/off,
        what it can do, its models and the same provider on Exchange;
      · every job lists every model that can do it, searchable, not two or three picked by hand;
@@ -638,7 +638,7 @@ const aiSetupStepName = (s) => (s && (AI_SETUP_STEP_NAMES[s.id] || s.name)) || '
 /** The groups providers are shown in, in order; each provider lands in the first group it fits. */
 const AI_SETUP_PROVIDER_GROUPS = [
     { id: 'one', name: 'One key for everything', line: 'Hundreds of models from every lab through one account.', has: (p) => ['openrouter', 'nanogpt'].includes(p.key) },
-    { id: 'own', name: 'Your own machines and the shared OpenVibe nodes', line: 'Models on computers you run: free per answer, private to the network.', has: (p) => ['local', 'local2', 'shared', 'whisper', 'runpod-vllm'].includes(p.key) || /^https?:\/\/(127\.|localhost|10\.|192\.168\.)/.test(String(p.base_url || '')) },
+    { id: 'own', name: 'Your own machines and the shared OpenVibe computers', line: 'Models on computers you run: free per answer, private to the network.', has: (p) => ['local', 'local2', 'shared', 'whisper', 'runpod-vllm'].includes(p.key) || /^https?:\/\/(127\.|localhost|10\.|192\.168\.)/.test(String(p.base_url || '')) },
     { id: 'labs', name: 'The labs', line: 'The companies that make the models, straight from the source.', has: (p) => ['openai', 'anthropic', 'gemini', 'xai', 'mistral', 'deepseek', 'meta', 'qwen', 'kimi', 'glm', 'minimax', 'cohere', 'perplexity', 'inception'].includes(p.key) },
     { id: 'uncensored', name: 'Uncensored', line: 'For the adults-only tier: answers the others refuse.', has: (p) => ['refuseless', 'abliteration', 'abliteratedmodels', 'venice'].includes(p.key) },
     { id: 'pictures', name: 'Pictures and video', line: 'Makes pictures, icons and video from words.', has: (p) => aiSetupCaps(p).some((c) => c === 'image' || c === 'video') && !aiSetupCaps(p).includes('chat') },
@@ -907,7 +907,7 @@ function aiSetupAgentsHtml() {
     }).join('');
     return `<section class="setup-agents" aria-label="Coding agents">
         <h4>Where coding runs</h4>
-        <p class="muted">Never on OpenVibe's own server: on a shared OpenVibe node (a computer lent to everyone's coding) or on the person's own computer through OpenVibe Link.</p>
+        <p class="muted">Never on OpenVibe's own server: on a shared OpenVibe computer (one lent to everyone's coding) or on the person's own computer through OpenVibe Link.</p>
         <ul class="setup-model-list">${machines || '<li class="muted">No computer is paired yet.</li>'}</ul>
         <p><a class="btn btn-outline btn-sm" href="https://openvibe.link/machines" target="_blank" rel="noopener">Add a computer</a></p>
         <h4>The coding agents people can pick <span class="muted">${seen.size}</span></h4>

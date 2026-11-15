@@ -1,7 +1,7 @@
 'use strict';
 // The AI control room's own parts (public/js/admin/ai-setup.js, 2026-11-15, plan §AD.9; the owner: "missing tons of
 // models … can't even see configuring OpenRouter key", "missing configuration for our tons of providers", "missing all
-// the different agents … the shared OpenVibe node", "confusing and not worded properly"):
+// the different agents … the shared … node", "confusing and not worded properly"):
 //   · Providers and keys lists every provider OpenVibe.AI knows, grouped, with its state, and opens one in place;
 //   · a job lists every model that can do it, searchable, not only the hand-picked ones;
 //   · the coding agents step lists Codes' harnesses with the key they run on, and the computers coding runs on;
@@ -65,7 +65,7 @@ S.set({
     assert.match(main, /Every AI provider OpenVibe can use/);
     assert.match(main, /6 providers, 2 on/, 'the count, the stub left out');
     assert.ok(!/>Stub</.test(main), 'the stub is not a provider people set up');
-    for (const g of ['One key for everything', 'Your own machines and the shared OpenVibe nodes', 'The labs', 'Pictures and video', 'Search']) assert.ok(main.includes(g), `group ${g}`);
+    for (const g of ['One key for everything', 'Your own machines and the shared OpenVibe computers', 'The labs', 'Pictures and video', 'Search']) assert.ok(main.includes(g), `group ${g}`);
     assert.ok(main.indexOf('OpenRouter') < main.indexOf('Local model'), 'one key for everything comes first');
     assert.ok(!/OpenRouter \(the last fallback\)/.test(main), 'the registry\'s note stays out of the name');
     assert.match(main, /On · ••••9f2a/, 'a provider in use shows its last four');
