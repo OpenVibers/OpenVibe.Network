@@ -7,6 +7,11 @@ const { viewsOf, handler } = require('../server/feed/views-beacon');
 const ev = viewsOf({ ids: ['f:live:vod:123', 'f:deals:deal:abc_1', 'f:live:vod:123', 'nope', 'f:Bad:x:1'], session: 'sess_ABCDEFGH' });
 assert.deepStrictEqual(ev.map((e) => `${e.ref.service}:${e.ref.kind}:${e.ref.id}`), ['live:vod:123', 'deals:deal:abc_1'], 'well-formed card ids, once each');
 assert.ok(ev.every((e) => e.how === 'preview' && e.session === 'sess_ABCDEFGH'));
+// A run's card (an hour of deals or jobs, 11-15): counted under feed:group:<run>, where the feed reads its views.
+const runs = viewsOf({ ids: ['g:deal:deals:2026-11-15T02', 'g:work:2026-11-14T23', 'g:deal:deals:2026-11-15T02', 'g:<b>'] });
+assert.deepStrictEqual(runs.map((e) => e.ref), [{ service: 'feed', kind: 'group', id: 'deal:deals:2026-11-15T02', site: 'feed' }, { service: 'feed', kind: 'group', id: 'work:2026-11-14T23', site: 'feed' }], 'a run is counted once, and a bad id is no id');
+const api = require('fs').readFileSync(require('path').join(__dirname, '..', 'server', 'feed', 'api.js'), 'utf8');
+assert.match(api, /ref: \{ service: 'feed', kind: 'group', id: c\.id\.slice\(2\) \}/, 'the feed reads a run card\'s views where the beacon counts them');
 assert.strictEqual(viewsOf({ ids: [] }), null);
 assert.strictEqual(viewsOf('not json'), null);
 assert.strictEqual(viewsOf(JSON.stringify({ ids: ['f:news:story:9'] })).length, 1, 'a beacon text/plain body is read');

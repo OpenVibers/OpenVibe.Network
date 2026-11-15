@@ -3,7 +3,9 @@
  * POST /api/v1/feed/views — the feed's cards a person actually saw, counted as views (plan §AA.36, §AC.5: "add view count
  * to this feed and everything in the feed … so you can see analytics … like Twitter does").
  *
- *   body { ids: ["f:<service>:<type>:<id>", …], session? }   up to 20 card ids, as the feed gave them
+ *   body { ids: ["f:<service>:<type>:<id>" | "g:<run>", …], session? }   up to 20 card ids, as the feed gave them
+ *                                                    (g: a run's card, an hour of deals or jobs: counted as
+ *                                                    feed:group:<run>, where the feed reads its views)
  *   → 202 { sent }   (a beacon: always 202 for well-formed input; what Media counted is its business)
  *
  * The card id already names its source, so nothing is looked up here: each id becomes one `preview` view in
@@ -15,6 +17,7 @@
 const config = require('../config');
 
 const ID_RE = /^f:([a-z][a-z0-9-]{1,39}):([a-z][a-z0-9_]{1,39}):([A-Za-z0-9_.:-]{1,80})$/;
+const GROUP_RE = /^g:([A-Za-z0-9_.:-]{1,80})$/;
 const SESSION_RE = /^[A-Za-z0-9_-]{8,64}$/;
 const MAX_IDS = 20;
 
@@ -33,9 +36,11 @@ function viewsOf(body) {
     const events = [];
     for (const raw of b.ids.slice(0, MAX_IDS)) {
         const m = ID_RE.exec(String(raw || ''));
-        if (!m || seen.has(m[0])) continue;
-        seen.add(m[0]);
-        events.push({ ref: { service: m[1], kind: m[2], id: m[3], site: m[1] }, how: 'preview', seconds: 1, ...(session ? { session } : {}) });
+        const g = m ? null : GROUP_RE.exec(String(raw || ''));
+        if ((!m && !g) || seen.has((m || g)[0])) continue;
+        seen.add((m || g)[0]);
+        const ref = m ? { service: m[1], kind: m[2], id: m[3], site: m[1] } : { service: 'feed', kind: 'group', id: g[1], site: 'feed' };
+        events.push({ ref, how: 'preview', seconds: 1, ...(session ? { session } : {}) });
     }
     return events.length ? events : null;
 }
@@ -55,4 +60,4 @@ function handler({ fetchImpl = globalThis.fetch } = {}) {
     };
 }
 
-module.exports = { handler, viewsOf, ID_RE };
+module.exports = { handler, viewsOf, ID_RE, GROUP_RE };

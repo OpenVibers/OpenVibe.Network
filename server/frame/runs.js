@@ -6,7 +6,11 @@
  * task. Each product keeps its own runs; this router lists, reads, starts, continues and follows them in one shape
  * (`agents.run@1` 1.1.0, `agents.step@1`, `agents.event@1`) under one address, the run's ref `<product>:<id>`:
  *
- *   GET  /api/frame/runs?kind=&status=&q=&limit=      every product's runs, newest first → { runs, next, partial }
+ *   GET  /api/frame/runs?kind=&status=&q=&limit=&archived=1
+ *                                                    every product's runs, newest first → { runs, next, partial };
+ *                                                    runs last touched before the new agent system (FRAME_RUNS_SINCE,
+ *                                                    2026-11-15) are archived: left out unless archived=1, never deleted,
+ *                                                    and anything running or waiting on the person always shows
  *   POST /api/frame/runs                             start (agents.run-start@1; Idempotency-Key)  → 201 the run
  *   POST /api/frame/runs/files                       a file for the next message (the body is the file, its name in
  *                                                    X-Filename; at most 10 MB) → 201 { file }: an ai.file@1 reference,
@@ -61,7 +65,12 @@ const CODES_STATUS = { queued: 'planning', running: 'running', 'needs-you': 'wai
 const AGUI_STATUS = { queued: 'planning', running: 'running', waiting: 'waiting', needs_you: 'waiting', succeeded: 'done', failed: 'failed', stopped: 'stopped', cancelled: 'stopped' };
 const CODES_TARGET = { create: 'new', openvibe: 'openvibe' };
 
-function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = async () => null, fetchImpl = fetch, now = Date.now, log = console } = {}) {
+/** When the new agent system began (the owner, 11-15: "we should clear out old conversations, since now the system works
+ *  way differently"): the list starts here. Older runs stay in each product (Actor's tasks, Chat, Codes) and in the
+ *  account export; ?archived=1 lists them too. */
+const RUNS_SINCE = (() => { const t = Date.parse(String(process.env.FRAME_RUNS_SINCE || '2026-11-15T00:00:00Z')); return Number.isFinite(t) ? t : 0; })();
+
+function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = async () => null, fetchImpl = fetch, now = Date.now, log = console, since = RUNS_SINCE } = {}) {
     const base = {
         chat: svcUrl('chat', 'http://127.0.0.1:4400'),
         codes: svcUrl('codes', 'http://127.0.0.1:4900'),
@@ -320,6 +329,14 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         if (kind) runs = runs.filter((r) => (r.kind || 'task') === kind);
         if (status) runs = runs.filter((r) => r.status === status);
         if (q) runs = runs.filter((r) => `${r.title || ''} ${(r.preview && r.preview.text) || ''}`.toLowerCase().includes(q));
+        // The old system's conversations are archived (11-15): out of the list, never deleted; live work always shows.
+        if (since && req.query.archived !== '1') {
+            runs = runs.filter((r) => {
+                if (r.status === 'running' || r.status === 'planning' || (r.status === 'waiting' && r.waiting && r.waiting.for !== 'message')) return true;
+                const t = Date.parse(String(r.updated_at || r.created_at || ''));
+                return !Number.isFinite(t) || t >= since;
+            });
+        }
         // Needs you first, then newest.
         const needs = (r) => (r.status === 'waiting' && r.waiting && r.waiting.for !== 'message' ? 1 : 0);
         runs.sort((x, y) => needs(y) - needs(x) || String(y.updated_at).localeCompare(String(x.updated_at)));
