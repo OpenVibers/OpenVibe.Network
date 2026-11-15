@@ -390,6 +390,9 @@ const server = http.createServer(app);
     await db.prepare("UPDATE oauth_clients SET client_secret = 'tools-secret' WHERE client_id = 'tools'").run();
     const ts = await token({ client_id: 'tools', client_secret: 'tools-secret', audience: 'openvibe.search' });
     assert.strictEqual(ts.body.scope, 'search.document.write', 'Tools indexes its tools in Search');
+    await db.prepare("UPDATE oauth_clients SET client_secret = 'space-secret' WHERE client_id = 'space'").run();
+    const sp = await token({ client_id: 'space', client_secret: 'space-secret', audience: 'openvibe.search' });
+    assert.strictEqual(sp.body.scope, 'search.document.write', 'Space indexes its live websites in Search (plan §AD.10 step 6)');
     const tb = await token({ client_id: 'tools', client_secret: 'tools-secret', audience: 'openvibe.billing' });
     assert.strictEqual(tb.body.scope, 'billing.usage.record', 'Tools posts usage readings to Billing and holds no money capability');
     // Plan T5 step 14: Network's own usage producers post platform.usage-sample@1 to Billing with their

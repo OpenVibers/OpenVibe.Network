@@ -756,6 +756,8 @@ const DEFAULT_GRANTS = [
     ['food', 'search.document.write', 'openvibe.search', []],
     // OpenVibe.Bot's robot model pages in Search through the owner API (owner bot).
     ['bot', 'search.document.write', 'openvibe.search', []],
+    // OpenVibe.Space's live websites in Search through the owner API (owner space, type site; plan §AD.10 step 6).
+    ['space', 'search.document.write', 'openvibe.search', []],
     // Plan T5 step 7: Tools posts one usage reading per ended tool job to Billing (POST /api/v1/usage).
     ['tools', 'billing.usage.record', 'openvibe.billing', []],
     // Plan T5 step 14: Network's own usage producers — AI (per model run), Events (per delivered event)
