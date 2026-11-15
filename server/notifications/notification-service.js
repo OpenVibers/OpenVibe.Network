@@ -325,7 +325,7 @@ class NotificationService {
      *  - since: ISO timestamp, only rows created after it (toasts)
      * Fetches limit+1 so the client knows whether another page exists.
      */
-    async getForUser(userId, { limit = 50, offset = 0, category = null, unreadOnly = false, q = null, since = null, type = null, tab = null } = {}) {
+    async getForUser(userId, { limit = 50, offset = 0, category = null, unreadOnly = false, readOnly = false, q = null, since = null, type = null, tab = null } = {}) {
         const where = ['user_id = ?', 'is_dismissed = 0'];
         const params = [userId];
         const inTab = tabs.tabWhere(tab);
@@ -333,6 +333,7 @@ class NotificationService {
         if (category) { where.push('category = ?'); params.push(category); }
         if (type) { where.push('type = ?'); params.push(type); }
         if (unreadOnly) where.push('is_read = 0');
+        else if (readOnly) where.push('is_read = 1');
         if (since) { where.push('created_at > ?'); params.push(String(since).replace('T', ' ').replace(/Z$/, '').slice(0, 19)); }
         if (q) {
             const like = `%${String(q).replace(/[%_\\]/g, c => '\\' + c).slice(0, 80)}%`;

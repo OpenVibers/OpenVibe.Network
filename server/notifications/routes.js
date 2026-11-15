@@ -12,7 +12,8 @@ const router = express.Router();
 module.exports = function createNotificationRoutes(db, notificationService, requireAuth, requireDock = () => requireAuth) {
 
     // ─── GET /api/notifications ────────────────────────────
-    // Query params: limit, offset, category, type, tab (the bell's tabs, ./tabs.js), unread_only, q, since
+    // Query params: limit, offset, category, type, tab (the bell's tabs, ./tabs.js), unread_only, read_only, q, since.
+    // read_only (11-15): the menu's alerts open on what is unread, then go on to the earlier ones (read) as you scroll.
     router.get('/', requireDock('activity'), async (req, res) => {
         try {
             const userId = req.user.id;
@@ -22,11 +23,12 @@ module.exports = function createNotificationRoutes(db, notificationService, requ
             const type = req.query.type || null;
             // Accept both spellings — the shared UI shipped `unread=1` for a while.
             const unreadOnly = ['1', 'true'].includes(String(req.query.unread_only ?? req.query.unread ?? ''));
+            const readOnly = !unreadOnly && ['1', 'true'].includes(String(req.query.read_only ?? ''));
             const q = req.query.q ? String(req.query.q).trim() : null;
             const since = req.query.since ? String(req.query.since) : null;
             const tab = typeof req.query.tab === 'string' ? req.query.tab : null;
 
-            const out = await notificationService.getForUser(userId, { limit, offset, category, unreadOnly, q, since, type, tab });
+            const out = await notificationService.getForUser(userId, { limit, offset, category, unreadOnly, readOnly, q, since, type, tab });
             res.json({ ok: true, ...out, limit, offset });
         } catch (err) {
             console.error('[Notifications] GET / error:', err);
