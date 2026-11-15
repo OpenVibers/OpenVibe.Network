@@ -16,6 +16,7 @@ const grant = (client, cap) => principals.DEFAULT_GRANTS.find((g) => g[0] === cl
 for (const cap of CAPS) {
     const known = !!(capabilities.get(cap) && capabilities.get(cap).owner === 'git');
     const g = grant('codes', cap);
+    assert.strictEqual(!!grant('actor', cap), known, `Actor may ${cap} on OpenVibe Git when Contracts knows it`);
     assert.strictEqual(!!g, known, known ? `codes may ${cap} on OpenVibe Git` : `${cap} is not in this Contracts yet, so no grant names it`);
     if (!known) continue;
     assert.deepStrictEqual(g[3], [], `${cap} carries no namespace`);
@@ -23,6 +24,6 @@ for (const cap of CAPS) {
         `${cap} is granted for OpenVibe Git and for no other audience`);
 }
 assert.deepStrictEqual(principals.DEFAULT_GRANTS.filter((g) => g[2] === 'openvibe.git').map((g) => [g[0], g[1]]),
-    CAPS.every((c) => capabilities.get(c)) ? [['codes', 'git.repo.read'], ['codes', 'git.repo.write']] : [],
-    'Codes alone, as the first service that calls it');
+    CAPS.every((c) => capabilities.get(c)) ? [['codes', 'git.repo.read'], ['codes', 'git.repo.write'], ['actor', 'git.repo.read'], ['actor', 'git.repo.write']] : [],
+    'Codes, and a person\'s Actor (plan §AD.10 step 1: its git_* tools act as the person)');
 console.log('git grants: ok');

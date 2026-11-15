@@ -544,6 +544,10 @@ const DEFAULT_GRANTS = [
     ...(capabilities.get('git.repo.read') && capabilities.get('git.repo.write') ? [
         ['codes', 'git.repo.read', 'openvibe.git', []],
         ['codes', 'git.repo.write', 'openvibe.git', []],
+        // Plan §AD.10 step 1 (2026-11-15): a person's Actor makes repositories in their namespace, commits to them and
+        // opens changes for them to merge, acting as that person with X-OV-Subject (Actor's git_* tools).
+        ['actor', 'git.repo.read', 'openvibe.git', []],
+        ['actor', 'git.repo.write', 'openvibe.git', []],
     ] : []),
     // Plan T16/T17 (contracts 0.162.0): a person's OpenVibe.Actor agent routes coding work to OpenVibe.Codes, which runs
     // it on that person's own machine (X-OV-Subject); Codes shows Actor only the tasks Actor started for that person.
