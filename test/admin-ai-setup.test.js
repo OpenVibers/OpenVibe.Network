@@ -22,6 +22,11 @@ function upstream() {
             if (/\/key$/.test(req.url)) return res.end(JSON.stringify({ ok: true, provider: 'deepseek', hint: { last4: '1234' }, configured: true }));
             if (/\/test\//.test(req.url) || /\/test$/.test(req.url)) return res.end(JSON.stringify({ ok: true, step: 'chat', answer: { text: 'ready' }, cost_usd: 0.0001 }));
             if (/\/recommended$/.test(req.url)) return res.end(JSON.stringify({ ok: true, applied: [{ step: 'chat', ok: true }] }));
+            // Codes' catalogue, every agent (?all=1, codes.harnesses): one off, one with two models.
+            if (req.url === '/api/v1/harnesses?all=1') return res.end(JSON.stringify({ harnesses: [
+                { id: 'claude-code', name: 'Claude Code', provider: 'anthropic', off: false, default_agent: 'claude-code-opus', agents: [{ id: 'claude-code-opus', model: 'claude-opus-5-5' }, { id: 'claude-code-sonnet', model: 'claude-sonnet-5-5' }] },
+                { id: 'codex', name: 'Codex', provider: 'openai', off: true, agents: [{ id: 'codex-default', model: 'gpt-5-codex' }] },
+                { id: 'Bad id!', name: 'x' }] }));
             return res.end(JSON.stringify({ ok: true, summary: { ready: 3, total: 8 }, steps: [{ id: 'chat', name: 'Chat and writing', ready: false }] }));
         });
     });
@@ -31,7 +36,7 @@ function upstream() {
 (async () => {
     const ai = await upstream();
     const app = express();
-    app.locals.config = { services: { ai: { internalUrl: ai.url } } };
+    app.locals.config = { services: { ai: { internalUrl: ai.url }, codes: { internalUrl: ai.url } } };
     app.locals.selfToken = (aud, caps) => { assert.strictEqual(aud, 'openvibe.ai'); assert.deepStrictEqual(caps, ['ai.provider.manage']); return 'network-signed-token'; };
     app.use(express.json());
     // The signed-in person: X-Test-User, or none for a 401. requireOwner reads req.user.
@@ -91,6 +96,14 @@ function upstream() {
         const aiJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'admin', 'ai.js'), 'utf8');
         assert.ok(aiJs.includes('loadAiSetupCard()'), 'the AI tab shows the setup card first');
 
+        // ── the coding agents: every one, the ones turned off marked, each with its models (2026-11-15, §AD.9 step 3) ──
+        {
+            const r = await call(owner, 'GET', '/api/admin/ai/setup/agents');
+            assert.strictEqual(r.status, 200);
+            const hs = r.json.harnesses;
+            assert.deepStrictEqual(hs.map((h) => [h.id, h.off, h.default_agent, h.agents.length]), [['claude-code', false, 'claude-code-opus', 2], ['codex', true, null, 1]], 'a bad id is left out');
+            assert.ok(ai.seen.some((x) => x.url === '/api/v1/harnesses?all=1'), 'every agent is asked for, off ones too');
+        }
         // ── no signer: a clear 503, not an unhandled failure ─────────
         app.locals.selfToken = () => null;
         r = await call(owner, 'GET', '/api/admin/ai/setup');

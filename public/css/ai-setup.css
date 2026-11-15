@@ -213,3 +213,11 @@
 .setup-step-state{font-size:12px}
 .setup-progress-top .btn{min-height:44px;padding:0 16px}
 .setup-model-row .btn,.setup-prov-acts .btn{min-height:40px}
+
+/* 2026-11-15 (§AD.9 step 3): a coding agent's switch and its model chips. */
+.setup-agents .setup-model-row { gap: 12px; }
+.setup-agents .setup-model-row.is-off .setup-model-text strong { color: var(--text-secondary, #a8b3c4); }
+.setup-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.setup-chip { all: unset; box-sizing: border-box; min-height: 34px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 650; cursor: pointer; color: var(--text-secondary, #a8b3c4); background: color-mix(in srgb, var(--text-primary, #e8ecf3) 7%, transparent); transition: background-color .15s ease, color .15s ease; }
+.setup-chip[aria-checked="true"] { color: #fff; background: var(--accent, #3b82f6); }
+.setup-chip:focus-visible { outline: 2px solid var(--accent, #3b82f6); outline-offset: 2px; }

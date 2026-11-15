@@ -31,7 +31,7 @@ const ctx = {
     api: async (p, o = {}) => {
         calls.push([o.method || 'GET', p, o.body || null]);
         if (p === '/api/admin/ai/config/providers') return { providers: PROVIDERS };
-        if (p === '/api/admin/ai/setup/agents') return { harnesses: [{ id: 'claude-code', name: 'Claude Code', provider: 'anthropic' }, { id: 'opencode', name: 'OpenCode', provider: 'opencode-go' }, { id: 'openvibe-ai', name: 'OpenVibe.AI', provider: 'openvibe' }] };
+        if (p === '/api/admin/ai/setup/agents') return { harnesses: [{ id: 'claude-code', name: 'Claude Code', provider: 'anthropic', off: false, default_agent: 'claude-code-sonnet', agents: [{ id: 'claude-code-sonnet', model: 'claude-sonnet-5-5' }, { id: 'claude-code-opus', model: 'claude-opus-5-5' }] }, { id: 'codex', name: 'Codex', provider: 'openai', off: true, agents: [{ id: 'codex-default', model: 'gpt-5-codex' }] }, { id: 'opencode', name: 'OpenCode', provider: 'opencode-go' }, { id: 'openvibe-ai', name: 'OpenVibe.AI', provider: 'openvibe' }] };
         if (p === '/api/v1/machines') return { machines: [{ id: 'dev_1', name: 'ov-node-01', online: true, controls: { shared_jobs: true, worker: { serve_others: true } } }] };
         return {};
     },
@@ -112,5 +112,19 @@ S.set({
     assert.match(main, /OpenCode<\/strong><span class="muted">Runs on OpenRouter/, 'an open agent runs on OpenRouter');
     assert.ok(!/OpenVibe\.AI<\/strong>/.test(main), 'OpenVibe.AI itself is not a coding agent people pick');
     assert.ok(calls.some(([m, p]) => m === 'GET' && p === '/api/admin/ai/setup/agents'));
+    // 2026-11-15 (§AD.9 step 3): each agent's switch (Codes' codes.harnesses off) and its model chips (defaults).
+    assert.match(main, /aria-label="Claude Code: people can use it" onchange="setAiSetupAgent\('claude-code', this.checked\)"/);
+    assert.match(main, /Codex<\/strong><span class="muted">Turned off · /, 'an agent turned off says so');
+    assert.match(main, /role="radio" aria-checked="true" onclick="setAiSetupAgentModel\('claude-code', 'claude-code-sonnet'\)">Claude Sonnet 5\.5</, 'the default model is the chosen chip');
+    assert.match(main, /Codex<\/strong><span class="muted">Turned off · Runs on [^<]* · GPT 5 Codex/, 'one model: said in the line, no chips');
+    calls.length = 0;
+    await ctx.setAiSetupAgent('claude-code', false);
+    let post = calls.find(([m, p]) => m === 'POST' && p === '/api/admin/ai/config/codes/codes.harnesses');
+    assert.ok(post, 'the switch writes codes.harnesses');
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(post[2].values)), { off: ['claude-code', 'codex'] });
+    calls.length = 0;
+    await ctx.setAiSetupAgentModel('claude-code', 'claude-code-opus');
+    post = calls.find(([m, p]) => m === 'POST' && p === '/api/admin/ai/config/codes/codes.harnesses');
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(post[2].values)), { defaults: { 'claude-code': 'claude-code-opus' } });
     console.log('admin-ai-control-room: providers and keys, every model per job, keyless says so, coding agents and their computers');
 })().catch((err) => { console.error(err); process.exit(1); });
