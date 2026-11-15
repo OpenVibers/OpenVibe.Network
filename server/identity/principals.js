@@ -620,6 +620,9 @@ const DEFAULT_GRANTS = [
     // (workflow ai.complete), the same one Codes' harnesses use. 11-13 (plan §Z.9): and video.analyze, so an agent can
     // watch a video the person may read (AI checks the namespace; the person rides as on_behalf_of). Nothing else of AI's.
     ['actor', 'ai.run.create', 'openvibe.ai', ['ai.complete', 'video.analyze']],
+    // Tools people make (plan 2026-11-13 §AD.7 step 2, Tools #364): a prompt tool runs through AI's ai.complete as the
+    // person who runs it (on_behalf_of: their allowance, Vibes or keys pay, never the tool's maker). Nothing else of AI's.
+    ['tools', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
     // A streamer's daily AI-viewer budget is an AI quota on their attribution (live:user:<id>), which Live sets.
     ['live', 'ai.quota.attribution.manage', 'openvibe.ai', []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
