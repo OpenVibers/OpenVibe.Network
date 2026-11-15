@@ -232,6 +232,14 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
             await call('codes', `/api/v1/tasks/${encodeURIComponent(id)}/stop`, { auth, method: 'POST', body: reason ? { reason } : {} });
             return codes.get(auth, owner, id);
         },
+        // A replay link anyone can read (Codes' /r/<token>, plan §AD.6 (6)): made by the person themself, or stopped.
+        async replay(auth, owner, id, { stop = false } = {}) {
+            const out = await call('codes', `/api/v1/tasks/${encodeURIComponent(id)}/replay`, { auth, method: stop ? 'DELETE' : 'POST' });
+            if (stop) return { stopped: !!(out && out.stopped) };
+            const url = out && typeof out.url === 'string' && /^https:\/\/[^\s"'<>]+\/r\/[A-Za-z0-9_-]{16,64}$/.test(out.url) ? out.url : null;
+            if (!url) throw fail(502, 'runs.codes_no_replay', 'Codes did not make the replay link');
+            return { url, created_at: iso(out.created_at) || null };
+        },
     };
 
     // ── actor: the person's Actor, served as agents.run@1 ──
@@ -324,7 +332,7 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
     const router = express.Router();
     const json = express.json({ limit: '64kb' });
     router.use((req, res, next) => {
-        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type, Last-Event-ID, Idempotency-Key, X-Filename', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Max-Age': '600', 'Cache-Control': 'private, no-store', Vary: 'Authorization' });
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type, Last-Event-ID, Idempotency-Key, X-Filename', 'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS', 'Access-Control-Max-Age': '600', 'Cache-Control': 'private, no-store', Vary: 'Authorization' });
         if (req.method === 'OPTIONS') return res.status(204).end();
         next();
     });
@@ -469,6 +477,20 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         const { a, id } = productFor(req.params.ref);
         if (!a.stop) throw fail(409, 'runs.cannot_stop', a.product === 'chat' ? 'A conversation does not stop: it waits for you' : `A ${a.product} run cannot be stopped from here yet`);
         res.json(await a.stop(auth, owner, id, { reason: clip(req.body && req.body.reason, 500) || undefined }));
+    }));
+
+    // A run's replay link (plan §AD.8: the session menu's Share): POST makes or reads it, DELETE stops it.
+    router.post('/:ref/replay', json, handle(async (req, res) => {
+        const { auth, owner } = await who(req);
+        const { a, id } = productFor(req.params.ref);
+        if (!a.replay) throw fail(409, 'runs.cannot_replay', `A ${a.product} run has no replay link yet`);
+        res.set('Cache-Control', 'private, no-store').json(await a.replay(auth, owner, id));
+    }));
+    router.delete('/:ref/replay', handle(async (req, res) => {
+        const { auth, owner } = await who(req);
+        const { a, id } = productFor(req.params.ref);
+        if (!a.replay) throw fail(409, 'runs.cannot_replay', `A ${a.product} run has no replay link yet`);
+        res.json(await a.replay(auth, owner, id, { stop: true }));
     }));
 
     router.post('/:ref/approvals/:approval', json, handle(async (req, res) => {

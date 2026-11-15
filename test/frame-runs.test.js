@@ -64,6 +64,7 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
             return sendJson(res, 201, { id: 'tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH' });
         }
         if (/\/api\/v1\/tasks\/tsk_[0-9A-Z]+\/stop$/.test(u.pathname)) return sendJson(res, 200, { ok: true });
+        if (/\/api\/v1\/tasks\/tsk_[0-9A-Z]+\/replay$/.test(u.pathname)) return req.method === 'DELETE' ? sendJson(res, 200, { stopped: true }) : sendJson(res, 201, { url: 'https://openvibe.codes/r/AbCdEfGhIjKlMnOpQrStUvWxYz012345', created_at: '2026-11-15T17:00:00Z', created: true });
         if (/\/api\/v1\/tasks\/tsk_[0-9A-Z]+\/(message|continue)$/.test(u.pathname) && req.method === 'POST') { const b = await readBody(req); seen.at(-1).body = b; return sendJson(res, /message$/.test(u.pathname) ? 202 : 200, { queued: true }); }
         return sendJson(res, 404, { error: 'not found' });
     });
@@ -236,6 +237,15 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         assert.strictEqual(r.status, 409); assert.match(d.error, /waits for you/);
         ({ r, d } = await go('/codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH/stop', { method: 'POST', body: { reason: 'not now' } }));
         assert.strictEqual(r.status, 200);
+        // A coding run's replay link (plan §AD.8, the session menu's Share): made by the person, or stopped.
+        ({ r, d } = await go('/codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH/replay', { method: 'POST', body: {} }));
+        assert.strictEqual(r.status, 200, JSON.stringify(d));
+        assert.deepStrictEqual(d, { url: 'https://openvibe.codes/r/AbCdEfGhIjKlMnOpQrStUvWxYz012345', created_at: '2026-11-15T17:00:00.000Z' });
+        assert.strictEqual(seen.filter((x) => x.svc === 'codes').at(-1).url, '/api/v1/tasks/tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH/replay');
+        ({ r, d } = await go('/codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH/replay', { method: 'DELETE' }));
+        assert.deepStrictEqual([r.status, d], [200, { stopped: true }]);
+        ({ r, d } = await go('/actor:tsk_ACTOR1/replay', { method: 'POST', body: {} }));
+        assert.strictEqual(r.status, 409, 'an Actor conversation has no replay link yet');
         // A coding task takes the next words too (plan §AD.8): Codes queues them on the task; a model the chip changed to
         // carries the task on with that model.
         ({ r, d } = await go('/codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH/messages', { method: 'POST', body: { text: 'Make the bar thinner' } }));
