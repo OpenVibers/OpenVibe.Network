@@ -27,4 +27,7 @@ if (capabilities.get('tools.made.write')) {
 const push = principals.DEFAULT_GRANTS.filter(([client, cap]) => client === 'tools' && cap === 'network.notifications.push');
 assert.strictEqual(push.length, 1, 'Tools pushes notifications');
 assert.deepStrictEqual(push[0][3], ['tools'], 'as service tools only');
+// Code tools run as Run function jobs (§AD.13 (2)): Tools submits and reads, nothing else of Run's.
+const runJobs = principals.DEFAULT_GRANTS.filter(([client, , aud]) => client === 'tools' && aud === 'openvibe.run').map(([, cap]) => cap).sort();
+assert.deepStrictEqual(runJobs, ['run.job.read', 'run.job.submit'], 'Tools submits and reads Run jobs, nothing else');
 console.log('tools made-tool grants: ok');
