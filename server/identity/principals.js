@@ -627,6 +627,13 @@ const DEFAULT_GRANTS = [
     // a person's tools and run one as them (X-OV-Subject), paid from that person's allowance; they never make or change one.
     ['actor', 'tools.made.run', 'openvibe.tools', []],
     ['codes', 'tools.made.run', 'openvibe.tools', []],
+    // And make one for the person who asked (Contracts 0.439.0 tools.made.write; the owner, 11-15: "use codes or actor
+    // to create a tool for you completely end to end"): draft it from their words and save it as theirs, always private
+    // until they publish it. Changing or deleting a tool stays the person's own. From the Contracts release that has it.
+    ...(capabilities.get('tools.made.write') ? [
+        ['actor', 'tools.made.write', 'openvibe.tools', []],
+        ['codes', 'tools.made.write', 'openvibe.tools', []],
+    ] : []),
     // A streamer's daily AI-viewer budget is an AI quota on their attribution (live:user:<id>), which Live sets.
     ['live', 'ai.quota.attribution.manage', 'openvibe.ai', []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).

@@ -15,4 +15,12 @@ assert.ok(!principals.RESTORED_GRANTS.some(([client, cap]) => client === 'tools'
 // Agents run made tools as the person (Contracts 0.437.0): Actor and Codes only.
 const run = principals.DEFAULT_GRANTS.filter(([, cap]) => cap === 'tools.made.run');
 assert.deepStrictEqual(run.map(([client, , aud]) => [client, aud]).sort(), [['actor', 'openvibe.tools'], ['codes', 'openvibe.tools']], 'Actor and Codes run made tools, on openvibe.tools only');
+// And make tools for the person (Contracts 0.439.0 tools.made.write): Actor and Codes only, once the pinned Contracts has it.
+const { capabilities } = require('openvibe-contracts');
+const write = principals.DEFAULT_GRANTS.filter(([, cap]) => cap === 'tools.made.write');
+if (capabilities.get('tools.made.write')) {
+    assert.deepStrictEqual(write.map(([client, , aud]) => [client, aud]).sort(), [['actor', 'openvibe.tools'], ['codes', 'openvibe.tools']], 'Actor and Codes make tools for people, on openvibe.tools only');
+} else {
+    assert.deepStrictEqual(write, [], 'no grant for a capability the pinned Contracts does not have');
+}
 console.log('tools made-tool grants: ok');
