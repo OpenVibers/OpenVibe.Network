@@ -428,7 +428,9 @@ function bars(points, label, unit = '') {
 <details class="os-table"><summary>Every day</summary><table><thead><tr><th>Day</th><th>${esc(label)}</th></tr></thead><tbody>${points.slice().reverse().map((p) => `<tr><td>${esc(p.day)}</td><td>${exact(p.n)}</td></tr>`).join('')}</tbody></table></details></figure>`;
 }
 /** A site's mark, drawn on the server and styled by the inlined icon CSS: complete on the first paint, no spinning ring. */
-const mark = (name, size, cls) => `<span class="ov-icon ${cls}" data-fx="none" style="--ovi-size:${size}px">${icons.svg(name, size)}</span>`;
+// data-icon and data-ovi name it: the page's icon script re-draws every .ov-icon by its data-icon, and one without a
+// name became the OpenVibe "V" on every site (the owner's /stats shot, 11-15).
+const mark = (name, size, cls) => `<span class="ov-icon ${cls}" data-icon="${esc(name)}" data-ovi="${esc(name)}" data-fx="none" style="--ovi-size:${size}px">${icons.svg(name, size)}</span>`;
 const pill = (pct, days) => (pct == null ? '' : `<span class="os-pill ${pct > 0 ? 'is-up' : pct < 0 ? 'is-down' : 'is-flat'}" title="Against the ${days} days before">${pct > 0 ? '▲' : pct < 0 ? '▼' : '–'} ${Math.abs(pct)}%</span>`);
 const tile = (label, value, sub, extra = '') => `<div class="os-tile"><span class="os-tile-l">${esc(label)}</span><b class="os-tile-v">${value}</b>${sub ? `<span class="os-tile-s">${sub}</span>` : ''}${extra}</div>`;
 
