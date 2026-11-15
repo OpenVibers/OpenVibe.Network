@@ -234,7 +234,7 @@ function serviceCard(r, nowMs) {
         r.reason && r.status !== 'not-running' ? `<p>${esc(r.reason)}</p>` : '',
         checksList(r.ready),
         r.release ? `<p>Release <code>${esc(r.release.release)}</code>${r.release.booted_at ? `, booted <time datetime="${esc(r.release.booted_at)}">${esc(r.release.booted_at)}</time>` : ''}.</p>${mainNote(r.main)}` : r.status === 'not-running' ? '' : `<p>Release ${esc(r.release_error ? `unknown (${r.release_error})` : 'unknown')}.</p>`,
-        r.exposure && r.exposure.note ? `<p>${esc(r.exposure.label)}: ${esc(r.exposure.note)}</p>` : '',
+        r.exposure ? `<p>${esc(r.exposure.label)}${r.exposure.note ? `: ${esc(r.exposure.note)}` : ''}</p>` : '',
         `<p class="st-id">${esc(r.id)} · manifest ${esc(r.manifest_status)}</p>`,
     ].filter(Boolean).join('');
     return `<li class="st-card st-k-${esc(r.status)}" id="svc-${esc(r.id)}" data-status="${esc(r.status)}">
@@ -255,13 +255,6 @@ function renderPage(list, slo, generatedAt, devPath = null, toolsJob = null, hea
             : { tone: 'up', words: 'Everything is up' };
     const cards = sorted.map((r) => serviceCard(r, nowMs)).join('\n');
     const filters = [['all', `All ${list.length}`], ...STATES.filter((st) => counts[st]).map((st) => [st, `${LABEL[st]} ${counts[st]}`])];
-    const tr = list.map((r) => `<tr id="svc-${esc(r.id)}">
-<td><b>${esc(r.name)}</b><small>${esc(r.id)} · manifest: ${esc(r.manifest_status)}</small></td>
-<td>${exposureCell(r)}</td>
-<td><span class="st-b st-${esc(r.status)}">${esc(r.status === 'not-running' ? r.label : LABEL[r.status] + (r.label.endsWith('(loopback only)') ? ' · loopback only' : ''))}</span>${r.stale ? `<small>last seen ${esc(r.last_status)}</small>` : ''}${r.basis === 'health' ? '<small>liveness only (no readiness endpoint)</small>' : ''}${r.reason && r.status !== 'not-running' ? `<small>${esc(r.reason)}</small>` : ''}${checksList(r.ready)}</td>
-<td>${r.release ? `<code>${esc(r.release.release)}</code>${r.release.booted_at ? `<small>booted ${esc(r.release.booted_at)}</small>` : ''}${mainNote(r.main)}` : `<small>${r.status === 'not-running' ? '—' : esc(r.release_error ? `unknown (${r.release_error})` : 'unknown')}</small>`}</td>
-<td>${r.checked_at ? `<time datetime="${esc(r.checked_at)}">${esc(r.checked_at)}</time>` : '<small>not checked yet</small>'}${r.latency_ms != null ? `<small>${esc(r.latency_ms)} ms</small>` : ''}</td>
-</tr>`).join('\n');
     const sloRows = slo.categories.map((c) => `<dt>${esc(c.name)}</dt><dd>${esc(c.sli)} <br><small>Proposed: ${esc(Object.entries(c.proposed_target).map(([k, v]) => `${k.replace(/_/g, ' ')} ${v}`).join('; '))} · priority: ${esc(c.priority)} · ${esc(c.measurement_status || (c.measured_by.length ? 'measured' : 'not instrumented'))}</small></dd>`).join('\n');
     return `<!DOCTYPE html>
 <html lang="en">
