@@ -86,6 +86,10 @@ function createAiSetup({ fetchImpl = globalThis.fetch, log = console } = {}) {
                     off: h.off === true,
                     default_agent: typeof h.default_agent === 'string' ? h.default_agent.slice(0, 64) : null,
                     agents: (Array.isArray(h.agents) ? h.agents : []).filter((x) => x && typeof x.id === 'string').slice(0, 20).map((x) => ({ id: x.id.slice(0, 64), model: String(x.model || x.id).slice(0, 80) })),
+                    // Every model the agent runs (Codes data/models.js, from AI's directory), and the owner's default.
+                    models: (Array.isArray(h.models) ? h.models : []).filter((m) => m && typeof m.id === 'string' && m.id).slice(0, 800)
+                        .map((m) => ({ id: m.id.slice(0, 160), name: String(m.name || m.id).slice(0, 80), note: String(m.note || '').slice(0, 120) })),
+                    default_model: typeof h.default_model === 'string' ? h.default_model.slice(0, 160) : null,
                 }));
             res.set('Cache-Control', 'private, no-store');
             return res.json({ harnesses });
