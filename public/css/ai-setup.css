@@ -228,3 +228,15 @@
 .setup-free label { display: grid; gap: 4px; margin-bottom: 10px; }
 .setup-free-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .setup-free-row input { width: 160px; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--border, rgba(148,163,184,.25)); background: var(--bg-primary, rgba(0,0,0,.2)); color: inherit; font: inherit; font-size: 16px; }
+
+/* 2026-11-15: a coding agent's models, a searchable list (hundreds for the open agents). */
+.setup-agent-model { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 4px; min-height: 36px; margin-top: 6px; padding: 0 12px; border-radius: 999px; font-size: 13px; cursor: pointer; color: var(--text-secondary, #a8b3c4); background: color-mix(in srgb, var(--text-primary, #e8ecf3) 7%, transparent); }
+.setup-agent-model strong { color: var(--text-primary, #e8ecf3); }
+.setup-agent-model:focus-visible, .setup-agent-pick:focus-visible { outline: 2px solid var(--accent, #3b82f6); outline-offset: 2px; }
+.setup-agent-models { margin-top: 8px; padding: 8px; border-radius: 14px; background: var(--bg-primary, rgba(0,0,0,.2)); box-shadow: inset 0 0 0 1px var(--border, rgba(148,163,184,.18)); }
+.setup-agent-find { box-sizing: border-box; width: 100%; min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border, rgba(148,163,184,.25)); background: transparent; color: inherit; font: inherit; font-size: 16px; }
+.setup-agent-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 320px; overflow-y: auto; display: grid; gap: 2px; }
+.setup-agent-pick { all: unset; box-sizing: border-box; display: grid; gap: 1px; width: 100%; min-height: 44px; padding: 6px 10px; border-radius: 10px; cursor: pointer; }
+.setup-agent-pick:hover { background: color-mix(in srgb, var(--text-primary, #e8ecf3) 6%, transparent); }
+.setup-agent-pick[aria-checked="true"] { background: color-mix(in srgb, var(--accent, #3b82f6) 16%, transparent); box-shadow: inset 3px 0 0 var(--accent, #3b82f6); }
+.setup-agent-pick .muted { font-size: 12px; }

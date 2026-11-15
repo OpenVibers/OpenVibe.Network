@@ -31,7 +31,7 @@ const ctx = {
     api: async (p, o = {}) => {
         calls.push([o.method || 'GET', p, o.body || null]);
         if (p === '/api/admin/ai/config/providers') return { providers: PROVIDERS };
-        if (p === '/api/admin/ai/setup/agents') return { harnesses: [{ id: 'claude-code', name: 'Claude Code', provider: 'anthropic', off: false, default_agent: 'claude-code-sonnet', agents: [{ id: 'claude-code-sonnet', model: 'claude-sonnet-5-5' }, { id: 'claude-code-opus', model: 'claude-opus-5-5' }] }, { id: 'codex', name: 'Codex', provider: 'openai', off: true, agents: [{ id: 'codex-default', model: 'gpt-5-codex' }] }, { id: 'opencode', name: 'OpenCode', provider: 'opencode-go' }, { id: 'openvibe-ai', name: 'OpenVibe.AI', provider: 'openvibe' }] };
+        if (p === '/api/admin/ai/setup/agents') return { harnesses: [{ id: 'claude-code', name: 'Claude Code', provider: 'anthropic', off: false, default_model: 'sonnet', models: [{ id: 'opus', name: 'Opus', note: 'the strongest' }, { id: 'sonnet', name: 'Sonnet', note: 'fast and capable' }, { id: 'claude-opus-5-5', name: 'Claude Opus 5.5', note: '200K context' }] }, { id: 'codex', name: 'Codex', provider: 'openai', off: true, models: [{ id: 'gpt-6.1-sol', name: 'GPT-6.1 Sol', note: '' }] }, { id: 'opencode', name: 'OpenCode', provider: 'opencode-go' }, { id: 'openvibe-ai', name: 'OpenVibe.AI', provider: 'openvibe' }] };
         if (p === '/api/admin/ai/config/ai/ai.exchange' && !o.method) return { service: 'ai', namespace: 'ai.exchange', revision: 3, values: { free_daily_tokens: 20000, credits: false }, pins: [], schema: { properties: { free_daily_tokens: { title: 'Free AI per person per day', description: 'How many tokens a verified person may use free each day.', 'x-example': 20000 } } } };
         if (p === '/api/v1/machines') return { machines: [{ id: 'dev_1', name: 'ov-node-01', online: true, controls: { shared_jobs: true, worker: { serve_others: true } } }] };
         return {};
@@ -117,17 +117,22 @@ S.set({
     // 2026-11-15 (§AD.9 step 3): each agent's switch (Codes' codes.harnesses off) and its model chips (defaults).
     assert.match(main, /aria-label="Claude Code: people can use it" onchange="setAiSetupAgent\('claude-code', this.checked\)"/);
     assert.match(main, /Codex<\/strong><span class="muted">Turned off · /, 'an agent turned off says so');
-    assert.match(main, /role="radio" aria-checked="true" onclick="setAiSetupAgentModel\('claude-code', 'claude-code-sonnet'\)">Claude Sonnet 5\.5</, 'the default model is the chosen chip');
-    assert.match(main, /Codex<\/strong><span class="muted">Turned off · Runs on [^<]* · GPT 5 Codex/, 'one model: said in the line, no chips');
+    assert.match(main, /3 models · <strong>Sonnet<\/strong> when nobody picks/, 'how many models, and the one it runs when nobody picks');
+    assert.match(main, /Codex<\/strong><span class="muted">Turned off · Runs on [^<]* · GPT-6\.1 Sol/, 'one model: said in the line');
+    ctx.toggleAiSetupAgentModels('claude-code');
+    main = els['setup-main'].innerHTML;
+    assert.match(main, /placeholder="Search 3 models"/, 'the list opens with a search');
+    assert.match(main, /aria-checked="true" onclick="setAiSetupAgentModel\('claude-code', 'sonnet'\)"><strong>Sonnet<\/strong>/, 'the chosen one is checked');
+    assert.match(main, /setAiSetupAgentModel\('claude-code', ''\)"><strong>Its own default<\/strong>/, 'and its own default can be chosen');
     calls.length = 0;
     await ctx.setAiSetupAgent('claude-code', false);
     let post = calls.find(([m, p]) => m === 'POST' && p === '/api/admin/ai/config/codes/codes.harnesses');
     assert.ok(post, 'the switch writes codes.harnesses');
     assert.deepStrictEqual(JSON.parse(JSON.stringify(post[2].values)), { off: ['claude-code', 'codex'] });
     calls.length = 0;
-    await ctx.setAiSetupAgentModel('claude-code', 'claude-code-opus');
+    await ctx.setAiSetupAgentModel('claude-code', 'claude-opus-5-5');
     post = calls.find(([m, p]) => m === 'POST' && p === '/api/admin/ai/config/codes/codes.harnesses');
-    assert.deepStrictEqual(JSON.parse(JSON.stringify(post[2].values)), { defaults: { 'claude-code': 'claude-code-opus' } });
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(post[2].values)), { defaults: { 'claude-code': 'claude-opus-5-5' } });
     // Free use and budgets (2026-11-15, §AD.9 step 4): the free AI each person gets a day, the server's monthly most,
     // what happens past the free part; Save writes AI's ai.exchange.
     await S.free(true);

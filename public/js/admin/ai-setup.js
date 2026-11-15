@@ -957,10 +957,13 @@ function aiSetupAgentsHtml() {
         const runsOn = p ? `${esc(p.display_name || p.key)}` : 'its maker\'s sign-in on the computer';
         // 2026-11-15 (§AD.9 step 3): People can use it (Codes' codes.harnesses `off`), and the model it runs when nobody
         // picks, as chips when it has more than one (`defaults`).
-        const agentsOf = Array.isArray(h.agents) ? h.agents : [];
-        const models = agentsOf.length > 1 ? `<span class="setup-chips" role="radiogroup" aria-label="${esc(h.name)}: the model when nobody picks">${agentsOf.map((m) => `<button type="button" class="setup-chip" role="radio" aria-checked="${m.id === h.default_agent ? 'true' : 'false'}" onclick="setAiSetupAgentModel('${esc(h.id)}', '${esc(m.id)}')">${esc(aiSetupModelWords(m.model))}</button>`).join('')}</span>` : '';
+        // 2026-11-15: every model the agent runs (the owner: "there's like tons"); the one it runs when nobody picks is
+        // chosen from a list with a search, its own default first.
+        const agentsOf = Array.isArray(h.models) && h.models.length ? h.models : [];
+        const cur = agentsOf.find((m) => m.id === h.default_model);
+        const models = agentsOf.length > 1 ? `<button type="button" class="setup-agent-model" aria-expanded="${aiSetupAgentOpen === h.id ? 'true' : 'false'}" onclick="toggleAiSetupAgentModels('${esc(h.id)}')">${esc(agentsOf.length)} models · <strong>${cur ? esc(cur.name || cur.id) : 'its own default'}</strong> when nobody picks</button>${aiSetupAgentOpen === h.id ? aiSetupAgentModelsHtml(h) : ''}` : '';
         const onSwitch = `<label class="pai-switch" title="People can use it"><input type="checkbox" role="switch" data-ov-native ${h.off ? '' : 'checked'} aria-label="${esc(h.name)}: people can use it" onchange="setAiSetupAgent('${esc(h.id)}', this.checked)"><span class="pai-track" aria-hidden="true"><span class="pai-knob"></span></span></label>`;
-        return `<li class="setup-model-row${h.off ? ' is-off' : ''}"><span class="setup-model-text"><strong>${esc(h.name)}</strong><span class="muted">${h.off ? 'Turned off · ' : ''}Runs on ${runsOn}${agentsOf.length === 1 ? ' · ' + esc(aiSetupModelWords(agentsOf[0].model)) : ''}${h.price && h.price.text ? ' · ' + esc(h.price.text) : ''}</span>${models}</span>${onSwitch}
+        return `<li class="setup-model-row${h.off ? ' is-off' : ''}"><span class="setup-model-text"><strong>${esc(h.name)}</strong><span class="muted">${h.off ? 'Turned off · ' : ''}Runs on ${runsOn}${agentsOf.length === 1 ? ' · ' + esc(agentsOf[0].name || agentsOf[0].id) : ''}${h.price && h.price.text ? ' · ' + esc(h.price.text) : ''}</span>${models}</span>${onSwitch}
             ${p ? (ready ? '<span class="setup-pill ok">Ready</span>' : `<button class="btn btn-outline btn-sm" onclick="aiSetupProviderOpen='${esc(pk)}'; selectAiSetupStep('${AI_SETUP_PROVIDERS}')">Add the ${esc(p.display_name || pk)} key</button>`) : '<span class="setup-pill">Signs in on the computer</span>'}</li>`;
     }).join('');
     const machines = a.machines.map((m) => {
@@ -991,8 +994,25 @@ function aiSetupModelWords(m) {
 function aiSetupAgentValues() {
     const hs = (aiSetupAgents && aiSetupAgents.harnesses) || [];
     const defaults = {};
-    for (const h of hs) if (h.default_agent && Array.isArray(h.agents) && h.agents.length > 1) defaults[h.id] = h.default_agent;
+    for (const h of hs) if (h.default_model) defaults[h.id] = h.default_model;
     return { off: hs.filter((h) => h.off).map((h) => h.id), defaults };
+}
+let aiSetupAgentOpen = null;          // the coding agent whose model list is open
+let aiSetupAgentQuery = '';
+function toggleAiSetupAgentModels(id) { aiSetupAgentOpen = aiSetupAgentOpen === id ? null : id; aiSetupAgentQuery = ''; renderAiSetup(); }
+/** The agent's models: a search, its own default, then every model it runs (newest first, as Codes lists them). */
+function aiSetupAgentModelsHtml(h) {
+    const q = aiSetupAgentQuery.trim().toLowerCase();
+    const list = (h.models || []).filter((m) => !q || `${m.name} ${m.id} ${m.note}`.toLowerCase().includes(q));
+    const row = (id, name, note) => `<li><button type="button" class="setup-agent-pick" role="radio" aria-checked="${(h.default_model || '') === id ? 'true' : 'false'}" onclick="setAiSetupAgentModel('${esc(h.id)}', '${esc(id)}')"><strong>${esc(name)}</strong>${note ? `<span class="muted">${esc(note)}</span>` : ''}</button></li>`;
+    return `<div class="setup-agent-models">
+        <input type="search" class="setup-agent-find" placeholder="Search ${esc(h.models.length)} models" value="${esc(aiSetupAgentQuery)}" aria-label="Search the models ${esc(h.name)} runs" oninput="aiSetupAgentQuery = this.value; const at = this.selectionStart; renderAiSetup(); const f = document.querySelector('.setup-agent-find'); if (f) { f.focus(); try { f.setSelectionRange(at, at); } catch (e) { /* */ } }">
+        <ul class="setup-agent-list" role="radiogroup" aria-label="${esc(h.name)}: the model when nobody picks">
+            ${q ? '' : row('', 'Its own default', 'the model the agent picks for itself')}
+            ${list.slice(0, 120).map((m) => row(m.id, m.name || m.id, m.note || m.id)).join('')}
+            ${list.length > 120 ? `<li class="muted">${esc(list.length - 120)} more: search to find them</li>` : ''}
+            ${q && !list.length ? `<li class="muted">No model matches “${esc(aiSetupAgentQuery)}”</li>` : ''}
+        </ul></div>`;
 }
 async function saveAiSetupAgents(values, words) {
     try {
@@ -1010,13 +1030,14 @@ async function setAiSetupAgent(id, on) {
     const v = aiSetupAgentValues();
     await saveAiSetupAgents({ off: v.off }, on ? `${h.name} is on for everyone` : `${h.name} is turned off`);
 }
-/** The model a coding agent runs when nobody picks one. */
-async function setAiSetupAgentModel(id, agentId) {
+/** The model a coding agent runs when nobody picks one ('' = its own default). */
+async function setAiSetupAgentModel(id, modelId) {
     const h = ((aiSetupAgents && aiSetupAgents.harnesses) || []).find((x) => x.id === id);
-    if (!h || !(h.agents || []).some((a) => a.id === agentId)) return;
-    h.default_agent = agentId;
-    const m = h.agents.find((a) => a.id === agentId);
-    await saveAiSetupAgents({ defaults: aiSetupAgentValues().defaults }, `${h.name} runs ${aiSetupModelWords(m.model)} when nobody picks`);
+    if (!h || (modelId && !(h.models || []).some((m) => m.id === modelId))) return;
+    h.default_model = modelId || null;
+    const m = (h.models || []).find((x) => x.id === modelId);
+    aiSetupAgentOpen = null;
+    await saveAiSetupAgents({ defaults: aiSetupAgentValues().defaults }, modelId ? `${h.name} runs ${m.name || m.id} when nobody picks` : `${h.name} picks its own model`);
 }
 async function lendAiSetupMachine(id, on) {
     try {
