@@ -136,7 +136,9 @@ function guideDraw() {
         a.addEventListener('click', (e) => { e.preventDefault(); guideGo(st.id); });
         ul.append(gEl('li', '', [a]));
     }
-    const fold = gEl('details', 'guide-fold', [gEl('summary', '', [`Step ${i + 1} of ${steps.length}: every step`]), rail]);
+    // One count on the page (11-15, the owner's shot: "5 of 21 steps done" beside "Step 2 of 23"): the head says how many
+    // are done; the fold names the step you are on.
+    const fold = gEl('details', 'guide-fold', [gEl('summary', '', [gEl('span', 'guide-fold-now', [s.title]), gEl('span', 'muted', [' · every step'])]), rail]);
 
     const [word, cls, icon] = GUIDE_STATE[s.state] || GUIDE_STATE.todo;
     const card = gEl('section', 'guide-card', [], { tabindex: '-1', 'aria-labelledby': 'guide-title' });
