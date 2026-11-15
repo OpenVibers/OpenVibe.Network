@@ -105,7 +105,8 @@ function renderActions(unread) {
     const acts = [
         streamer ? ['Go live', 'fa-tower-broadcast', 'https://openvibe.live/broadcast', 'live'] : ['Watch live', 'fa-circle-play', 'https://openvibe.live/', 'live'],
         ['Messages', 'fa-comment-dots', 'https://openvibe.chat/messages', 'chat', dock('chats')],
-        ['Ask Vibe', 'fa-wand-magic-sparkles', 'https://openvibe.chat/', 'vibe', dock('vibe')],
+        // Your agent (11-15, the owner: "use the actor … instead of vibe character"): Ask Actor, the menu's Vibe door.
+        ['Ask Actor', 'fa-wand-magic-sparkles', 'https://openvibe.chat/vibe', 'vibe', dock('vibe')],
         ['Your files', 'fa-folder', 'https://openvibe.download/files', 'files'],
         ['Codes', 'fa-code', 'https://openvibe.codes/', 'codes'],
         ['Wallet', 'fa-wallet', '/wallet', 'wallet'],
