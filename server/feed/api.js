@@ -152,6 +152,18 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
         }
         cards = rankCards(cards, { followed: new Set(followed), affinity, now: now() });
         const items = cards.slice(0, want).map(pictures.card);
+        // A run's card (g:…, an hour of deals or jobs) counts its own views (11-15, the owner: "why is there no view count
+        // on everything on the feed?"): under feed:group:<id>, the ref the views beacon counts it by. Before, it showed its
+        // first row's views, and nothing counted the run, so it stayed at 0.
+        const runs = items.filter((c) => /^g:[A-Za-z0-9_.:-]{1,80}$/.test(String(c.id || '')));
+        if (runs.length) {
+            try {
+                const held = runs.map((c) => ({ ref: { service: 'feed', kind: 'group', id: c.id.slice(2) }, counts: {} }));
+                await require('../views/counts').attachCounts(held);
+                // Views only: feed.item@1's counts name views, likes, comments, watchers and people (no "engaged").
+                runs.forEach((c, i) => { c.counts = { ...(c.counts || {}), views: Math.max(0, Number(held[i].counts && held[i].counts.views) || 0) }; });
+            } catch { /* the count it had */ }
+        }
         // The next page starts at the newest row whose card this page did not show (it used to start after every row
         // read, so the cards past the first `want` were never seen); a row of a shown burst or group counts as shown.
         const shown = new Set();

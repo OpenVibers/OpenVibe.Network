@@ -80,9 +80,15 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
 
     const at = (s) => `http://127.0.0.1:${s.address().port}`;
     const urls = { chat: at(chat), codes: at(codes), actor: at(actor) };
-    const runs = createFrameRuns({ svcUrl: (name, fallback) => urls[name] || fallback, personOf: async () => ({ subject_id: 'usr_01K9R2V6M8Q4T0B7C3D5E9F2GH' }), log: { warn() {} } });
+    // These runs are from before the new agent system, so this router lists everything (since: 0); the archive is
+    // checked on its own below.
+    const runs = createFrameRuns({ svcUrl: (name, fallback) => urls[name] || fallback, personOf: async () => ({ subject_id: 'usr_01K9R2V6M8Q4T0B7C3D5E9F2GH' }), log: { warn() {} }, since: 0 });
     const app = express();
     app.use('/api/frame/runs', runs.router);
+    // 11-15 (the owner: "clear out old conversations, since now the system works way differently"): from a cutover on,
+    // older runs are archived: left out of the list, listed with ?archived=1; live work always shows.
+    const cut = createFrameRuns({ svcUrl: (name, fallback) => urls[name] || fallback, personOf: async () => ({ subject_id: 'usr_01K9R2V6M8Q4T0B7C3D5E9F2GH' }), log: { warn() {} }, since: Date.parse('2026-11-12T09:30:00Z') });
+    app.use('/api/frame/cut/runs', cut.router);
     const server = app.listen(0, '127.0.0.1');
     await new Promise((r) => server.once('listening', r));
     const base = `http://127.0.0.1:${server.address().port}/api/frame/runs`;
@@ -228,6 +234,17 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         ({ r } = await go('/', { method: 'POST', body: { text: '', attachments: [file], kind: 'chat' } }));
         assert.strictEqual(r.status, 201, 'a file alone starts a conversation');
         assert.strictEqual(asked.at(-1).files[0].id, file.id);
+
+        // The archive: what was last touched before the cutover is out, unless it is running or waits on the person.
+        const all = (await go('/')).d.runs;
+        const listed = async (q) => { const r = await fetch(`${base.replace('/api/frame/runs', '/api/frame/cut/runs')}${q}`, { headers: { Authorization: TOKEN } }); return (await r.json()).runs; };
+        const kept = await listed('/');
+        const live = (x) => x.status === 'running' || x.status === 'planning' || (x.status === 'waiting' && x.waiting && x.waiting.for !== 'message');
+        const expect = all.filter((x) => live(x) || Date.parse(x.updated_at || x.created_at) >= Date.parse('2026-11-12T09:30:00Z')).map((x) => x.ref);
+        assert.ok(expect.length < all.length, `the cutover leaves something out (${all.length} → ${expect.length})`);
+        assert.deepStrictEqual(kept.map((x) => x.ref), expect, 'older runs are archived; live ones always show');
+        assert.ok(!kept.some((x) => x.ref === 'codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GJ'), 'the old done task is gone from the list');
+        assert.deepStrictEqual((await listed('/?archived=1')).map((x) => x.ref), all.map((x) => x.ref), '?archived=1 lists everything: archived, never deleted');
 
         console.log('frame-runs: one list across Chat, Codes and Actor (needs you first, partial named), a chat as a run waiting for a message, start by kind or target, say, stop, approvals, and a stream for a product without one');
     } finally {
