@@ -265,20 +265,31 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
         return out.slice(0, 8);
     }
 
-    async function placesOf(username, choices = {}) {
+    // The person's hosted websites (<name>.openvibe.website), live now: Space's public read (plan §AD.10 step 6).
+    async function hostedSites(subject) {
+        if (!SUBJECT_RE.test(String(subject || ''))) return [];
+        const body = await publicJson(`${spaceBase}/api/v1/people/${encodeURIComponent(subject)}/sites`);
+        return (Array.isArray(body.sites) ? body.sites : []).filter((s) => s && typeof s.name === 'string' && /^[a-z0-9][a-z0-9-]{0,62}$/.test(s.name)
+            && typeof s.hostname === 'string' && /^[a-z0-9.-]{3,253}$/.test(s.hostname) && /^https:\/\/[a-z0-9.-]+\/$/.test(String(s.url || ''))).slice(0, 6)
+            .map((s) => ({ name: s.name, hostname: s.hostname, url: s.url }));
+    }
+
+    async function placesOf(username, choices = {}, subject = null) {
         const hit = placesCache.get(username);
         let all = hit && now() - hit.at < PUBLIC_PLACE_TTL_MS ? hit.value : null;
         if (!all) {
-            const [live, community, spaces] = await Promise.all([
+            const [live, community, spaces, sites] = await Promise.all([
                 livePlace(username).catch(() => null), communityPlaces(username).catch(() => []), spacePlaces(username).catch(() => []),
+                hostedSites(subject).catch(() => []),
             ]);
-            all = { live: live?.live || null, videos: live?.videos || [], spaces: spaces || [], community: community || [] };
+            all = { live: live?.live || null, videos: live?.videos || [], spaces: spaces || [], sites: sites || [], community: community || [] };
             placesCache.set(username, { at: now(), value: all });
         }
         const value = {
             ...(choices.live === false ? {} : (all.live ? { live: all.live } : {})),
             ...(choices.media === false ? {} : { videos: all.videos }),
             spaces: choices.space === false ? [] : all.spaces,
+            sites: choices.space === false ? [] : (all.sites || []),
             community: choices.community === false ? [] : all.community,
         };
         if (placesCache.size > 2000) placesCache.delete(placesCache.keys().next().value);
@@ -300,7 +311,7 @@ function createPublicProfiles({ db, selfToken = () => null, inventoryUrl = 'http
         let links = [], choices = { live: true, media: true, space: true, community: true };
         try { links = typeof u.public_page_links === 'string' ? JSON.parse(u.public_page_links) : (u.public_page_links || []); } catch {}
         try { choices = { ...choices, ...(typeof u.public_page_places === 'string' ? JSON.parse(u.public_page_places) : (u.public_page_places || {})) }; } catch {}
-        const places = Number(u.profile_public) ? await placesOf(u.username, choices) : { spaces: [], community: [], videos: [] };
+        const places = Number(u.profile_public) ? await placesOf(u.username, choices, u.subject_id) : { spaces: [], sites: [], community: [], videos: [] };
         return { username: u.username, display_name: u.display_name || u.username, avatar_url: avatarUrl(u.username), profile_url: `${SITE}/@${encodeURIComponent(u.username)}`, bio: Number(u.profile_public) ? String(u.public_page_bio || '').slice(0, 280) : '', links: Number(u.profile_public) && Array.isArray(links) ? links.slice(0, 8) : [], places };
     }
 
@@ -422,6 +433,7 @@ function publicPlacesHtml(places) {
         media: video.thumb ? `<span class="pf-place-pic"><img src="${esc(video.thumb)}?w=320&amp;fmt=webp" alt="" loading="lazy" decoding="async" width="96" height="54">${video.seconds ? `<b>${esc(clock(video.seconds))}</b>` : ''}</span>` : placeIcon('video'),
         title: esc(video.title), line: `Video${video.date ? ` · ${esc(monthDay(video.date))}` : ''}${!video.thumb && video.seconds ? ` · ${esc(clock(video.seconds))}` : ''}` }));
     for (const space of places.spaces || []) cards.push(placeCard({ url: space.url, media: placeIcon('site'), title: esc(space.title), line: 'Published site' }));
+    for (const site of places.sites || []) cards.push(placeCard({ url: site.url, media: placeIcon('site'), title: esc(site.name), line: `Website · ${esc(site.hostname)}` }));
     for (const paste of places.community || []) cards.push(placeCard({ url: paste.url, media: placeIcon(paste.kind === 'Picture' ? 'picture' : 'paste'), title: esc(paste.title),
         line: paste.kind && paste.kind !== 'Paste' ? `${esc(paste.kind)} · Community paste` : 'Community paste' }));
     if (!cards.length) return '';
