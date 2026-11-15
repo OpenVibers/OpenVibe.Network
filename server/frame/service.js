@@ -1192,6 +1192,24 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         res.send(JSON.stringify(got.body));
     });
 
+    // GET /api/frame/run-options — an agent's box: who does a run (your Actor, Codes, a coding harness) and where it runs
+    // (OpenVibe, your computers through Link). The model is /choices'. The person's token: their own lists, never kept;
+    // signed out: the short lists, kept a minute (server/frame/run-options.js).
+    const runOptions = require('./run-options').createRunOptions({
+        svcUrl, log: console,
+        bot: privateKey && issuer && config.services && config.services.bot && config.services.bot.internalUrl
+            ? require('../registry/machines').createBotClient({ baseUrl: config.services.bot.internalUrl, privateKey, issuer }) : null,
+    });
+    router.get('/run-options', async (req, res) => {
+        res.set({ 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization, Origin' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? String(req.headers.authorization) : '';
+        let subject = null;
+        if (auth) { const user = await personOf(req).catch(() => null); subject = user && (user.subject_id || user.subject || null); }
+        const got = await runOptions.get({ auth, subject });
+        res.set('Cache-Control', got.cache ? 'public, max-age=60' : 'private, no-store');
+        res.send(JSON.stringify(got.body));
+    });
+
     // GET /api/frame/commands?site=<host>&q= — the composer's slash commands (composer-post-ask-do.md, R3):
     // every site's /ask, /do, /remind and /timer, the site's own from its manifest, and a signed-in person's
     // saved snippets. Site commands come first, a name appears once, and q filters by name or hint.
