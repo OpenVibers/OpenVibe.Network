@@ -563,6 +563,14 @@ body:has(.admin-clarity.active) .ov-sel-opt { min-height:44px; }
 .ban-act{display:flex;justify-content:flex-end}
 .ban-owner{font-size:12.5px}
 
+/* Flagged speech (Live's transcript flags): the ban cards' shape, with the line as the badge and the moment as a link */
+.flag-line{background:color-mix(in srgb,var(--danger,#ef4444) 16%,transparent);color:var(--danger,#f87171)}
+.flag-line.is-settled{background:color-mix(in srgb,var(--text-primary) 8%,transparent);color:var(--text-secondary)}
+.flag-at{display:inline-flex;align-items:center;gap:6px;min-height:44px;font-weight:700;color:var(--accent,#3b82f6);text-decoration:none;overflow-wrap:anywhere}
+.flag-at:hover{text-decoration:underline}
+.flag-act{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+.flag-act .btn{min-height:44px}
+
 /* Every on/off in the panel is the network's switch (2026-11-13, the owner: "the whole entire admin panel needs to use
    openvibe.design, especially for like these checkboxes"): core.js marks a lone checkbox role="switch" and ov-forms draws
    it; nothing here may stretch it to a field's height. */

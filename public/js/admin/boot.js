@@ -13,6 +13,7 @@ const tabLoaders = {
     streams: loadStreams,
     lineage: () => loadLineage(),
     bans: loadBans,
+    'flagged-speech': () => loadFlaggedSpeech(),
     'chat-logs': () => {}, // manual search
     moderators: loadModerators,
     settings: loadSettings,
