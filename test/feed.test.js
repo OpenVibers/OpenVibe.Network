@@ -71,6 +71,18 @@ const envelope = (type, payload, over = {}) => ({
     assert.strictEqual(deals[0].group.count, 3);
     assert.match(deals[0].id, /^g:deal:deals:\d{4}-\d\d-\d\dT\d\d$/, 'a burst has one id per site and hour, the same on every page (11-12: three "112 new deals")');
     assert.strictEqual(deals[0].label, undefined, 'named by its site, never "System"');
+    // feed.item@1 1.3.0 (11-15, the owner: "views … total views"): each folded item keeps its own views (counted on its
+    // card before the fold) and the run carries their sum; a run with no counts says nothing.
+    const counted = foldCards([5, 12, 30].map((v, n) => Object.assign(cardOf({ source_service: 'deals', source_type: 'offer', source_id: `v${n}`, kind: 'deal', title: `Deal ${n}`, url: 'https://openvibe.deals/d/x', site: 'deals', site_name: 'Deals', counts: {}, occurred_at: iso(now - n * 1000) }), { counts: { views: v } })));
+    assert.deepStrictEqual(counted[0].group.items.map((x) => x.views).sort((a, b) => a - b), [5, 12, 30], 'each item its own views');
+    assert.strictEqual(counted[0].group.views, 47, 'the run, all of them');
+    assert.strictEqual(deals[0].group.views, undefined, 'no counts, no total');
+    { // The group as feed.item@1 1.3.0 says it (a minimal card around it; the folded card still has fields the API strips).
+        const c = require('openvibe-contracts');
+        const v = c.validate('feed.item@1', { id: 'g:deal:deals:2026-11-15T04', kind: 'deal', url: 'https://openvibe.deals/new', title: '3 new deals', text: '', site: 'deals', site_name: 'Deals', subject: null, at: iso(now), actor: null, media: null, counts: { views: 47, people: 3 },
+            group: { ...counted[0].group, items: counted[0].group.items.map((x) => ({ ...x, url: 'https://openvibe.deals/d/x' })) } });
+        assert.ok(v.valid, JSON.stringify(v.errors));
+    }
 
     // ── one card per thing (11-13: a picture showed twice, once as itself and once as its Community thread) ──
     {
