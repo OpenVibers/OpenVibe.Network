@@ -280,10 +280,11 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         if (CODE_DO.test(t) && CODE_THING.test(t)) return 'code';
         return 'vibe';
     }
-    /** Codes' make mode with the person's words: a run when it starts a task, null when the words are something new. */
-    async function codesMake(auth, owner, text, idempotencyKey) {
+    /** Codes' make mode with the person's words: a run when it starts a task, null when the words are something new.
+     *  `how` is the composer's choice for Codes (4.259.0): the harness, the model and the person's computer. */
+    async function codesMake(auth, owner, text, idempotencyKey, how = {}) {
         let out;
-        try { out = await call('codes', '/api/v1/tasks', { auth, method: 'POST', body: { mode: 'make', text }, idempotencyKey }); }
+        try { out = await call('codes', '/api/v1/tasks', { auth, method: 'POST', body: { mode: 'make', text, ...how }, idempotencyKey }); }
         catch (err) { if (err && (err.status === 422 || err.status === 404)) return null; throw err; }
         const id = out && (out.id || (out.task && out.task.id));
         if (!id) return null;   // something new: Vibe talks it through (Codes would hand it to OpenVibe AI's builder)
@@ -350,12 +351,30 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         if (!text && !aiFiles(b.attachments).length) throw fail(422, 'runs.start_needs_words', 'Say what the run is for ({ text })');
         const key = String(req.get('idempotency-key') || '');
         const idempotencyKey = /^[A-Za-z0-9._~-]{1,200}$/.test(key) ? key : (key ? null : crypto.randomUUID());
-        const place = placeFor({ ...b, text });
+        // The composer's choice (openvibe-shared 4.259.0, agents.run-start@1 agent, model, where; the owner, 11-15: "choose
+        // your harness … configure your model … choose a node"): who does it decides the product; Auto reads the words.
+        const chosen = typeof b.agent === 'string' ? b.agent.trim().slice(0, 160) : '';
+        const where = b.where && typeof b.where === 'object' && !Array.isArray(b.where) && ['openvibe', 'machine', 'runner', 'this-computer'].includes(b.where.kind) ? b.where : null;
+        const model = b.model && typeof b.model === 'object' && typeof b.model.id === 'string' ? b.model : null;
+        const toActor = chosen === 'actor' || /^agt_[0-9A-HJKMNP-TV-Z]{26}$/.test(chosen);
+        const toCodes = !toActor && !!chosen && chosen !== 'auto';
+        let place = placeFor({ ...b, text });
+        if (toActor) place = 'actor';
+        else if (toCodes) place = 'code';
+        else if (where && where.kind === 'machine' && place !== 'code') place = 'machine';
+        const codesHow = toCodes || place === 'code' ? {
+            ...(toCodes && chosen !== 'codes' ? { harness: chosen } : {}),
+            ...(model ? { model: model.id } : {}),
+            ...(where && where.kind === 'machine' && where.id ? { machine: String(where.id) } : {}),
+        } : {};
+        // Actor's own agent ids pass; "actor" is the person's default agent there (no agent named).
+        const forActor = { ...b, text, ...(chosen === 'actor' ? { agent: undefined } : {}) };
         let run = null;
-        if (place === 'code') run = await codesMake(auth, owner, text, idempotencyKey);
-        if (!run && place === 'machine') run = await actor.start(auth, owner, { ...b, text, kind: 'machine' }, { idempotencyKey });
+        if (place === 'actor') run = await actor.start(auth, owner, { ...forActor, kind: b.kind && ['task', 'goal', 'machine'].includes(b.kind) ? b.kind : (where && where.kind === 'machine' ? 'machine' : 'task') }, { idempotencyKey });
+        if (!run && place === 'code') run = await codesMake(auth, owner, text, idempotencyKey, codesHow);
+        if (!run && place === 'machine') run = await actor.start(auth, owner, { ...forActor, kind: 'machine' }, { idempotencyKey });
         if (!run) run = await starterFor(b).start(auth, owner, { ...b, text }, { idempotencyKey });
-        res.set('X-OV-Placed', place === 'given' ? 'asked' : run.kind === 'code' ? 'codes' : run.kind === 'machine' ? 'machine' : 'vibe');
+        res.set('X-OV-Placed', place === 'given' ? 'asked' : place === 'actor' ? 'actor' : run.kind === 'code' ? 'codes' : run.kind === 'machine' ? 'machine' : 'vibe');
         res.status(201).json(run);
     }));
 

@@ -190,6 +190,22 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         p = await place('test');
         assert.deepStrictEqual(p.slice(0, 2), [201, 'vibe'], 'a word on its own starts a conversation');
 
+        // The composer's choice (Shared 4.259.0; the owner, 11-15: "choose your harness … configure your model … choose a
+        // node"): a harness goes to Codes with it, the model and the computer; your Actor goes to Actor whatever the words.
+        const pick = async (body) => { const x = await go('/', { method: 'POST', body }); return [x.r.status, x.r.headers.get('x-ov-placed')]; };
+        let q = await pick({ text: 'Fix the login on my-site', agent: 'claude-code', model: { id: 'anthropic/claude-sonnet', source: 'keys' }, where: { kind: 'machine', id: 'dev_01K9R2V6M8Q4T0B7C3D5E9F2GH', name: 'Studio PC' } });
+        assert.deepStrictEqual(q, [201, 'codes']);
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'codes' && x.method === 'POST').at(-1).body,
+            { mode: 'make', text: 'Fix the login on my-site', harness: 'claude-code', model: 'anthropic/claude-sonnet', machine: 'dev_01K9R2V6M8Q4T0B7C3D5E9F2GH' }, 'Codes gets the harness, the model and the computer');
+        q = await pick({ text: 'Fix the login on my-site', agent: 'codes' });
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'codes' && x.method === 'POST').at(-1).body, { mode: 'make', text: 'Fix the login on my-site' }, 'Codes itself: its own pick of harness');
+        q = await pick({ text: 'How do I fix my login page?', agent: 'actor', model: { id: 'deepseek/deepseek-chat', source: 'openvibe' } });
+        assert.deepStrictEqual(q, [201, 'actor'], 'your Actor, even for a question');
+        const toActor = seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body;
+        assert.deepStrictEqual([toActor.kind, toActor.agent, toActor.model], ['task', undefined, { id: 'deepseek/deepseek-chat', source: 'openvibe' }], 'a task for your default agent, on the model you picked');
+        q = await pick({ text: 'Tidy my downloads folder', agent: 'auto', where: { kind: 'machine', id: 'dev_01K9R2V6M8Q4T0B7C3D5E9F2GH' } });
+        assert.deepStrictEqual(q, [201, 'machine'], 'Auto on your computer is a machine run');
+
         // Say, stop, approvals.
         ({ r, d } = await go('/chat:c_keys/messages', { method: 'POST', body: { text: 'Under $70?' } }));
         assert.strictEqual(r.status, 201); assert.strictEqual(d.from, 'person'); assert.strictEqual(d.text, 'Under $70?');
