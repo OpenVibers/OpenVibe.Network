@@ -548,7 +548,15 @@ const DEFAULT_GRANTS = [
         // opens changes for them to merge, acting as that person with X-OV-Subject (Actor's git_* tools).
         ['actor', 'git.repo.read', 'openvibe.git', []],
         ['actor', 'git.repo.write', 'openvibe.git', []],
+        // Plan §AD.10 step 2 (2026-11-15): a Space site published from a person's OpenVibe.Git repository. Space's
+        // dashboard reads the person's repositories and sets where one is published (Git's space-publish), acting as
+        // that person with X-OV-Subject; Space itself never fetches a repository.
+        ['space', 'git.repo.read', 'openvibe.git', []],
+        ['space', 'git.repo.write', 'openvibe.git', []],
     ] : []),
+    // Plan §AD.10 step 2: OpenVibe.Git sends the folder of each push to the published branch to the owner's Space site
+    // through Space's git deploy door, as that owner (X-OV-Subject); it lands as the site's preview.
+    ['git', 'space.deploy.create', 'openvibe.space', []],
     // Plan T16/T17 (contracts 0.162.0): a person's OpenVibe.Actor agent routes coding work to OpenVibe.Codes, which runs
     // it on that person's own machine (X-OV-Subject); Codes shows Actor only the tasks Actor started for that person.
     ...['codes.task.start', 'codes.task.read', 'codes.task.cancel'].map((c) => ['actor', c, 'openvibe.codes', []]),

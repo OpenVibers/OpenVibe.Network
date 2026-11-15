@@ -24,6 +24,8 @@ for (const cap of CAPS) {
         `${cap} is granted for OpenVibe Git and for no other audience`);
 }
 assert.deepStrictEqual(principals.DEFAULT_GRANTS.filter((g) => g[2] === 'openvibe.git').map((g) => [g[0], g[1]]),
-    CAPS.every((c) => capabilities.get(c)) ? [['codes', 'git.repo.read'], ['codes', 'git.repo.write'], ['actor', 'git.repo.read'], ['actor', 'git.repo.write']] : [],
-    'Codes, and a person\'s Actor (plan §AD.10 step 1: its git_* tools act as the person)');
+    CAPS.every((c) => capabilities.get(c)) ? [['codes', 'git.repo.read'], ['codes', 'git.repo.write'], ['actor', 'git.repo.read'], ['actor', 'git.repo.write'], ['space', 'git.repo.read'], ['space', 'git.repo.write']] : [],
+    'Codes, a person\'s Actor (plan §AD.10 step 1: its git_* tools act as the person) and Space (step 2: publishing from a repository)');
+// Plan §AD.10 step 2: Git deploys a person's site on Space as them, and does nothing else on Space.
+assert.deepStrictEqual(principals.DEFAULT_GRANTS.filter((g) => g[0] === 'git').map((g) => [g[1], g[2], g[3]]), [['space.deploy.create', 'openvibe.space', []]], 'Git may deploy a person\'s Space site, and only that');
 console.log('git grants: ok');
