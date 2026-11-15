@@ -138,7 +138,7 @@ async function loadAiSetup(force) {
     try {
         aiSetupState = await api('/api/admin/ai/setup');
         if (!aiSetupState || !Array.isArray(aiSetupState.steps)) throw new Error('OpenVibe.AI did not answer with the setup');
-        if (!aiSetupState.steps.some((s) => s.id === aiSetupStep) && ![AI_SETUP_DEFAULT, AI_SETUP_START, AI_SETUP_DONE, AI_SETUP_PROVIDERS].includes(aiSetupStep)) aiSetupStep = AI_SETUP_START;
+        if (!aiSetupState.steps.some((s) => s.id === aiSetupStep) && ![AI_SETUP_DEFAULT, AI_SETUP_START, AI_SETUP_DONE, AI_SETUP_PROVIDERS, AI_SETUP_FREE].includes(aiSetupStep)) aiSetupStep = AI_SETUP_START;
         renderAiSetup();
     } catch (err) {
         main.innerHTML = `<div class="setup-error"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
@@ -153,6 +153,7 @@ function renderAiSetup() {
     renderAiSetupProgress();
     if (aiSetupStep === AI_SETUP_DEFAULT) renderAiSetupDefaults();
     else if (aiSetupStep === AI_SETUP_PROVIDERS) renderAiSetupProviders();
+    else if (aiSetupStep === AI_SETUP_FREE) renderAiSetupFree();
     else if (aiSetupStep === AI_SETUP_START) renderAiSetupStart();
     else if (aiSetupStep === AI_SETUP_DONE) renderAiSetupDone();
     else renderAiSetupStep();
@@ -177,6 +178,10 @@ function renderAiSetupStepper() {
             <span class="setup-step-text"><span class="setup-step-name">${esc(aiSetupStepName(s))}</span><span class="setup-step-state">${esc(AI_SETUP_STATE_WORD[state] || state)}</span></span>
         </button>`;
     });
+    rows.push(`<button class="setup-step defaults ${aiSetupStep === AI_SETUP_FREE ? 'active' : ''}" onclick="selectAiSetupStep('${AI_SETUP_FREE}')" aria-current="${aiSetupStep === AI_SETUP_FREE ? 'step' : 'false'}">
+        <span class="setup-step-dot" aria-hidden="true"><i class="fa-solid fa-gift"></i></span>
+        <span class="setup-step-text"><span class="setup-step-name">Free use and budgets</span><span class="setup-step-state">What people get free</span></span>
+    </button>`);
     rows.push(`<button class="setup-step defaults ${aiSetupStep === AI_SETUP_DEFAULT ? 'active' : ''}" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')" aria-current="${aiSetupStep === AI_SETUP_DEFAULT ? 'step' : 'false'}">
         <span class="setup-step-dot" aria-hidden="true"><i class="fa-solid fa-sliders"></i></span>
         <span class="setup-step-text"><span class="setup-step-name">Defaults</span><span class="setup-step-state">Models, spend and caps</span></span>
@@ -621,6 +626,60 @@ async function applyAiSetupRecommended() {
        everyone, never OpenVibe's own server).
    ═══════════════════════════════════════════════════════════════ */
 const AI_SETUP_PROVIDERS = 'providers';
+const AI_SETUP_FREE = 'free';
+let aiSetupFree = null;               // { ns } AI's ai.exchange namespace, or { error }
+
+/** Free use and budgets (2026-11-15, plan §AD.9 step 4; the owner: "free usage for people"): the free AI each person
+ *  gets a day (AI's ai.exchange free_daily_tokens), what the server spends at most a month (the jobs' caps, changed
+ *  under Defaults), and what happens past the free part (their own key, or Credits when they are on). */
+async function loadAiSetupFree(force) {
+    if (aiSetupFree && !force) return aiSetupFree;
+    try { aiSetupFree = { ns: await api('/api/admin/ai/config/ai/ai.exchange') }; }
+    catch (err) { aiSetupFree = { error: (err && err.message) || 'OpenVibe.AI did not answer' }; }
+    return aiSetupFree;
+}
+function renderAiSetupFree() {
+    const main = document.getElementById('setup-main');
+    if (!main || !aiSetupState) return;
+    if (!aiSetupFree) { main.innerHTML = '<div class="loading">Reading what people get free…</div>'; loadAiSetupFree().then(() => { if (aiSetupStep === AI_SETUP_FREE) renderAiSetup(); }); return; }
+    const ns = aiSetupFree.ns || {};
+    const field = ns.schema && ns.schema.properties && ns.schema.properties.free_daily_tokens;
+    const pinned = Array.isArray(ns.pins) && ns.pins.includes('free_daily_tokens');
+    const tokens = ns.values && Number.isFinite(Number(ns.values.free_daily_tokens)) ? Number(ns.values.free_daily_tokens) : Number((field && field['x-example']) || 20000);
+    const credits = !!(ns.values && ns.values.credits);
+    const caps = (aiSetupState.defaults || []).filter((d) => Number(d.cap_usd) > 0);
+    const total = caps.reduce((n, d) => n + Number(d.cap_usd), 0);
+    const words = (n) => (n > 0 ? `about ${Math.round(n * 0.75).toLocaleString()} words` : 'free AI is off');
+    const free = aiSetupFree.error ? `<p class="setup-note bad">${esc(aiSetupFree.error)}</p>`
+        : !field ? '<p class="setup-note">OpenVibe.AI\'s next release adds this setting; until then the free amount is set in its settings file.</p>'
+            : `<div class="setup-free">
+                <label for="setup-free-tokens"><strong>Each person, each day</strong><span class="muted">${esc(field.description || '')}</span></label>
+                <div class="setup-free-row"><input id="setup-free-tokens" type="number" min="0" max="10000000" step="1000" value="${tokens}" ${pinned ? 'disabled' : ''} oninput="document.getElementById('setup-free-words').textContent = aiSetupFreeWords(this.value)">
+                    <span class="muted">tokens · <span id="setup-free-words">${esc(words(tokens))}</span></span>
+                    ${pinned ? '<span class="setup-pill">Set in the server\'s settings file</span>' : '<button class="btn btn-primary btn-sm" onclick="saveAiSetupFree()">Save</button>'}</div>
+            </div>`;
+    main.innerHTML = `<article class="setup-card">
+        <header class="setup-card-head"><div><span class="setup-kicker">For everyone</span><h3 id="setup-step-title">Free use and budgets</h3>
+            <p class="setup-what">What people get free, what the server spends at most, and what happens past it.</p></div></header>
+        <section class="setup-free-sec"><h4>Free AI</h4>${free}</section>
+        <section class="setup-free-sec"><h4>Most the server spends a month</h4>
+            <p>${caps.length ? `<strong>${aiSetupMoney(total)}</strong> across ${caps.length} job${caps.length === 1 ? '' : 's'} with a cap.` : 'No job has a cap yet: the server spends what the jobs use.'}</p>
+            <button class="btn btn-outline btn-sm" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')">Change each job's cap</button></section>
+        <section class="setup-free-sec"><h4>Past the free part</h4>
+            <p>People use their own key${credits ? ', or their Credits (Credits are on).' : '. Credits are off, so nothing is charged.'}</p></section>
+    </article>`;
+}
+function aiSetupFreeWords(v) { const n = Math.max(0, Number(v) || 0); return n > 0 ? `about ${Math.round(n * 0.75).toLocaleString()} words` : 'free AI is off'; }
+async function saveAiSetupFree() {
+    const input = document.getElementById('setup-free-tokens');
+    const n = Math.max(0, Math.min(10000000, Math.round(Number(input && input.value) || 0)));
+    try {
+        await api('/api/admin/ai/config/ai/ai.exchange', { method: 'POST', body: { values: { free_daily_tokens: n }, reason: 'free AI per person per day' } });
+        toast(n > 0 ? `Each person gets ${n.toLocaleString()} tokens free a day` : 'Free AI is off');
+    } catch (err) { toast((err && err.message) || 'That did not save', 'error'); }
+    await loadAiSetupFree(true);
+    if (aiSetupStep === AI_SETUP_FREE) renderAiSetup();
+}
 const AI_SETUP_EXCHANGE = 'https://openvibe.exchange/console/providers';
 let aiSetupProviderList = null;      // OpenVibe.AI's registry, as the owner sees it
 let aiSetupProviderError = '';

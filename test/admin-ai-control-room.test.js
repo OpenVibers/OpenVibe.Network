@@ -32,6 +32,7 @@ const ctx = {
         calls.push([o.method || 'GET', p, o.body || null]);
         if (p === '/api/admin/ai/config/providers') return { providers: PROVIDERS };
         if (p === '/api/admin/ai/setup/agents') return { harnesses: [{ id: 'claude-code', name: 'Claude Code', provider: 'anthropic', off: false, default_agent: 'claude-code-sonnet', agents: [{ id: 'claude-code-sonnet', model: 'claude-sonnet-5-5' }, { id: 'claude-code-opus', model: 'claude-opus-5-5' }] }, { id: 'codex', name: 'Codex', provider: 'openai', off: true, agents: [{ id: 'codex-default', model: 'gpt-5-codex' }] }, { id: 'opencode', name: 'OpenCode', provider: 'opencode-go' }, { id: 'openvibe-ai', name: 'OpenVibe.AI', provider: 'openvibe' }] };
+        if (p === '/api/admin/ai/config/ai/ai.exchange' && !o.method) return { service: 'ai', namespace: 'ai.exchange', revision: 3, values: { free_daily_tokens: 20000, credits: false }, pins: [], schema: { properties: { free_daily_tokens: { title: 'Free AI per person per day', description: 'How many tokens a verified person may use free each day.', 'x-example': 20000 } } } };
         if (p === '/api/v1/machines') return { machines: [{ id: 'dev_1', name: 'ov-node-01', online: true, controls: { shared_jobs: true, worker: { serve_others: true } } }] };
         return {};
     },
@@ -40,6 +41,7 @@ const ctx = {
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'admin', 'ai-setup.js'), 'utf8')
     + '\n;globalThis.__s = { set: (s) => { aiSetupState = s; }, go: (id) => { aiSetupStep = id; }, render: renderAiSetup, providers: loadAiSetupProviders, agents: loadAiSetupAgents,'
+    + ' free: loadAiSetupFree,'
     + ' query: (q) => { aiSetupModelQuery.chat = q; }, filter: (f) => { aiSetupProviderFilter = f; }, open: (k) => { aiSetupProviderOpen = k; } };', ctx);
 const S = ctx.__s;
 const offer = (provider, model, label, extra = {}) => ({ provider, provider_name: provider, model, label, price: { text: '$1 in · $2 out per 1M tokens' }, ...extra });
@@ -126,5 +128,21 @@ S.set({
     await ctx.setAiSetupAgentModel('claude-code', 'claude-code-opus');
     post = calls.find(([m, p]) => m === 'POST' && p === '/api/admin/ai/config/codes/codes.harnesses');
     assert.deepStrictEqual(JSON.parse(JSON.stringify(post[2].values)), { defaults: { 'claude-code': 'claude-code-opus' } });
+    // Free use and budgets (2026-11-15, §AD.9 step 4): the free AI each person gets a day, the server's monthly most,
+    // what happens past the free part; Save writes AI's ai.exchange.
+    await S.free(true);
+    S.go('free'); S.render();
+    main = els['setup-main'].innerHTML;
+    assert.match(main, /<h3 id="setup-step-title">Free use and budgets<\/h3>/);
+    assert.match(main, /value="20000"/);
+    assert.match(main, /about 15,000 words/);
+    assert.match(main, /Credits are off, so nothing is charged/);
+    assert.match(els['setup-steps'].innerHTML, /Free use and budgets/, 'a step of its own in the list');
+    el('setup-free-tokens').value = '50000';
+    calls.length = 0;
+    await ctx.saveAiSetupFree();
+    const freePost = calls.find(([m, p]) => m === 'POST' && p === '/api/admin/ai/config/ai/ai.exchange');
+    assert.ok(freePost, 'Save writes ai.exchange');
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(freePost[2].values)), { free_daily_tokens: 50000 });
     console.log('admin-ai-control-room: providers and keys, every model per job, keyless says so, coding agents and their computers');
 })().catch((err) => { console.error(err); process.exit(1); });
