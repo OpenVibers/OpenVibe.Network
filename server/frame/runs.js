@@ -211,6 +211,15 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
             }).filter((s) => !after || s.seq > after).slice(0, limit);
             return { steps, next: null };
         },
+        // The next words to a coding task (plan §AD.8: one session surface): Codes queues them while an attempt runs and
+        // carries the task on when none does; a model the session's chip changed to carries it on with that model.
+        async say(auth, owner, id, msg) {
+            const text = withFiles(msg.text, msg.attachments);
+            const model = msg.model && typeof msg.model.id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:\/#-]{0,99}$/.test(msg.model.id) ? msg.model.id : null;
+            if (model) await call('codes', `/api/v1/tasks/${encodeURIComponent(id)}/continue`, { auth, method: 'POST', body: { text, model } });
+            else await call('codes', `/api/v1/tasks/${encodeURIComponent(id)}/message`, { auth, method: 'POST', body: { text } });
+            return { run_id: id, seq: null, kind: 'message', from: 'person', status: 'done', text, started_at: new Date(now()).toISOString() };
+        },
         async start(auth, owner, body, { idempotencyKey } = {}) {
             const target = body.target;
             if (!target || typeof target !== 'object' || !target.repo) throw fail(422, 'runs.codes_needs_a_repository', 'Codes starts a task on a repository for now ({ target: { repo } }); Create and OpenVibe without one are coming');

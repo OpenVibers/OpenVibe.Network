@@ -64,6 +64,7 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
             return sendJson(res, 201, { id: 'tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH' });
         }
         if (/\/api\/v1\/tasks\/tsk_[0-9A-Z]+\/stop$/.test(u.pathname)) return sendJson(res, 200, { ok: true });
+        if (/\/api\/v1\/tasks\/tsk_[0-9A-Z]+\/(message|continue)$/.test(u.pathname) && req.method === 'POST') { const b = await readBody(req); seen.at(-1).body = b; return sendJson(res, /message$/.test(u.pathname) ? 202 : 200, { queued: true }); }
         return sendJson(res, 404, { error: 'not found' });
     });
     const actor = await listen(async (req, res) => {
@@ -235,6 +236,17 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         assert.strictEqual(r.status, 409); assert.match(d.error, /waits for you/);
         ({ r, d } = await go('/codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH/stop', { method: 'POST', body: { reason: 'not now' } }));
         assert.strictEqual(r.status, 200);
+        // A coding task takes the next words too (plan §AD.8): Codes queues them on the task; a model the chip changed to
+        // carries the task on with that model.
+        ({ r, d } = await go('/codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH/messages', { method: 'POST', body: { text: 'Make the bar thinner' } }));
+        assert.strictEqual(r.status, 201, JSON.stringify(d));
+        assert.deepStrictEqual([d.from, d.kind, d.text], ['person', 'message', 'Make the bar thinner']);
+        let toCodes = seen.filter((x) => x.svc === 'codes' && x.method === 'POST').at(-1);
+        assert.deepStrictEqual([toCodes.url, toCodes.body], ['/api/v1/tasks/tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH/message', { text: 'Make the bar thinner' }], 'the words queue on the task');
+        ({ r, d } = await go('/codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH/messages', { method: 'POST', body: { text: 'Try it on Sonnet', model: { id: 'anthropic/claude-sonnet-5-5', source: 'openvibe', name: 'Sonnet 5.5' } } }));
+        assert.strictEqual(r.status, 201, JSON.stringify(d));
+        toCodes = seen.filter((x) => x.svc === 'codes' && x.method === 'POST').at(-1);
+        assert.deepStrictEqual([toCodes.url, toCodes.body], ['/api/v1/tasks/tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH/continue', { text: 'Try it on Sonnet', model: 'anthropic/claude-sonnet-5-5' }], 'a new model carries the task on with it');
         ({ r, d } = await go('/actor:tsk_ACTOR1/approvals/apr_1', { method: 'POST', body: { answer: 'approve' } }));
         assert.strictEqual(r.status, 200); assert.strictEqual(d.answer, 'approve');
         ({ r } = await go('/actor:tsk_ACTOR1/approvals/apr_1', { method: 'POST', body: {} }));
