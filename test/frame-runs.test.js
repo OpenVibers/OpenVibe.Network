@@ -64,6 +64,8 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
             return sendJson(res, 201, { id: 'tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH' });
         }
         if (/\/api\/v1\/tasks\/tsk_[0-9A-Z]+\/stop$/.test(u.pathname)) return sendJson(res, 200, { ok: true });
+        if (/^\/api\/v1\/tasks\/tsk_[0-9A-Z]+$/.test(u.pathname) && req.method === 'PATCH') { const b = await readBody(req); seen.at(-1).body = b; return sendJson(res, 200, { task: { id: 'x' } }); }
+        if (/\/api\/v1\/tasks\/tsk_[0-9A-Z]+\/replay$/.test(u.pathname)) return req.method === 'DELETE' ? sendJson(res, 200, { stopped: true }) : sendJson(res, 201, { url: 'https://openvibe.codes/r/AbCdEfGhIjKlMnOpQrStUvWxYz012345', created_at: '2026-11-15T17:00:00Z', created: true });
         if (/\/api\/v1\/tasks\/tsk_[0-9A-Z]+\/(message|continue)$/.test(u.pathname) && req.method === 'POST') { const b = await readBody(req); seen.at(-1).body = b; return sendJson(res, /message$/.test(u.pathname) ? 202 : 200, { queued: true }); }
         return sendJson(res, 404, { error: 'not found' });
     });
@@ -73,6 +75,7 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         const u = new URL(req.url, 'http://x');
         const run = { id: 'tsk_ACTOR1', owner: { type: 'user', id: 'usr_1' }, agent: { id: 'agt_1', name: 'Juniper', product: 'actor' }, status: 'running', created_at: '2026-11-12T08:00:00Z', updated_at: '2026-11-12T10:05:00Z' };
         if (u.pathname === '/api/v1/runs' && req.method === 'GET') return sendJson(res, 200, { runs: [run], next: null });
+        if (u.pathname === '/api/v1/runs/tsk_ACTOR1' && req.method === 'PATCH') { const b = await readBody(req); seen.at(-1).body = b; return sendJson(res, 200, { ...run, title: b.title || 'Plan my week' }); }
         if (u.pathname === '/api/v1/runs/tsk_ACTOR1') return sendJson(res, 200, run);
         if (u.pathname === '/api/v1/runs' && req.method === 'POST') { const b = await readBody(req); seen.at(-1).body = b; return sendJson(res, 201, { ...run, id: 'tsk_MACHINE1', kind: b.kind || 'task', status: 'planning' }); }
         if (u.pathname === '/api/v1/runs/tsk_ACTOR1/messages' && req.method === 'POST') { const b = await readBody(req); seen.at(-1).body = b; return sendJson(res, 202, { ok: true, run: { ...run, turns: 2 } }); }
@@ -236,6 +239,26 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         assert.strictEqual(r.status, 409); assert.match(d.error, /waits for you/);
         ({ r, d } = await go('/codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH/stop', { method: 'POST', body: { reason: 'not now' } }));
         assert.strictEqual(r.status, 200);
+        // A coding run's replay link (plan §AD.8, the session menu's Share): made by the person, or stopped.
+        ({ r, d } = await go('/codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH/replay', { method: 'POST', body: {} }));
+        assert.strictEqual(r.status, 200, JSON.stringify(d));
+        assert.deepStrictEqual(d, { url: 'https://openvibe.codes/r/AbCdEfGhIjKlMnOpQrStUvWxYz012345', created_at: '2026-11-15T17:00:00.000Z' });
+        assert.strictEqual(seen.filter((x) => x.svc === 'codes').at(-1).url, '/api/v1/tasks/tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH/replay');
+        ({ r, d } = await go('/codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH/replay', { method: 'DELETE' }));
+        assert.deepStrictEqual([r.status, d], [200, { stopped: true }]);
+        ({ r, d } = await go('/actor:tsk_ACTOR1/replay', { method: 'POST', body: {} }));
+        assert.strictEqual(r.status, 409, 'an Actor conversation has no replay link yet');
+        // Rename (plan §AD.8, the session's ⋯ menu): Actor's conversation and Codes' task, as the person.
+        ({ r, d } = await go('/actor:tsk_ACTOR1', { method: 'PATCH', body: { title: '  My   week ' } }));
+        assert.deepStrictEqual([r.status, d.title], [200, 'My week']);
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'PATCH').at(-1).body, { title: 'My week' });
+        ({ r, d } = await go('/codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH', { method: 'PATCH', body: { title: '' } }));
+        assert.strictEqual(r.status, 200, JSON.stringify(d));
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'codes' && x.method === 'PATCH').at(-1).body, { title: null }, 'empty gives it back its first line');
+        ({ r } = await go('/actor:tsk_ACTOR1', { method: 'PATCH', body: { title: 7 } }));
+        assert.strictEqual(r.status, 422);
+        ({ r } = await go('/chat:c_keys', { method: 'PATCH', body: { title: 'Keys' } }));
+        assert.strictEqual(r.status, 409, 'a Chat conversation is not renamed from here yet');
         // A coding task takes the next words too (plan §AD.8): Codes queues them on the task; a model the chip changed to
         // carries the task on with that model.
         ({ r, d } = await go('/codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH/messages', { method: 'POST', body: { text: 'Make the bar thinner' } }));
