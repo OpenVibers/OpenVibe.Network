@@ -259,7 +259,7 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         },
         async say(auth, owner, id, msg) {
             const text = withFiles(msg.text, msg.attachments);
-            const out = await call('actor', `/api/v1/runs/${encodeURIComponent(id)}/messages`, { auth, method: 'POST', body: { text } });
+            const out = await call('actor', `/api/v1/runs/${encodeURIComponent(id)}/messages`, { auth, method: 'POST', body: { text, ...(msg.model ? { model: msg.model } : {}) } });
             const turns = out && out.run && Number.isInteger(out.run.turns) ? out.run.turns : null;
             // The person's words as the step the thread will read back (the same seq, so it is drawn once).
             return { run_id: id, seq: turns ? (turns - 1) * ACTOR_TURN + 1 : null, kind: 'message', from: 'person', status: 'done', text, started_at: new Date(now()).toISOString() };
@@ -449,7 +449,10 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         const attachments = Array.isArray(b.attachments) ? b.attachments.slice(0, 20) : [];
         if (!text && !attachments.length) throw fail(422, 'runs.say_needs_words', 'Say something ({ text })');
         if (!a.say) throw fail(409, 'runs.cannot_say', `A ${a.product} run does not take messages yet`);
-        res.status(201).json(await a.say(auth, owner, id, { text, attachments }));
+        // A model the session's chip changed to mid-session (plan §AD.8 step 3): { id, source, name } or an exact id.
+        const model = b.model && typeof b.model === 'object' && typeof b.model.id === 'string' ? { id: clip(b.model.id, 256) }
+            : typeof b.model === 'string' ? { id: clip(b.model, 256) } : null;
+        res.status(201).json(await a.say(auth, owner, id, { text, attachments, ...(model && model.id ? { model } : {}) }));
     }));
 
     router.post('/:ref/stop', json, handle(async (req, res) => {
