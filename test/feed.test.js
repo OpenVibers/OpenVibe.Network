@@ -44,6 +44,12 @@ const envelope = (type, payload, over = {}) => ({
     assert.strictEqual(kindOf('chat.room.message.created', { room: { slug: 'feed', name: 'Feed' }, created_at: '2026-11-12T09:00:00.000Z' }), 'chat');
     assert.strictEqual(kindOf('deals.offer.created', { offer_id: 'd1', title: 'A deal', url: 'https://openvibe.deals/d/1' }), 'deal');
     assert.strictEqual(kindOf('space.deploy.activated', { deploy_id: 'd1', name: 'A space', url: 'https://openvibe.space/s/1' }), 'space');
+    // A site going live, as Space sends it (no url in the payload): the card carries the site's address, one card a
+    // site, and a rollback is not news (plan §AD.10 step 6).
+    const launched = eventToItems(envelope('space.deploy.activated', { project_id: 'prj_1', site_id: 'sit_01ARZ3NDEKTSV4RRFFQ69G5FAV', site: 'band-page', deploy_id: 'dpl_1', previous_deploy_id: null, rollback: false })).items[0];
+    assert.deepStrictEqual([launched.kind, launched.url, launched.title, launched.source_id], ['space', 'https://band-page.openvibe.website/', 'band-page.openvibe.website', 'sit_01ARZ3NDEKTSV4RRFFQ69G5FAV']);
+    assert.deepStrictEqual(eventToItems(envelope('space.deploy.activated', { site_id: 'sit_1', site: 'band-page', deploy_id: 'dpl_2', previous_deploy_id: 'dpl_1', rollback: true })).items, [], 'a rollback is not news');
+    assert.deepStrictEqual(eventToItems(envelope('space.deploy.activated', { site_id: 'sit_1', site: 'Bad Name!', deploy_id: 'dpl_3', rollback: false })).items, [], 'no address, no card');
     assert.deepStrictEqual(eventToItems(envelope('live.stream.started', { channel: { username: 'alex', url: 'https://openvibe.live/@alex' } }, { visibility: 'internal' })).items, [], 'a non-public event never enters the feed');
     assert.deepStrictEqual(eventToItems(envelope('wiki.page.deleted', { page_id: 'w1' })).remove[0], { service: 'wiki', type: 'post', id: 'w1' });
 
