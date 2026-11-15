@@ -12,6 +12,8 @@
  *   GET    /api/admin/ai/setup/decisions/models   the models that can answer a decision
  *   PUT    /api/admin/ai/setup/decisions/:kind    the model, the ladder and the threshold of one kind
  *   POST   /api/admin/ai/setup/recommended        fill every route with its recommended model
+ *   GET    /api/admin/ai/setup/agents             every coding agent Codes runs (its public catalogue), for the
+ *                                                 coding agents step (2026-11-15, plan §AD.9)
  *
  * Every route is owner only: API keys and money are the owner's, never any admin's. Network keeps
  * no value: the request body goes to AI and is dropped. AI is called with Network's own service
@@ -70,6 +72,22 @@ function createAiSetup({ fetchImpl = globalThis.fetch, log = console } = {}) {
     r.get('/decisions/models', (req, res) => forward(req, res, '/api/v1/decisions/models'));
     r.put('/decisions/:kind', (req, res) => forward(req, res, `/api/v1/setup/decisions/${encodeURIComponent(req.params.kind)}`, { body: req.body || {} }));
     r.post('/recommended', (req, res) => forward(req, res, '/api/v1/setup/recommended', { body: req.body || {} }));
+    // Every coding agent Codes runs: its public catalogue, read here so the owner's page stays on its own origin.
+    r.get('/agents', async (req, res) => {
+        const config = req.app.locals.config || {};
+        const base = String((config.services && config.services.codes && config.services.codes.internalUrl) || 'http://127.0.0.1:4900').replace(/\/+$/, '');
+        try {
+            const upstream = await fetchImpl(`${base}/api/v1/harnesses`, { headers: { Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(5000) });
+            const j = upstream.ok ? await upstream.json() : null;
+            const harnesses = (j && Array.isArray(j.harnesses) ? j.harnesses : []).filter((h) => h && typeof h.id === 'string' && /^[a-z0-9][a-z0-9._-]{0,63}$/.test(h.id))
+                .map((h) => ({ id: h.id, name: String(h.name || h.id).slice(0, 80), provider: String(h.provider || '').slice(0, 40), price: h.price && typeof h.price === 'object' ? { text: String(h.price.text || '').slice(0, 120) } : null }));
+            res.set('Cache-Control', 'private, no-store');
+            return res.json({ harnesses });
+        } catch (err) {
+            (log.warn || log.log).call(log, `[ai-setup] agents: ${err && err.code ? err.code : 'unreachable'}`);
+            return res.status(502).json({ error: 'OpenVibe.Codes did not answer; try again in a moment' });
+        }
+    });
     return r;
 }
 
