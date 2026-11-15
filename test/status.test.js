@@ -122,6 +122,14 @@ const rel = (release) => [200, { service: 'x', release, released_at: '2026-09-22
     assert.ok(/id="svc-community"[\s\S]*?Down[\s\S]*?SQLITE_CANTOPEN/.test(html));
     assert.ok(!html.includes('id="svc-realtime"'), 'the page lists no realtime row, the manifest is gone');
     assert.ok(/id="svc-tools"[\s\S]*?liveness only/.test(html));
+    // 2026-11-15 (the owner's phone shot: the table ran off the screen with huge gaps): a card per service, problems
+    // first, a banner with the overall state and filter chips; the long explanation folds.
+    assert.ok(/class="st-banner st-k-down"/.test(html), 'the banner says something is down');
+    assert.ok(html.indexOf('id="svc-community"') < html.indexOf('id="svc-media"'), 'down before degraded');
+    assert.ok(/<li class="st-card st-k-down" id="svc-community"/.test(html), 'a card per service');
+    assert.ok(/name="st-show" value="down"/.test(html), 'a Down filter');
+    assert.ok(!/<table>\s*<thead><tr><th>Service<\/th><th>Where<\/th>/.test(html), 'no services table');
+    assert.ok(/<details class="st-how">/.test(html), 'the explanation folds');
     assert.ok(html.includes('<noscript>'), 'navigation without JavaScript');
     assert.ok(html.includes('SLO categories (proposals)'));
     assert.ok(html.includes('id="h-devpath"') && html.includes('id="h-toolsjob"'), 'both scheduled proofs have a section');
