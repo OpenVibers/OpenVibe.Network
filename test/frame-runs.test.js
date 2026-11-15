@@ -220,6 +220,11 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         assert.strictEqual(r.status, 201, JSON.stringify(d));
         assert.deepStrictEqual([d.from, d.seq, d.kind], ['person', 1000001, 'message'], 'the second turn\'s words, numbered as Actor numbers them');
         assert.strictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body.text, 'And the second one?\n\nAttached:\n- shot.png: https://cdn.openvibe.media/f/shot.png', 'a file rides as its link');
+        assert.strictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body.model, undefined, 'no model named: Actor keeps the conversation\'s');
+        // A model the session's chip changed to mid-session goes with the words (plan §AD.8 step 3).
+        ({ r, d } = await go('/actor:tsk_ACTOR1/messages', { method: 'POST', body: { text: 'Shorter', model: { id: 'deepseek/deepseek-v4-flash', source: 'openvibe', name: 'DeepSeek V4 Flash' } } }));
+        assert.strictEqual(r.status, 201, JSON.stringify(d));
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body.model, { id: 'deepseek/deepseek-v4-flash' }, 'the model goes to Actor with the words');
 
         // Say, stop, approvals.
         ({ r, d } = await go('/chat:c_keys/messages', { method: 'POST', body: { text: 'Under $70?' } }));
