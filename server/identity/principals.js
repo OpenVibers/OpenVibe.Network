@@ -450,6 +450,10 @@ const DEFAULT_GRANTS = [
     // run-job actions start Run jobs for the owner in that project (X-OV-Subject + X-OV-Project). Watch checks the
     // owner's membership when the watch is saved; Run checks it again before every delegated job.
     ['watch', 'run.job.submit', 'openvibe.run', []],
+    // Code tools people make run as Run function jobs (openvibe-skill-runner@1.1.0; plan §AD.13 (2), Link v0.70.0): Tools
+    // submits each run for the person it is for (X-OV-Subject, X-OV-Project) and reads the jobs it submitted.
+    ['tools', 'run.job.submit', 'openvibe.run', []],
+    ['tools', 'run.job.read', 'openvibe.run', []],
     ['watch', 'network.project.member.read', SELF_AUDIENCE, []],
     ['run', 'network.project.member.read', SELF_AUDIENCE, []],
     ['run', 'network.notifications.push', SELF_AUDIENCE, []],
