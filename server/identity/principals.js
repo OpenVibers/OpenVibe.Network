@@ -134,6 +134,9 @@ const DEFAULT_GRANTS = [
     ['community', 'media.object.read', 'openvibe.media', ['community']],
     ['community', 'media.object.delete', 'openvibe.media', ['community']],
     ['community', 'network.notifications.push', SELF_AUDIENCE, ['community']],
+    // Tools tells a person what their scheduled tool answered (plan 2026-11-13 §AD.12 (g), Tools #378): one notification
+    // per scheduled run, to the tool's owner by subject, as service 'tools' only.
+    ['tools', 'network.notifications.push', SELF_AUDIENCE, ['tools']],
     // Wave 11: Tools job results as Media objects; Wave 12: Games map-editor assets.
     // tools.* : developer projects' results go to tools.app.<project_id>[.sandbox] (WS-L task 5).
     ['tools', 'media.object.upload', 'openvibe.media', ['tools', 'tools.*']],

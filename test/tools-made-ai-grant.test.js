@@ -23,4 +23,8 @@ if (capabilities.get('tools.made.write')) {
 } else {
     assert.deepStrictEqual(write, [], 'no grant for a capability the pinned Contracts does not have');
 }
+// A scheduled tool's answer goes to its owner as a notification (Tools #378): push, as service 'tools' only.
+const push = principals.DEFAULT_GRANTS.filter(([client, cap]) => client === 'tools' && cap === 'network.notifications.push');
+assert.strictEqual(push.length, 1, 'Tools pushes notifications');
+assert.deepStrictEqual(push[0][3], ['tools'], 'as service tools only');
 console.log('tools made-tool grants: ok');
