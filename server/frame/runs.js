@@ -225,25 +225,45 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         },
     };
 
-    // ── actor: agents' tasks, served as agents.run@1 ──
+    // ── actor: the person's Actor, served as agents.run@1 ──
+    // 2026-11-15 (the owner: "it's supposed to use the actor even when you're on here … your main actor … instead of
+    // vibe character"): a run is a whole conversation with the person's Actor (Actor's ?conversation(s)=1, Actor#517),
+    // started with { text }, continued with POST …/messages, stopped with …/stop. A file rides as its link in the words.
     const RUN_TYPE = 'application/vnd.openvibe.agents.run+json, application/json';
+    const ACTOR_TURN = 1000000;   // Actor's conversation step numbers: a turn's place × 1,000,000, + 1 for the person's words
     const actorRun = (r) => (r && r.id ? { ...r, ref: `actor:${r.id}`, kind: r.kind || 'task' } : r);
+    const withFiles = (text, attachments) => {
+        const links = aiFiles(attachments).map((f) => httpsUrl(f.url) && `${clip(f.name || 'A file', 120) || 'A file'}: ${httpsUrl(f.url)}`).filter(Boolean);
+        return links.length ? `${text || 'Look at the attached files.'}\n\nAttached:\n${links.map((l) => `- ${l}`).join('\n')}` : text;
+    };
     const actor = {
         product: 'actor',
-        kinds: ['task', 'goal', 'machine'],
+        kinds: ['chat', 'task', 'goal', 'machine'],
         async list(auth, owner, { limit, status }) {
-            const out = await call('actor', `/api/v1/runs?limit=${limit}${status ? `&status=${status}` : ''}`, { auth, accept: RUN_TYPE, timeoutMs: LIST_DEADLINE_MS });
+            const out = await call('actor', `/api/v1/runs?limit=${limit}&conversations=1${status ? `&status=${status}` : ''}`, { auth, accept: RUN_TYPE, timeoutMs: LIST_DEADLINE_MS });
             return (out && Array.isArray(out.runs) ? out.runs : []).filter((r) => r && r.id).map(actorRun);
         },
-        async get(auth, owner, id) { return actorRun(await call('actor', `/api/v1/runs/${encodeURIComponent(id)}?shape=agents.run@1`, { auth, accept: RUN_TYPE })); },
+        async get(auth, owner, id) { return actorRun(await call('actor', `/api/v1/runs/${encodeURIComponent(id)}?shape=agents.run@1&conversation=1`, { auth, accept: RUN_TYPE })); },
         async steps(auth, owner, id, { after, limit }) {
-            const out = await call('actor', `/api/v1/runs/${encodeURIComponent(id)}/steps?limit=${limit}${after ? `&after=${after}` : ''}`, { auth });
+            const out = await call('actor', `/api/v1/runs/${encodeURIComponent(id)}/steps?conversation=1&limit=${limit}${after ? `&after=${after}` : ''}`, { auth });
             return { steps: out && Array.isArray(out.steps) ? out.steps : [], next: out && out.next != null ? out.next : null };
         },
         async start(auth, owner, body, { idempotencyKey } = {}) {
-            return actorRun(await call('actor', '/api/v1/runs', { auth, method: 'POST', body, accept: RUN_TYPE, idempotencyKey }));
+            const agentId = typeof body.agent === 'string' && /^agt_[0-9A-HJKMNP-TV-Z]{26}$/.test(body.agent) ? body.agent : undefined;
+            const text = withFiles(body.text, body.attachments);
+            // The kind, the model and the computer ride along for Actor to read as it grows into them; today the words lead.
+            const kind = ['task', 'goal', 'machine'].includes(body.kind) ? body.kind : undefined;
+            const model = body.model && typeof body.model === 'object' && typeof body.model.id === 'string' ? body.model : undefined;
+            const where = body.where && typeof body.where === 'object' && body.where.kind === 'machine' && typeof body.where.id === 'string' ? { kind: 'machine', id: body.where.id } : undefined;
+            return actorRun(await call('actor', '/api/v1/runs', { auth, method: 'POST', body: { text, ...(kind ? { kind } : {}), ...(agentId ? { agent: agentId } : {}), ...(model ? { model } : {}), ...(where ? { where } : {}) }, accept: RUN_TYPE, idempotencyKey }));
         },
-        async say(auth, owner, id, msg) { return call('actor', `/api/v1/runs/${encodeURIComponent(id)}/messages`, { auth, method: 'POST', body: msg }); },
+        async say(auth, owner, id, msg) {
+            const text = withFiles(msg.text, msg.attachments);
+            const out = await call('actor', `/api/v1/runs/${encodeURIComponent(id)}/messages`, { auth, method: 'POST', body: { text } });
+            const turns = out && out.run && Number.isInteger(out.run.turns) ? out.run.turns : null;
+            // The person's words as the step the thread will read back (the same seq, so it is drawn once).
+            return { run_id: id, seq: turns ? (turns - 1) * ACTOR_TURN + 1 : null, kind: 'message', from: 'person', status: 'done', text, started_at: new Date(now()).toISOString() };
+        },
         async stop(auth, owner, id, { reason }) { return actorRun(await call('actor', `/api/v1/runs/${encodeURIComponent(id)}/stop`, { auth, method: 'POST', body: reason ? { reason } : {}, accept: RUN_TYPE })); },
         async answer(auth, owner, id, approval, answer) { return call('actor', `/api/v1/runs/${encodeURIComponent(id)}/approvals/${encodeURIComponent(approval)}`, { auth, method: 'POST', body: { answer } }); },
     };
@@ -254,18 +274,19 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         if (!m || !PRODUCTS[m[1]]) throw fail(404, 'runs.not_found', 'No such run');
         return { a: PRODUCTS[m[1]], id: m[2] };
     };
-    /** Which product starts a run: its kind, else a target (code), else Vibe (it answers, or hands the work on). */
+    /** Which product starts a run: its kind, else a target (code), else the person's Actor (it answers, or hands the
+     *  work on). Chat's old Vibe character answers only when Actor cannot be reached. */
     const starterFor = (body) => {
         if (body.kind === 'code' || body.target) return codes;
-        if (body.kind && ['task', 'goal', 'machine'].includes(body.kind)) return actor;
-        return chat;
+        return actor;
     };
     /**
      * Words with no kind (2026-11-13, the owner: "your actor is just your agent … it can orchestrate to openvibe.codes,
      * or timer, task, desktop, browser"): where they go, read from the words. A question, a timer, a reminder or a
      * schedule is Vibe's (it has those tools); "on my computer" or "in my browser" is a machine run on Actor; a change
      * to make in code (a doing word and a thing code is made of) is Codes' make mode, which finds the repository in the
-     * words or among the person's own. Anything else, and anything Codes cannot place, is a conversation with Vibe.
+     * words or among the person's own. Anything else, and anything Codes cannot place, is a conversation with the
+     * person's Actor (2026-11-15: Actor has the tools; the old Vibe character is gone).
      */
     const ASKS = /^\s*(how|what|why|who|where|when|which|can|could|should|would|is|are|do|does|did|will)\b|\?\s*$/i;
     const VIBE_TOOLS = /\b(remind(er)?s?|timer|alarm|pomodoro|every (day|morning|evening|night|week|hour|\d+\s*(minutes?|hours?|days?))|daily|weekly|tomorrow at)\b/i;
@@ -275,10 +296,10 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
     function placeFor(body) {
         if (body.kind || body.target) return 'given';
         const t = String(body.text || '');
-        if (ASKS.test(t) || VIBE_TOOLS.test(t)) return 'vibe';
+        if (ASKS.test(t) || VIBE_TOOLS.test(t)) return 'actor';
         if (MACHINE.test(t)) return 'machine';
         if (CODE_DO.test(t) && CODE_THING.test(t)) return 'code';
-        return 'vibe';
+        return 'actor';
     }
     /** Codes' make mode with the person's words: a run when it starts a task, null when the words are something new.
      *  `how` is the composer's choice for Codes (4.259.0): the harness, the model and the person's computer. */
@@ -370,11 +391,21 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         // Actor's own agent ids pass; "actor" is the person's default agent there (no agent named).
         const forActor = { ...b, text, ...(chosen === 'actor' ? { agent: undefined } : {}) };
         let run = null;
-        if (place === 'actor') run = await actor.start(auth, owner, { ...forActor, kind: b.kind && ['task', 'goal', 'machine'].includes(b.kind) ? b.kind : (where && where.kind === 'machine' ? 'machine' : 'task') }, { idempotencyKey });
+        // Actor down or failing on words nobody pointed at it: Chat's Vibe still answers, so nobody is left with nothing.
+        // Your Actor picked by name fails honestly instead.
+        const viaActor = async (body) => {
+            try { return await actor.start(auth, owner, body, { idempotencyKey }); }
+            catch (err) {
+                if (toActor || (err && Number.isInteger(err.status) && err.status < 500 && err.status !== 404)) throw err;
+                if (log.warn) log.warn(`[frame runs] Actor did not start a conversation (${err && (err.status || err.message)}); Chat answers`);
+                return chat.start(auth, owner, { ...b, text }, { idempotencyKey });
+            }
+        };
+        if (place === 'actor') run = await viaActor({ ...forActor, kind: b.kind && ['task', 'goal', 'machine'].includes(b.kind) ? b.kind : (where && where.kind === 'machine' ? 'machine' : 'task') });
         if (!run && place === 'code') run = await codesMake(auth, owner, text, idempotencyKey, codesHow);
         if (!run && place === 'machine') run = await actor.start(auth, owner, { ...forActor, kind: 'machine' }, { idempotencyKey });
-        if (!run) run = await starterFor(b).start(auth, owner, { ...b, text }, { idempotencyKey });
-        res.set('X-OV-Placed', place === 'given' ? 'asked' : place === 'actor' ? 'actor' : run.kind === 'code' ? 'codes' : run.kind === 'machine' ? 'machine' : 'vibe');
+        if (!run) run = starterFor(b) === actor ? await viaActor(forActor) : await starterFor(b).start(auth, owner, { ...b, text }, { idempotencyKey });
+        res.set('X-OV-Placed', place === 'given' ? 'asked' : run.kind === 'code' ? 'codes' : run.kind === 'machine' ? 'machine' : String(run.ref || '').startsWith('chat:') ? 'vibe' : 'actor');
         res.status(201).json(run);
     }));
 
