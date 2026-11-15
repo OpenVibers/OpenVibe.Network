@@ -69,6 +69,12 @@ try {
 
     await notifications.markReadMany([made.mention.id, made.agent.id], 41);
     assert.deepStrictEqual(titles(await get('/api/notifications?tab=mentions&unread_only=1')), ['dm', 'reply'], 'tab and unread_only combine');
+    // The menu's earlier ones (11-15: the alerts opened on 11 unread and the other 710 never came): read_only lists only
+    // what is read, with its own total, and combines with a tab.
+    const earlier = await get('/api/notifications?read_only=1');
+    assert.deepStrictEqual([titles(earlier).sort(), Number(earlier.body.total)], [['agent', 'mention'], 2], 'read_only: the read ones and their total');
+    assert.deepStrictEqual(titles(await get('/api/notifications?tab=mentions&read_only=1')), ['mention'], 'read_only combines with a tab');
+    assert.strictEqual(titles(await get('/api/notifications?unread_only=1&read_only=1')).length, 9, 'unread_only wins over read_only');
     counts = await get('/api/notifications/unread-by-tab');
     assert.deepStrictEqual(counts.body.tabs, { all: 9, mentions: 2, live: 1, alerts: 1, system: 3, agents: 1 }, 'read notices leave the counts');
 
