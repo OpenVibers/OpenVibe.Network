@@ -68,6 +68,8 @@ const INSTANCES = [
             res.writeHead(200, { 'Content-Type': 'text/html' });
             return res.end('<article class="sp-card"><a class="sp-card-main" href="/spaces/ana-site"><span class="sp-card-badge is-live">Published</span><h3>Ana Site</h3><p>Public site</p></a><footer><span>by @Ana</span></footer></article><article class="sp-card"><a class="sp-card-main" href="/spaces/hidden-site"><span class="sp-card-badge is-live">Unlisted</span><h3>Hidden Site</h3><p>Private site</p></a><footer><span>by @Ana</span></footer></article>');
         }
+        // Space's public read of the person's live websites (plan §AD.10 step 6); a malformed one is dropped.
+        if (u.pathname === `/api/v1/people/${A}/sites`) return json(200, { sites: [{ name: 'ana-recipes', hostname: 'ana-recipes.openvibe.website', url: 'https://ana-recipes.openvibe.website/', updated_at: '2026-11-15T15:00:00Z' }, { name: 'Bad Name', hostname: 'x', url: 'javascript:alert(1)' }] });
         if (u.pathname === '/api/v1/kinds') return json(200, { kinds: KINDS });
         if (u.pathname === `/api/v1/people/${A}/equipped`) return json(200, { subject: A, slots: { 'live.hat:hat': { instance_id: INSTANCES[0].id, definition_id: INSTANCES[0].definition_id }, 'live.name_effect:name_effect': { instance_id: INSTANCES[1].id, definition_id: INSTANCES[1].definition_id, token: 'name-fx-rainbow' }, 'network.badge:badge': { instance_id: INSTANCES[3].id, definition_id: INSTANCES[3].definition_id, media_id: 'med_01JZ00000000000000000000B1' } } });
         if (u.pathname === `/api/v1/people/${A}/items`) return json(200, { subject: A, instances: INSTANCES, definitions: DEFS, next_cursor: null });
@@ -100,6 +102,8 @@ const INSTANCES = [
         assert.ok(!r.text.includes('<script>alert(1)</script>') && r.text.includes('Hello there'), 'the saved public-page bio is shown as text');
         assert.ok(r.text.includes('href="https://example.com/"'), 'HTTPS public links render');
         assert.ok(r.text.includes('aria-labelledby="pf-places"') && r.text.includes('Live now') && r.text.includes('First video') && r.text.includes('Video · Nov 7, 2026') && r.text.includes('A public note') && r.text.includes('Ana Site'));
+        assert.ok(r.text.includes('href="https://ana-recipes.openvibe.website/"') && r.text.includes('Website · ana-recipes.openvibe.website'), 'her website is on her page');
+        assert.ok(!r.text.includes('javascript:alert'), 'a malformed site is never drawn');
         assert.ok(/<a href="https:\/\/openvibe\.live\/@Ana"><span class="pf-place-i pf-place-i--live"[^>]*>[\s\S]*?<strong>@Ana<\/strong>/.test(r.text), 'her Live channel is named by its @handle, as its address is, with the mark of what it is');
         assert.ok(/class="pf-place pf-place--video"/.test(r.text) && /<span class="pf-place-i pf-place-i--site"/.test(r.text) && /Community paste/.test(r.text), 'each card says what kind of thing it is');
         assert.ok(!r.text.includes('Private video') && !r.text.includes('Hidden note') && !r.text.includes('Hidden Site'), 'private or unlisted places are omitted');
@@ -139,8 +143,8 @@ const INSTANCES = [
         // Place reads time out quickly and stay cached for five minutes across page and API reads.
         assert.strictEqual(PUBLIC_PLACE_TIMEOUT_MS, 2000);
         assert.strictEqual(PUBLIC_PLACE_TTL_MS, 300_000);
-        const placeCalls = calls.filter((c) => c.path.startsWith('/api/streams/channel/') || c.path === '/api/pastes/by-user/Ana' || c.path === '/spaces');
-        assert.deepStrictEqual(placeCalls.map((c) => c.path).sort(), ['/api/pastes/by-user/Ana', '/api/streams/channel/Ana', '/api/streams/channel/Ana/live', '/spaces'].sort());
+        const placeCalls = calls.filter((c) => c.path.startsWith('/api/streams/channel/') || c.path === '/api/pastes/by-user/Ana' || c.path === '/spaces' || c.path === `/api/v1/people/${A}/sites`);
+        assert.deepStrictEqual(placeCalls.map((c) => c.path).sort(), ['/api/pastes/by-user/Ana', '/api/streams/channel/Ana', '/api/streams/channel/Ana/live', '/spaces', `/api/v1/people/${A}/sites`].sort());
         // HTML may refresh after 60 seconds; place data stays cached.
         const n = calls.length;
         await get('/@Ana');
@@ -167,6 +171,7 @@ const INSTANCES = [
         assert.deepStrictEqual(JSON.parse(r.text).person.places.videos.map((v) => v.url), ['https://openvibe.video/watch?v=tdLVs5wad4A'], 'a video links to its watch page');
         assert.deepStrictEqual(JSON.parse(r.text).person.places.community.map((v) => v.title), ['A public note'], 'an avatar upload screenshot is not a shared paste');
         assert.deepStrictEqual(JSON.parse(r.text).person.places.spaces.map((v) => v.title), ['Ana Site']);
+        assert.deepStrictEqual(JSON.parse(r.text).person.places.sites, [{ name: 'ana-recipes', hostname: 'ana-recipes.openvibe.website', url: 'https://ana-recipes.openvibe.website/' }], 'her live website, and nothing malformed');
         const person = JSON.parse(r.text).person;
         r = await get('/api/v1/people/@ana/page');
         assert.deepStrictEqual([r.status, r.headers.get('location')], [301, '/api/v1/people/@Ana/page']);
