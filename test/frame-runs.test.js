@@ -209,6 +209,14 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         assert.deepStrictEqual(q, [201, 'codes']);
         assert.deepStrictEqual(seen.filter((x) => x.svc === 'codes' && x.method === 'POST').at(-1).body,
             { mode: 'make', text: 'Fix the login on my-site', harness: 'claude-code', model: 'anthropic/claude-sonnet', machine: 'dev_01K9R2V6M8Q4T0B7C3D5E9F2GH' }, 'Codes gets the harness, the model and the computer');
+        // 2026-11-16 ("make sure reasoning effort is configurable and … all settings for all harnesses exist"): the effort and
+        // what the agent may do go to Codes too; anything else is dropped, never passed on.
+        q = await pick({ text: 'Fix the login on my-site', agent: 'claude-code', effort: 'high', permission: 'read' });
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'codes' && x.method === 'POST').at(-1).body,
+            { mode: 'make', text: 'Fix the login on my-site', harness: 'claude-code', effort: 'high', permission: 'read' });
+        q = await pick({ text: 'Fix the login on my-site', agent: 'claude-code', effort: 'turbo', permission: 'root' });
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'codes' && x.method === 'POST').at(-1).body,
+            { mode: 'make', text: 'Fix the login on my-site', harness: 'claude-code' }, 'an effort or a permission that is not one of the ladder is dropped');
         q = await pick({ text: 'Fix the login on my-site', agent: 'codes' });
         assert.deepStrictEqual(seen.filter((x) => x.svc === 'codes' && x.method === 'POST').at(-1).body, { mode: 'make', text: 'Fix the login on my-site' }, 'Codes itself: its own pick of harness');
         q = await pick({ text: 'How do I fix my login page?', agent: 'actor', model: { id: 'deepseek/deepseek-chat', source: 'openvibe' } });

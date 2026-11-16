@@ -33,6 +33,9 @@
  */
 const crypto = require('crypto');
 const express = require('express');
+// The shared effort ladder every harness maps to its own flag (OpenVibe.Codes' runner: claude --effort, codex
+// model_reasoning_effort …); auto leaves it to the harness.
+const EFFORTS = ['auto', 'low', 'medium', 'high', 'xhigh', 'max'];
 
 const REF = /^([a-z][a-z0-9-]{0,30}):([A-Za-z0-9._~-]{1,160})$/;
 const MEDIA_ID = /^med_[0-9A-HJKMNP-TV-Z]{26}$/;
@@ -227,7 +230,9 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         async say(auth, owner, id, msg) {
             const text = withFiles(msg.text, msg.attachments);
             const model = msg.model && typeof msg.model.id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:\/#-]{0,99}$/.test(msg.model.id) ? msg.model.id : null;
-            if (model) await call('codes', `/api/v1/tasks/${encodeURIComponent(id)}/continue`, { auth, method: 'POST', body: { text, model } });
+            // A model or an effort changed on the chip carries the task on with it (Codes' continue reads both).
+            const effort = EFFORTS.includes(msg.effort) ? msg.effort : null;
+            if (model || effort) await call('codes', `/api/v1/tasks/${encodeURIComponent(id)}/continue`, { auth, method: 'POST', body: { text, ...(model ? { model } : {}), ...(effort ? { effort } : {}) } });
             else await call('codes', `/api/v1/tasks/${encodeURIComponent(id)}/message`, { auth, method: 'POST', body: { text } });
             return { run_id: id, seq: null, kind: 'message', from: 'person', status: 'done', text, started_at: new Date(now()).toISOString() };
         },
@@ -424,9 +429,15 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         // is Actor's to run.
         else if (engineOf(b.engine) && engineOf(b.engine) !== 'auto') place = 'actor';
         else if (where && where.kind === 'machine' && place !== 'code') place = 'machine';
+        // 2026-11-16 (the owner: "make sure reasoning effort is configurable and … all settings for all harnesses exist"): the
+        // session's effort and, for coding, what the agent may do, as Codes' task start reads them.
+        const effort = EFFORTS.includes(b.effort) ? b.effort : null;
+        const permission = ['read', 'edit', 'full'].includes(b.permission) ? b.permission : null;
         const codesHow = toCodes || place === 'code' ? {
             ...(toCodes && chosen !== 'codes' ? { harness: chosen } : {}),
             ...(model ? { model: model.id } : {}),
+            ...(effort ? { effort } : {}),
+            ...(permission ? { permission } : {}),
             ...(where && where.kind === 'machine' && where.id ? { machine: String(where.id) } : {}),
         } : {};
         // Actor's own agent ids pass; "actor" is the person's default agent there (no agent named).
@@ -495,7 +506,9 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
             : typeof b.model === 'string' ? { id: clip(b.model, 256) } : null;
         // The way the conversation is worked, swapped on the chip (Actor's engines, 11-16); Actor checks it.
         const engine = a === actor ? engineOf(b.engine) : null;
-        res.status(201).json(await a.say(auth, owner, id, { text, attachments, ...(model && model.id ? { model } : {}), ...(engine ? { engine } : {}) }));
+        // The effort changed on the chip mid-session (2026-11-16): goes with the words, as the model does.
+        const effort = EFFORTS.includes(b.effort) ? b.effort : null;
+        res.status(201).json(await a.say(auth, owner, id, { text, attachments, ...(model && model.id ? { model } : {}), ...(engine ? { engine } : {}), ...(effort ? { effort } : {}) }));
     }));
 
     router.post('/:ref/stop', json, handle(async (req, res) => {
