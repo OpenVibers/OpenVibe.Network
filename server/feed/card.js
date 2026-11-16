@@ -381,6 +381,29 @@ function rankCards(cards, options) {
     return cards.slice().sort((a, b) => compareRankedCards(a, b, options));
 }
 
+/**
+ * One site at a time (the owner, 11-16, the menu's feed: "a lot of these aren't organized right … wrong order"; three
+ * Report cards, then three Deals cards from three hours): over the ranked list, a card from the same site as the one
+ * before it waits for the next card from another site among the next six, and goes after it. A live stream keeps its
+ * place; a list of one site (its own page, a site chip) is left as it is.
+ */
+function spreadCards(cards, { window = 6 } = {}) {
+    if (new Set(cards.map((c) => c.site || '')).size < 2) return cards.slice();
+    const rest = cards.slice();
+    const out = [];
+    while (rest.length) {
+        const last = out[out.length - 1];
+        let at = 0;
+        const head = rest[0];
+        if (last && head.site && head.site === last.site && !(head.kind === 'live' && head.live_now === true)) {
+            const j = rest.slice(1, window + 1).findIndex((c) => (c.site || '') !== last.site);
+            if (j >= 0) at = j + 1;
+        }
+        out.push(rest.splice(at, 1)[0]);
+    }
+    return out;
+}
+
 const ALIASES = {
     clip: 'clip', clips: 'clip', video: 'video', videos: 'video', recording: 'video', recordings: 'video',
     photo: 'pic', photos: 'pic', pic: 'pic', pics: 'pic', picture: 'pic', pictures: 'pic', post: 'post', posts: 'post',
@@ -435,4 +458,4 @@ function wallItem(card) {
     };
 }
 
-module.exports = { bulkId, BULK_WORD, RUN_PAGE, SITE_NAMES, kindOf, cardOf, oneCardPerThing, foldCards, compareRankedCards, rankCards, searchMatches, searchExamples, wallItem, titleKey, clean, https };
+module.exports = { bulkId, BULK_WORD, RUN_PAGE, SITE_NAMES, kindOf, cardOf, oneCardPerThing, foldCards, compareRankedCards, rankCards, spreadCards, searchMatches, searchExamples, wallItem, titleKey, clean, https };
