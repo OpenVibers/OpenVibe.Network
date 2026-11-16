@@ -138,7 +138,7 @@ async function loadAiSetup(force) {
     try {
         aiSetupState = await api('/api/admin/ai/setup');
         if (!aiSetupState || !Array.isArray(aiSetupState.steps)) throw new Error('OpenVibe.AI did not answer with the setup');
-        if (!aiSetupState.steps.some((s) => s.id === aiSetupStep) && ![AI_SETUP_DEFAULT, AI_SETUP_START, AI_SETUP_DONE, AI_SETUP_PROVIDERS, AI_SETUP_FREE].includes(aiSetupStep)) aiSetupStep = AI_SETUP_START;
+        if (!aiSetupState.steps.some((s) => s.id === aiSetupStep) && ![AI_SETUP_DEFAULT, AI_SETUP_START, AI_SETUP_DONE, AI_SETUP_PROVIDERS, AI_SETUP_FREE, AI_SETUP_MACHINES].includes(aiSetupStep)) aiSetupStep = AI_SETUP_START;
         renderAiSetup();
     } catch (err) {
         main.innerHTML = `<div class="setup-error"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
@@ -154,6 +154,7 @@ function renderAiSetup() {
     if (aiSetupStep === AI_SETUP_DEFAULT) renderAiSetupDefaults();
     else if (aiSetupStep === AI_SETUP_PROVIDERS) renderAiSetupProviders();
     else if (aiSetupStep === AI_SETUP_FREE) renderAiSetupFree();
+    else if (aiSetupStep === AI_SETUP_MACHINES) renderAiSetupMachines();
     else if (aiSetupStep === AI_SETUP_START) renderAiSetupStart();
     else if (aiSetupStep === AI_SETUP_DONE) renderAiSetupDone();
     else renderAiSetupStep();
@@ -181,6 +182,10 @@ function renderAiSetupStepper() {
     rows.push(`<button class="setup-step defaults ${aiSetupStep === AI_SETUP_FREE ? 'active' : ''}" onclick="selectAiSetupStep('${AI_SETUP_FREE}')" aria-current="${aiSetupStep === AI_SETUP_FREE ? 'step' : 'false'}">
         <span class="setup-step-dot" aria-hidden="true"><i class="fa-solid fa-gift"></i></span>
         <span class="setup-step-text"><span class="setup-step-name">Free use and budgets</span><span class="setup-step-state">What people get free</span></span>
+    </button>`);
+    rows.push(`<button class="setup-step defaults ${aiSetupStep === AI_SETUP_MACHINES ? 'active' : ''}" onclick="selectAiSetupStep('${AI_SETUP_MACHINES}')" aria-current="${aiSetupStep === AI_SETUP_MACHINES ? 'step' : 'false'}">
+        <span class="setup-step-dot" aria-hidden="true"><i class="fa-solid fa-microchip"></i></span>
+        <span class="setup-step-text"><span class="setup-step-name">Machines and GPUs</span><span class="setup-step-state">Where AI and agents run</span></span>
     </button>`);
     rows.push(`<button class="setup-step defaults ${aiSetupStep === AI_SETUP_DEFAULT ? 'active' : ''}" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')" aria-current="${aiSetupStep === AI_SETUP_DEFAULT ? 'step' : 'false'}">
         <span class="setup-step-dot" aria-hidden="true"><i class="fa-solid fa-sliders"></i></span>
@@ -627,6 +632,7 @@ async function applyAiSetupRecommended() {
    ═══════════════════════════════════════════════════════════════ */
 const AI_SETUP_PROVIDERS = 'providers';
 const AI_SETUP_FREE = 'free';
+const AI_SETUP_MACHINES = 'machines';
 let aiSetupFree = null;               // { ns } AI's ai.exchange namespace, or { error }
 
 /** Free use and budgets (2026-11-15, plan §AD.9 step 4; the owner: "free usage for people"): the free AI each person
@@ -717,6 +723,56 @@ async function saveAiSetupRanks() {
         toast('Free AI by rank saved');
     } catch (err) { toast((err && err.message) || 'That did not save', 'error'); }
     if (aiSetupStep === AI_SETUP_FREE) renderAiSetup();
+}
+// ── Machines and GPUs (2026-11-16) ──
+let aiSetupMachines = null;
+async function loadAiSetupMachines(force) {
+    if (aiSetupMachines && !force) return aiSetupMachines;
+    const [compute, setup] = await Promise.all([
+        api('/api/admin/ai/config/run/run.compute').catch((e) => ({ error: (e && e.message) || 'OpenVibe.Run did not answer' })),
+        api('/api/admin/setup').catch((e) => ({ error: (e && e.message) || 'The Setup checklist could not be read' })),
+    ]);
+    // The keys that rent machines and GPUs: AI's GPU marketplaces and Run's rental providers, from the Setup checklist.
+    const rows = [];
+    for (const g of (setup && setup.groups) || []) for (const r of g.rows || []) {
+        if (r.kind === 'key' && (r.namespace === 'ai.gpus' || (r.service === 'run' && /^run\.(?!compute$)/.test(String(r.namespace || ''))))) rows.push(r);
+    }
+    aiSetupMachines = { compute, keys: rows, setupError: setup && setup.error };
+    return aiSetupMachines;
+}
+function renderAiSetupMachines() {
+    const main = document.getElementById('setup-main');
+    if (!main) return;
+    if (!aiSetupMachines) { main.innerHTML = '<div class="loading">Reading the machines…</div>'; loadAiSetupMachines().then(() => { if (aiSetupStep === AI_SETUP_MACHINES) renderAiSetup(); }); return; }
+    const m = aiSetupMachines;
+    const v = (m.compute && m.compute.values) || {};
+    const pools = Object.entries(v.pools || {});
+    const KIND = { function: 'Functions', code: 'Code', browser: 'Browsers', linux: 'Linux', desktop: 'Desktops', gpu: 'GPUs' };
+    const status = m.compute && m.compute.error ? `<p class="setup-note bad">${esc(m.compute.error)}</p>`
+        : `<p><strong>${v.enabled ? 'Renting is on' : 'Renting is off'}</strong> · ${v.dry_run ? 'Dry run: prices are quoted, nothing is rented' : 'Live: machines are rented within each pool\'s limits'}</p>`;
+    const poolRows = pools.length ? `<div class="setup-machines">${pools.map(([name, pl]) => `<div class="setup-machine">
+            <span class="setup-machine-name"><strong>${esc(name)}</strong><span class="muted">${esc(KIND[pl.kind] || pl.kind || '')}${pl.gpu_mb ? ` · ${Math.round(Number(pl.gpu_mb) / 1024)} GB GPU` : ''}${pl.max_machines != null ? ` · up to ${esc(String(pl.max_machines))}` : ''}</span></span>
+            <span class="setup-machine-from">${esc((pl.providers || []).join(', ') || 'no provider yet')}</span></div>`).join('')}</div>`
+        : '<p class="setup-note">No pool yet. A pool says what kind of machine (a desktop, a browser, a GPU …), from which providers, and how many at most.</p>';
+    const STATE = { connected: ['Connected', 'ok'], needed: ['Needed', 'bad'], not_working: ['Not working', 'bad'], optional: ['Not set', 'todo'] };
+    const keyRows = m.keys.length ? `<div class="setup-machines">${m.keys.map((r) => {
+        const st = STATE[r.state] || [r.state, 'muted'];
+        return `<div class="setup-machine"><span class="setup-machine-name"><strong>${esc(r.title)}</strong><span class="muted">${esc(r.service_name || r.service)}</span></span><span class="setup-pill ${esc(st[1])}">${esc(st[0])}</span></div>`;
+    }).join('')}</div>` : `<p class="setup-note">${m.setupError ? esc(m.setupError) : 'No rental or GPU marketplace asks for a key.'}</p>`;
+    main.innerHTML = `<article class="setup-card">
+        <header class="setup-card-head"><div><span class="setup-kicker">Where AI and agents run</span><h3 id="setup-step-title">Machines and GPUs</h3>
+            <p class="setup-what">Rented machines and GPUs, your own computers, and the desktops and browsers agents use: one network of machines for models, coding agents and desktop agents.</p></div></header>
+        <section class="setup-free-sec"><h4>Rented machines and GPUs</h4>${status}${poolRows}
+            <a class="btn btn-outline btn-sm" href="https://openvibe.run/api/v1/compute" target="_blank" rel="noopener">Open the pools</a></section>
+        <section class="setup-free-sec"><h4>Keys for renting</h4>${keyRows}
+            <a class="btn btn-outline btn-sm" href="/admin#setup">Add or test keys in Setup</a></section>
+        <section class="setup-free-sec"><h4>Your own computers</h4>
+            <p>Pair a computer with OpenVibe.Link and it runs models, coding agents and desktop agents for you, and for whoever you share it with. Each person gets their own sandbox on it.</p>
+            <a class="btn btn-outline btn-sm" href="https://openvibe.link" target="_blank" rel="noopener">Pair a computer</a></section>
+        <section class="setup-free-sec"><h4>Desktop and browser agents</h4>
+            <p>Agents get their desktops and browsers on OpenVibe.Computer: the shared nodes, your own computers through Link, and rented ones from the desktop and browser pools above.</p>
+            <a class="btn btn-outline btn-sm" href="https://openvibe.computer" target="_blank" rel="noopener">Open OpenVibe.Computer</a></section>
+    </article>`;
 }
 async function saveAiSetupFreePictures() {
     const input = document.getElementById('setup-free-pictures');
