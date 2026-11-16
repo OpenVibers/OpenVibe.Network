@@ -1051,6 +1051,8 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     router.get('/actor/pictures', dockRelay('actor', 'GET', '/api/v1/me/faces'));
     router.post('/actor/pictures/generate', dockJson, dockRelay('actor', 'POST', '/api/v1/me/faces/generate', { timeoutMs: 90000 }));
     router.post('/actor/face', dockJson, dockRelay('actor', 'PUT', '/api/v1/agents/actor/face'));
+    // A new agent from the menu's strip (2026-11-16, the owner: "add new actors in the UI"): a name and what it does.
+    router.post('/actor/agents', dockJson, dockRelay('actor', 'POST', '/api/v1/me/agents'));
     for (const what of ['pause', 'resume', 'tell']) router.post(`/actor/${what}`, dockJson, dockRelay('actor', 'POST', `/api/v1/me/actor/${what}`));
     for (const what of ['answer', 'decline']) router.post(`/actor/asks/:id/${what}`, dockJson, dockRelay('actor', 'POST', (req) => (dockId(req.params.id) ? `/api/v1/me/actor/asks/${encodeURIComponent(req.params.id)}/${what}` : null)));
     // One owner's agent sheet on any site. Actor checks ownership and capabilities; the relay accepts only its
