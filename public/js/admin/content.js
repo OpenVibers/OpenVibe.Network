@@ -325,6 +325,36 @@ async function bulkDeleteVods() {
 // ═══════════════════════════════════════════════════════════════
 // Broadcast Notification
 // ═══════════════════════════════════════════════════════════════
+// The broadcast's icon (2026-11-16): OpenVibe glyphs to pick from, not an emoji typed in a box. The value sent is the
+// matching emoji, which the email leads with (an email cannot load the glyph font).
+function pickBroadcastIcon(button, focus) {
+    const group = button && button.closest('.bc-icons');
+    if (!group) return;
+    group.querySelectorAll('[role="radio"]').forEach((b) => {
+        const on = b === button;
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+        b.tabIndex = on ? 0 : -1;
+    });
+    const input = document.getElementById('broadcast-icon');
+    if (input) input.value = button.dataset.emoji || '📢';
+    if (focus) button.focus();
+}
+document.addEventListener('click', (e) => {
+    const b = e.target && e.target.closest && e.target.closest('.bc-icons [role="radio"]');
+    if (b) pickBroadcastIcon(b, false);
+});
+document.addEventListener('keydown', (e) => {
+    const b = e.target && e.target.closest && e.target.closest('.bc-icons [role="radio"]');
+    if (!b) return;
+    const all = [...b.closest('.bc-icons').querySelectorAll('[role="radio"]')];
+    const i = all.indexOf(b);
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    const to = step ? all[(i + step + all.length) % all.length] : e.key === 'Home' ? all[0] : e.key === 'End' ? all[all.length - 1] : null;
+    if (!to) return;
+    e.preventDefault();
+    pickBroadcastIcon(to, true);
+});
+
 async function sendBroadcast() {
     const title = document.getElementById('broadcast-title')?.value.trim();
     const message = document.getElementById('broadcast-msg')?.value.trim();

@@ -686,3 +686,15 @@ body:has(.admin-clarity.active) .ov-sel-opt { min-height:44px; }
 .admin-clarity .btn-outline,.admin-filter-bar .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
 .admin-clarity .btn-danger,.admin-filter-bar .btn-danger{background:rgba(231,76,60,0.1);color:var(--live-red-text,var(--live-red));border:1px solid rgba(231,76,60,0.2)}
 .admin-clarity .btn-success,.admin-filter-bar .btn-success{background:rgba(46,204,113,0.1);color:var(--success-text,var(--success));border:1px solid rgba(46,204,113,0.2)}
+
+/* Broadcast's icon (2026-11-16): OpenVibe glyphs as a row of chips, the picked one in the accent. */
+.bc-icons { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 6px; min-width: 0; }
+.bc-icons [role="radio"] { display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--bg-card); color: var(--text-secondary); font-size: 18px; cursor: pointer;
+    transition: transform .18s cubic-bezier(.2,.8,.2,1), border-color .18s ease, color .18s ease, background-color .18s ease; }
+.bc-icons [role="radio"]:hover { color: var(--text-primary, inherit); border-color: var(--accent); }
+.bc-icons [role="radio"]:active { transform: scale(calc(1 - .06 * var(--ov-move, 1))); }
+.bc-icons [role="radio"][aria-checked="true"] { color: var(--accent); border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, var(--bg-card)); }
+.bc-icons [role="radio"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+html[data-ov-motion="off"] .bc-icons [role="radio"] { transition: none; }
