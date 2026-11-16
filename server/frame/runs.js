@@ -56,6 +56,17 @@ const iso = (t) => {
     return Number.isNaN(d.getTime()) ? null : d.toISOString();
 };
 const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim().slice(0, n);
+/**
+ * The way an Actor conversation is worked (Actor's engines, 11-16): a kind's name ('agent', 'model', 'decisions',
+ * 'harness', 'openai-agent', 'open-model', 'auto') or { kind, model?, harness? }. Only its shape is checked here; Actor
+ * checks the rest and refuses in words.
+ */
+function engineOf(v) {
+    const KIND = /^[a-z][a-z-]{1,30}$/;
+    if (typeof v === 'string') return KIND.test(v) ? v : null;
+    if (!v || typeof v !== 'object' || Array.isArray(v) || typeof v.kind !== 'string' || !KIND.test(v.kind)) return null;
+    return { kind: v.kind, ...(typeof v.model === 'string' && v.model.trim() ? { model: v.model.trim().slice(0, 256) } : {}), ...(typeof v.harness === 'string' && v.harness.trim() ? { harness: v.harness.trim().slice(0, 40) } : {}) };
+}
 const httpsUrl = (v) => { try { const u = new URL(String(v)); return u.protocol === 'https:' ? u.toString() : null; } catch { return null; } };
 const fail = (status, code, message) => Object.assign(new Error(message), { status, code });
 
@@ -277,11 +288,12 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
             const kind = ['task', 'goal', 'machine'].includes(body.kind) ? body.kind : undefined;
             const model = body.model && typeof body.model === 'object' && typeof body.model.id === 'string' ? body.model : undefined;
             const where = body.where && typeof body.where === 'object' && body.where.kind === 'machine' && typeof body.where.id === 'string' ? { kind: 'machine', id: body.where.id } : undefined;
-            return actorRun(await call('actor', '/api/v1/runs', { auth, method: 'POST', body: { text, ...(kind ? { kind } : {}), ...(agentId ? { agent: agentId } : {}), ...(model ? { model } : {}), ...(where ? { where } : {}) }, accept: RUN_TYPE, idempotencyKey }));
+            const way = engineOf(body.engine);
+            return actorRun(await call('actor', '/api/v1/runs', { auth, method: 'POST', body: { text, ...(kind ? { kind } : {}), ...(agentId ? { agent: agentId } : {}), ...(model ? { model } : {}), ...(where ? { where } : {}), ...(way ? { engine: way } : {}) }, accept: RUN_TYPE, idempotencyKey }));
         },
         async say(auth, owner, id, msg) {
             const text = withFiles(msg.text, msg.attachments);
-            const out = await call('actor', `/api/v1/runs/${encodeURIComponent(id)}/messages`, { auth, method: 'POST', body: { text, ...(msg.model ? { model: msg.model } : {}) } });
+            const out = await call('actor', `/api/v1/runs/${encodeURIComponent(id)}/messages`, { auth, method: 'POST', body: { text, ...(msg.model ? { model: msg.model } : {}), ...(msg.engine ? { engine: msg.engine } : {}) } });
             const turns = out && out.run && Number.isInteger(out.run.turns) ? out.run.turns : null;
             // The person's words as the step the thread will read back (the same seq, so it is drawn once).
             return { run_id: id, seq: turns ? (turns - 1) * ACTOR_TURN + 1 : null, kind: 'message', from: 'person', status: 'done', text, started_at: new Date(now()).toISOString() };
@@ -408,6 +420,9 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         let place = placeFor({ ...b, text });
         if (toActor) place = 'actor';
         else if (toCodes) place = 'code';
+        // A way chosen on the session's chip (Actor's engines, 11-16: an agent, one model, the Decisions API, a harness …)
+        // is Actor's to run.
+        else if (engineOf(b.engine) && engineOf(b.engine) !== 'auto') place = 'actor';
         else if (where && where.kind === 'machine' && place !== 'code') place = 'machine';
         const codesHow = toCodes || place === 'code' ? {
             ...(toCodes && chosen !== 'codes' ? { harness: chosen } : {}),
@@ -478,7 +493,9 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         // A model the session's chip changed to mid-session (plan §AD.8 step 3): { id, source, name } or an exact id.
         const model = b.model && typeof b.model === 'object' && typeof b.model.id === 'string' ? { id: clip(b.model.id, 256) }
             : typeof b.model === 'string' ? { id: clip(b.model, 256) } : null;
-        res.status(201).json(await a.say(auth, owner, id, { text, attachments, ...(model && model.id ? { model } : {}) }));
+        // The way the conversation is worked, swapped on the chip (Actor's engines, 11-16); Actor checks it.
+        const engine = a === actor ? engineOf(b.engine) : null;
+        res.status(201).json(await a.say(auth, owner, id, { text, attachments, ...(model && model.id ? { model } : {}), ...(engine ? { engine } : {}) }));
     }));
 
     router.post('/:ref/stop', json, handle(async (req, res) => {
