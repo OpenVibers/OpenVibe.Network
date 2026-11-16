@@ -17,6 +17,10 @@ const AI_SETUP_DEFAULT = 'defaults';
 // is ready, what is left, a test of every ready job).
 const AI_SETUP_START = 'start';
 const AI_SETUP_DONE = 'done';
+// 2026-11-16 (plan §AD.15, "guided setup that saves defaults"): "Set this up for me" proposes every task kind's model
+// and a safe monthly cap from the keys already saved; the owner reads it, and "Use these" saves them all.
+const AI_SETUP_PLAN = 'plan';
+const AI_SETUP_CAP_FLOOR = 5;     // a kind with no cap gets at least $5 a month
 const AI_SETUP_LINKS = {
     altare: 'https://altare.gg/console', gemini: 'https://aistudio.google.com/api-keys', machines: 'https://openvibe.link/machines',
     openaiCredits: 'https://developers.openai.com/api/docs/guides/chatgpt-api-credits', credits: 'https://openvibe.exchange/console/providers',
@@ -157,6 +161,7 @@ function renderAiSetup() {
     else if (aiSetupStep === AI_SETUP_MACHINES) renderAiSetupMachines();
     else if (aiSetupStep === AI_SETUP_START) renderAiSetupStart();
     else if (aiSetupStep === AI_SETUP_DONE) renderAiSetupDone();
+    else if (aiSetupStep === AI_SETUP_PLAN) renderAiSetupPlan();
     else renderAiSetupStep();
 }
 
@@ -470,7 +475,8 @@ function renderAiSetupStart() {
                 </div>
                 <div class="setup-start-card">
                     <h3><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> One tap</h3>
-                    <p class="muted">Fills every job with its recommended model. You still paste each provider's key once, in its step.</p>
+                    <p class="muted">Proposes a model for every job from the keys you have saved, and a safe monthly cap for each. You read it, then save it all. Keys stay yours: paste each once, in its step.</p>
+                    <button class="btn btn-primary btn-sm" onclick="selectAiSetupStep('${AI_SETUP_PLAN}')"><i data-ov-icon="wand" aria-hidden="true"></i> Set this up for me</button>
                     <button class="btn btn-outline btn-sm" onclick="applyAiSetupRecommended()">Use the recommended set</button>
                 </div>
             </section>
@@ -563,7 +569,7 @@ function renderAiSetupDefaults() {
             <div><span class="setup-kicker">Last step</span><h3>Defaults</h3>
                 <p class="setup-what">Every task kind, the model it uses, and what it has cost.</p>
                 <p class="setup-uses"><i class="fa-solid fa-coins" aria-hidden="true"></i> Estimated monthly is the last 30 days of real calls at their own prices; spend this month is what has been used so far.</p></div>
-            <button class="btn btn-primary" onclick="applyAiSetupRecommended()"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Use the recommended set</button>
+            <button class="btn btn-primary" onclick="selectAiSetupStep('${AI_SETUP_PLAN}')"><i data-ov-icon="wand" aria-hidden="true"></i> Set this up for me</button>
         </header>
         <div class="setup-table-wrap">
             <table class="setup-table">
@@ -601,6 +607,110 @@ async function saveAiSetupCap(kind, value) {
         await loadAiSetup(true);
     } catch (err) {
         toast(err.message || 'The cap was not saved', 'error');
+    }
+}
+
+/** A safe monthly cap for a kind with none: twice its last 30 days at real prices, at least $5, in whole dollars. */
+function aiSetupSafeCap(d) {
+    const est = Number(d && d.estimated_month_usd) || 0;
+    return Math.max(AI_SETUP_CAP_FLOOR, Math.ceil(est * 2));
+}
+
+/**
+ * What "Set this up for me" proposes for each task kind:
+ *   - the model: the recommended one when its provider has a key, else the first option whose provider has one, else
+ *     the recommended one, waiting for its key (it is not saved until the key is there);
+ *   - the cap: one already set is kept; a kind with none gets a safe one (aiSetupSafeCap).
+ * Nothing is saved here.
+ */
+function aiSetupPlan() {
+    if (!aiSetupState) return [];
+    return (aiSetupState.defaults || []).map((d) => {
+        const opts = d.options || [];
+        const rec = opts.find((o) => o.recommended) || null;
+        const pick = rec && rec.configured ? rec : (opts.find((o) => o.configured) || rec);
+        const keyNeeded = !!(pick && !pick.configured);
+        const same = !!(pick && d.current && d.current.provider === pick.provider && d.current.model === pick.model);
+        const capKept = Number(d.cap_usd) > 0;
+        return {
+            kind: d.id, name: d.name, pick, keyNeeded,
+            saveModel: !!pick && !keyNeeded && !same,
+            cap: capKept ? Number(d.cap_usd) : aiSetupSafeCap(d), capKept,
+            estimate: Number(d.estimated_month_usd) || 0,
+        };
+    });
+}
+
+function renderAiSetupPlan() {
+    const main = document.getElementById('setup-main');
+    if (!main || !aiSetupState) return;
+    const plan = aiSetupPlan();
+    const waiting = plan.filter((x) => x.keyNeeded);
+    const rows = plan.map((x) => {
+        const model = !x.pick ? '<span class="muted">OpenVibe picks the best offer</span>'
+            : `${esc(x.pick.provider_name || x.pick.provider)} · ${esc(x.pick.label || x.pick.model)}${x.pick.recommended ? ' <span class="setup-plan-tag">recommended</span>' : ''}`;
+        const who = x.pick ? esc(x.pick.provider_name || x.pick.provider) : '';
+        // A provider with no key to paste (a model on a machine, whisper.cpp) is turned on, not keyed.
+        const state = x.keyNeeded ? `<span class="setup-plan-state todo">${x.pick.keyless ? `Turn on ${who} first` : `Needs a key from ${who}`}</span>`
+            : x.saveModel ? '<span class="setup-plan-state ok">Will be saved</span>' : '<span class="setup-plan-state">Already set</span>';
+        const cap = x.capKept ? `${aiSetupMoney(x.cap)} <span class="muted">(yours, kept)</span>` : `${aiSetupMoney(x.cap)} <span class="muted">(new; ${x.estimate ? `about ${aiSetupMoney(x.estimate)} a month now` : 'nothing spent in 30 days'})</span>`;
+        // One wrapper per cell: on a phone each cell is a label and its content side by side.
+        return `<tr><td data-label="Task kind"><strong>${esc(x.name)}</strong></td><td data-label="Model"><div>${model}<div>${state}</div></div></td><td data-label="Monthly cap"><div>${cap}</div></td></tr>`;
+    }).join('');
+    const changes = plan.filter((x) => x.saveModel).length + plan.filter((x) => !x.capKept).length;
+    main.innerHTML = `<article class="setup-card setup-plan" aria-labelledby="setup-plan-title">
+        <header class="setup-card-head">
+            <div><span class="setup-kicker">Set this up for me</span><h3 id="setup-plan-title">Here is what I would set</h3>
+                <p class="setup-what">A model for every job from the keys you have saved, and a monthly cap for each job that has none: twice its last 30 days, at least $${AI_SETUP_CAP_FLOOR}. Nothing is saved until you say so, and nothing here spends money.</p></div>
+        </header>
+        <div class="setup-table-wrap">
+            <table class="setup-table">
+                <thead><tr><th>Task kind</th><th>Model</th><th>Monthly cap</th></tr></thead>
+                <tbody>${rows || '<tr><td colspan="3" class="muted">No task kinds yet.</td></tr>'}</tbody>
+            </table>
+        </div>
+        ${waiting.length ? `<p class="setup-help">${waiting.length === 1 ? 'One job waits' : waiting.length + ' jobs wait'} for a provider: paste its key, or turn it on, in Providers and keys, then come back. The plan picks it up.</p>` : ''}
+        <footer class="setup-card-foot">
+            <button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_START}')">Back</button>
+            <div class="setup-foot-next">
+                ${waiting.length ? `<button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_PROVIDERS}')">Providers and keys</button>` : ''}
+                <button class="btn btn-primary" id="setup-plan-apply" onclick="applyAiSetupPlan()" ${changes ? '' : 'disabled'}>${changes ? 'Use these' : 'Nothing to change'}</button>
+            </div>
+        </footer>
+    </article>`;
+}
+
+/** "Use these": each proposed model and each new cap, one save at a time; then what was saved and what waits. */
+async function applyAiSetupPlan() {
+    if (aiSetupBusy || !aiSetupState) return;
+    const plan = aiSetupPlan();
+    const btn = document.getElementById('setup-plan-apply');
+    aiSetupBusy = true;
+    if (btn) btn.disabled = true;
+    let models = 0, caps = 0;
+    const failed = [];
+    try {
+        for (const x of plan) {
+            if (x.saveModel) {
+                try { await api(`/api/admin/ai/setup/routes/${encodeURIComponent(x.kind)}`, { method: 'PUT', body: { provider: x.pick.provider, model: x.pick.model } }); models++; }
+                catch (err) { failed.push(`${x.name}: ${err.message || 'the model was not saved'}`); }
+            }
+            if (!x.capKept) {
+                try { await api(`/api/admin/ai/setup/caps/${encodeURIComponent(x.kind)}`, { method: 'PUT', body: { cap_usd: x.cap } }); caps++; }
+                catch (err) { failed.push(`${x.name}: ${err.message || 'the cap was not saved'}`); }
+            }
+        }
+        const waiting = plan.filter((x) => x.keyNeeded).length;
+        const said = [`${models} model${models === 1 ? '' : 's'} and ${caps} cap${caps === 1 ? '' : 's'} saved`];
+        if (waiting) said.push(`${waiting} wait${waiting === 1 ? 's' : ''} for a key`);
+        if (failed.length) said.push(`${failed.length} not saved (${failed[0]})`);
+        toast(said.join('; '), failed.length ? 'warning' : undefined);
+        aiSetupState = null;
+        await loadAiSetup(true);
+        selectAiSetupStep(waiting ? AI_SETUP_PROVIDERS : AI_SETUP_DONE);
+    } finally {
+        aiSetupBusy = false;
+        if (btn) btn.disabled = false;
     }
 }
 
