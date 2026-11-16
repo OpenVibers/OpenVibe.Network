@@ -42,7 +42,21 @@ const GUEST_OLD = 'gst_01JAB2C3D4E5F6G7H8J9K0MNP3';
     console.log = quiet;
 
     const newbie = await trustSignals(db, USER_NEW, { now });
-    assert.deepStrictEqual(newbie, { kind: 'account', age_band: 'under_1h', account_age_hours: 0, account_age_days: 0, passkey: false, linked_accounts: 0, active_30d: false, email_verified: false, verified: false, verified_by: [] });
+    assert.deepStrictEqual(newbie, { kind: 'account', age_band: 'under_1h', account_age_hours: 0, account_age_days: 0, passkey: false, linked_accounts: 0, active_30d: false, email_verified: false, verified: false, verified_by: [], rank: 'user' });
+
+    // 2026-11-16: the rank OpenVibe.AI's daily allowance reads (the owner's is unlimited): the owner is the admin whose
+    // name is OWNER_USERNAME; another admin is an admin; a streamer a streamer.
+    const prevOwner = process.env.OWNER_USERNAME;
+    process.env.OWNER_USERNAME = 'old';
+    await db.prepare("UPDATE users SET role = 'admin' WHERE id IN (2, 3)").run();
+    await db.prepare("UPDATE users SET role = 'streamer' WHERE id = 4").run();
+    assert.strictEqual((await trustSignals(db, USER_OLD, { now })).rank, 'owner', 'the owner');
+    assert.strictEqual((await trustSignals(db, USER_LINKED, { now })).rank, 'admin', 'another admin');
+    assert.strictEqual((await trustSignals(db, LOCKER_MEMBER, { now })).rank, 'streamer');
+    process.env.OWNER_USERNAME = 'someone-else';
+    assert.strictEqual((await trustSignals(db, USER_OLD, { now })).rank, 'admin', 'an admin whose name is not the owner\'s');
+    if (prevOwner === undefined) delete process.env.OWNER_USERNAME; else process.env.OWNER_USERNAME = prevOwner;
+    await db.prepare("UPDATE users SET role = 'user' WHERE id IN (2, 3, 4)").run();
 
     const old = await trustSignals(db, USER_OLD, { now });
     assert.strictEqual(old.account_age_days, 40);

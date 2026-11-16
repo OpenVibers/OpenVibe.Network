@@ -15,11 +15,21 @@
  *   active_30d          the account is at least 30 days old and was seen in the last 30 days
  *   verified            passkey, a linked account, or 30 days with activity
  *   verified_by         the facts behind `verified`
+ *   rank                owner, admin, global_mod, streamer or user (2026-11-16: OpenVibe.AI's daily free allowance grows
+ *                       with rank, the owner's being unlimited; the owner: "owner rank should be able to use more tokens")
  *
  * Guest signals are aggregate counts only. Nothing private leaves: no IP, email, last-seen timestamp, service user id,
  * or linked-account identities. The existing internal projection only asks for signals when `trust=1`.
  */
 const { createdMs } = require('./subjects');
+const { isOwner } = require('../auth/owner-guard');
+
+const RANKS = new Set(['admin', 'global_mod', 'streamer', 'user']);
+/** The account's rank: the owner (staff-claims' rule: an admin whose name is the owner's), else its role. */
+function rankOf(user) {
+    if (user && user.role === 'admin' && isOwner(user)) return 'owner';
+    return RANKS.has(user && user.role) ? user.role : 'user';
+}
 
 const DAY = 86_400_000;
 const HOUR = 3_600_000;
@@ -70,7 +80,7 @@ async function trustSignals(db, subjectId, { now = Date.now() } = {}) {
         };
     }
     if (!/^usr_[0-9A-HJKMNP-TV-Z]{26}$/.test(subjectId)) return null;
-    const user = await db.prepare('SELECT id, subject_id, created_at, last_seen, email_verified, deleted_at FROM users WHERE subject_id = ?').get(subjectId);
+    const user = await db.prepare('SELECT id, subject_id, username, role, created_at, last_seen, email_verified, deleted_at FROM users WHERE subject_id = ?').get(subjectId);
     if (!user || user.deleted_at) return null;
     const born = createdMs(user.created_at);
     const ageMs = Math.max(0, now - born);
@@ -93,7 +103,8 @@ async function trustSignals(db, subjectId, { now = Date.now() } = {}) {
         email_verified: Number(user.email_verified) === 1,
         verified: verifiedBy.length > 0,
         verified_by: verifiedBy,
+        rank: rankOf(user),
     };
 }
 
-module.exports = { trustSignals, ageBand };
+module.exports = { trustSignals, ageBand, rankOf };
