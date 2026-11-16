@@ -32,6 +32,7 @@ const express = require('express');
 const crypto = require('crypto');
 const { SITES, LISTED, LISTED_SITES, siteForHost, GROUPS, groupOf, PRODUCTS, MERGED_PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME, fullName } = require('./sites');
 const { createMenuCards } = require('./menu-cards');
+const { createVisitors, declined } = require('./visitors');
 const { createFrameChoices } = require('./choices');
 const { createFrameAsk } = require('./ask');
 const { createFrameCaption } = require('./caption');
@@ -195,6 +196,8 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     const load = async (k) => { try { const r = await db.prepare('SELECT value, updated_at FROM frame_cache WHERE key = ?').get(k); return r ? { value: JSON.parse(r.value), at: Date.parse(r.updated_at + 'Z') || 0 } : null; } catch { return null; } };
     const save = async (k, v) => await db.prepare('INSERT INTO frame_cache (key, value, updated_at) VALUES (?, ?, ov_now()) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = ov_now()').run(k, JSON.stringify(v));
 
+    // Distinct visitors per site and day for the open stats and Report (11-16): a daily-salted hash, rolled into counts.
+    const visitors = createVisitors({ db, now, load, save });
     const savedRank = await load('rank') || {};
     let rank = savedRank.value || { scores: {}, tools: [] };
     let rankedAt = savedRank.value ? savedRank.at || null : null;
@@ -1359,6 +1362,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
                 if (/^(1|true)$/.test(String(req.query.in || ''))) seen.forgetGuest(req.ip, ua, now());
                 else seen.seenGuest(req.ip, ua, now(), (siteForHost(host) || {}).id || (known ? 'tools' : null));
                 await bump.run(host);
+                await visitors.seen({ ip: req.ip, ua, host, dnt: declined(req) }).catch(() => {});
             }
         } catch { /* counting must never fail a page */ }
         res.status(204).end();

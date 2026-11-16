@@ -130,6 +130,22 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
     }
 
     // ── OpenVibe.Live counts its own page views (its own navbar and analytics): totals for the windows ──
+    // ── Distinct visitors per site (frame/visitors.js, 11-16): each day's distinct visitors, summed over the window ──
+    async function visitorsBySite(days) {
+        const window = new Set(daysOf(days));
+        const since = [...window].sort()[0];
+        const rows = await all(`SELECT day, host, visitors::bigint AS n FROM frame_visitor_days WHERE day >= ?
+            UNION ALL SELECT day, host, COUNT(*)::bigint AS n FROM frame_visitors WHERE day >= ? GROUP BY day, host`, since, since);
+        if (!rows) return null;
+        const by = new Map();
+        for (const r of rows) {
+            if (!window.has(r.day)) continue;
+            const site = siteForHost(r.host);
+            if (site) by.set(site.id, (by.get(site.id) || 0) + (Number(r.n) || 0));
+        }
+        return by;
+    }
+
     async function livePageviews(days) {
         const token = selfToken('openvibe.live', ['live.analytics.read']);
         if (!token) return null;
@@ -246,7 +262,7 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
     }
 
     async function compute(days) {
-        const [pv, livePv, acc, coin, tr, liveN, tpv, uses] = await Promise.all([pageviews(days), livePageviews(days), accounts(days), coins(days), traffic(), liveNumbers(), toolPageviews(), useCounts()]);
+        const [pv, livePv, acc, coin, tr, liveN, tpv, uses, vis] = await Promise.all([pageviews(days), livePageviews(days), accounts(days), coins(days), traffic(), liveNumbers(), toolPageviews(), useCounts(), visitorsBySite(days)]);
         let services = null;
         try {
             const rows = statusRows().filter((r) => r.exposure && r.exposure.state === 'live');
@@ -288,6 +304,7 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
                 ...(use ? { uses_24h: use.u24, uses_7d: use.u7, uses_prev_7d: use.uPrev } : {}),
                 daily: isLive ? null : window.map((d) => ({ day: d, n: e ? e.daily.get(d) || 0 : 0 })),
                 ...(isLive && livePv ? { unique_visitors: livePv.visitors, signed_in_people: livePv.people } : {}),
+                ...(!isLive && vis && vis.has(s.id) ? { unique_visitors: vis.get(s.id) } : {}),
                 traffic_24h: t || null,
             };
         }).sort((a, b) => (b.pageviews || 0) - (a.pageviews || 0) || a.name.localeCompare(b.name));
