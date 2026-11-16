@@ -2,13 +2,24 @@
 /**
  * The MCP server (Compute plan E7): https://connect.openvibe.network/mcp, streamable HTTP.
  *
- * One JSON-RPC call per request, the MCP Streamable HTTP transport, protocol version 2025-06-18:
+ * One JSON-RPC call per request, the MCP Streamable HTTP transport, in both eras of the protocol:
  *
- *   initialize            what this server is and what it can do
- *   notifications/initialized   (no answer)
- *   ping                  (no answer needed, but answered)
- *   tools/list            the actions of the apps this person connected and this caller was granted
- *   tools/call            one action, through the gateway
+ *   2026-07-28 (stateless; 2026-11-16): every request carries its version in params._meta
+ *   ("io.modelcontextprotocol/protocolVersion") and the MCP-Protocol-Version header, and its method in Mcp-Method
+ *   (tools/call also its tool in Mcp-Name). A header that disagrees with the body is a 400 HeaderMismatch (-32020);
+ *   a version this server does not speak is a 400 UnsupportedProtocolVersion (-32022) naming the ones it does.
+ *     server/discover       the versions, the capabilities and who this server is
+ *     tools/list            the tools, with how long the list may be kept (ttlMs, cacheScope: private)
+ *     tools/call            one action, through the gateway
+ *   Every result says resultType "complete"; an unknown method is a 404.
+ *
+ *   2025-03-26 … 2025-11-25 (the handshake; unchanged):
+ *     initialize            what this server is and what it can do
+ *     notifications/initialized   (no answer)
+ *     ping                  (no answer needed, but answered)
+ *     tools/list, tools/call
+ *
+ * No session is ever minted: the server was already stateless, so one endpoint serves both eras.
  *
  * The caller is the person's own token, a key they made on the Apps page, or a service acting for them.
  * A caller with no grant sees no tools at all: the list is what this caller may do, not what the
@@ -35,6 +46,15 @@ const PROTOCOL_VERSION = '2025-06-18';
 // The versions this server speaks. The client's own version is echoed when it is one of these, so a
 // newer client is not told it is talking to an older server than it is.
 const SUPPORTED_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26'];
+// The stateless era (2026-07-28): no handshake, the version and the method on every request.
+const MODERN_VERSIONS = ['2026-07-28'];
+const META_VERSION = 'io.modelcontextprotocol/protocolVersion';
+const META_SERVER = 'io.modelcontextprotocol/serverInfo';
+const MODERN_ERRORS = { headerMismatch: -32020, missingCapability: -32021, unsupportedVersion: -32022 };
+const INSTRUCTIONS = 'The tools here act in the person\'s own apps, with the person\'s own credentials. A send, a delete or a pay action asks the person first and waits.';
+// How long a client may keep the tool list (it is this caller's: private) and the discovery (everyone's: public).
+const TOOLS_TTL_MS = 60000;
+const DISCOVER_TTL_MS = 3600000;
 const SERVER_INFO = { name: 'openvibe-connect', title: 'OpenVibe Connect', version: '1.0' };
 const JSONRPC_ERRORS = { parse: -32700, invalid: -32600, method: -32601, params: -32602, internal: -32603 };
 
@@ -48,6 +68,14 @@ const send = (res, status, body, headers = {}) => {
 
 const ok = (res, id, result) => send(res, 200, { jsonrpc: '2.0', id, result });
 const failRpc = (res, id, code, message) => send(res, 200, { jsonrpc: '2.0', id, error: { code, message } });
+const failHttp = (res, status, id, code, message, data) => send(res, status, { jsonrpc: '2.0', id, error: { code, message, ...(data ? { data } : {}) } });
+
+/** The version a 2026-07-28 request names in its _meta, or null for a handshake-era request. */
+function modernVersion(params) {
+    const meta = params && params._meta && typeof params._meta === 'object' ? params._meta : null;
+    const v = meta && meta[META_VERSION];
+    return typeof v === 'string' && v ? v : null;
+}
 
 /** The tools this caller may use, as MCP tools. */
 function toTools(actions) {
@@ -87,6 +115,10 @@ function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null
         const method = String(body.method || '');
         const params = body.params && typeof body.params === 'object' ? body.params : {};
 
+        // The stateless era: the version, the method and the tool are in the headers too, and must agree with the body.
+        const modern = modernVersion(params);
+        if (modern) return serveModern({ req, res, who, id, method, params, version: modern });
+
         try {
             if (method === 'initialize') {
                 const asked = String(params.protocolVersion || '');
@@ -94,18 +126,29 @@ function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null
                     protocolVersion: SUPPORTED_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSION,
                     capabilities: { tools: { listChanged: false } },
                     serverInfo: SERVER_INFO,
-                    instructions: 'The tools here act in the person\'s own apps, with the person\'s own credentials. A send, a delete or a pay action asks the person first and waits.',
+                    instructions: INSTRUCTIONS,
                 });
             }
             if (method === 'notifications/initialized' || method === 'notifications/cancelled') {
                 return send(res, 202, undefined);
             }
             if (method === 'ping') return ok(res, id, {});
-            if (method === 'tools/list') {
-                const actions = await gateway.listActions({ subject: who.subject, callerId: who.caller.id });
-                return ok(res, id, { tools: [...toTools(actions), ...(publicPage ? [PUBLIC_PERSON_TOOL] : []), ...(myTrust ? [MY_TRUST_TOOL] : [])] });
-            }
-            if (method === 'tools/call') {
+            if (method === 'tools/list') return ok(res, id, { tools: await listTools(who) });
+            if (method === 'tools/call') return ok(res, id, await callTool(who, params));
+            return failRpc(res, id, JSONRPC_ERRORS.method, `unknown method ${method}`);
+        } catch (e) {
+            return failRpc(res, id, JSONRPC_ERRORS.internal, String(e.message || 'the server failed').slice(0, 300));
+        }
+    };
+
+    async function listTools(who) {
+        const actions = await gateway.listActions({ subject: who.subject, callerId: who.caller.id });
+        // The same order every time (2026-07-28 asks for a deterministic one): the gateway's actions, then the two reads.
+        return [...toTools(actions), ...(publicPage ? [PUBLIC_PERSON_TOOL] : []), ...(myTrust ? [MY_TRUST_TOOL] : [])];
+    }
+
+    /** One tool call → its MCP result (a failure is a result with isError, never a protocol error). */
+    async function callTool(who, params) {
                 const name = String(params.name || '');
                 const args = params.arguments && typeof params.arguments === 'object' ? params.arguments : {};
                 try {
@@ -115,29 +158,60 @@ function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null
                         const out = await publicPage(handle);
                         if (!out) throw Object.assign(new Error('No public page found for that handle.'), { status: 404 });
                         const text = JSON.stringify(out, null, 2);
-                        return ok(res, id, { content: [{ type: 'text', text }], structuredContent: out });
+                        return { content: [{ type: 'text', text }], structuredContent: out };
                     }
                     if (name === MY_TRUST_TOOL.name && myTrust) {
                         const out = await myTrust(who.subject);
                         const text = JSON.stringify(out, null, 2);
-                        return ok(res, id, { content: [{ type: 'text', text }], structuredContent: out });
+                        return { content: [{ type: 'text', text }], structuredContent: out };
                     }
                     const out = await gateway.call({
                         subject: who.subject, callerId: who.caller.id, callerName: who.caller.name,
                         actionName: name, input: args, requestOptions,
                     });
                     const text = typeof out.data === 'string' ? out.data : JSON.stringify(out.data, null, 2);
-                    return ok(res, id, { content: [{ type: 'text', text }], structuredContent: { app: out.app, action: out.action, status: out.status } });
+                    return { content: [{ type: 'text', text }], structuredContent: { app: out.app, action: out.action, status: out.status } };
                 } catch (e) {
                     const detail = e.detail || e.message || 'the call failed';
-                    return ok(res, id, { content: [{ type: 'text', text: String(detail).slice(0, 500) }], isError: true });
+                    return { content: [{ type: 'text', text: String(detail).slice(0, 500) }], isError: true };
                 }
+    }
+
+    /** A 2026-07-28 request: headers checked against the body, then served with resultType on every result. */
+    async function serveModern({ req, res, who, id, method, params, version }) {
+        const header = (name) => { const v = req.get(name); return typeof v === 'string' ? v.trim() : null; };
+        if (!MODERN_VERSIONS.includes(version)) {
+            return failHttp(res, 400, id, MODERN_ERRORS.unsupportedVersion, 'Unsupported protocol version',
+                { supported: [...MODERN_VERSIONS, ...SUPPORTED_VERSIONS], requested: version });
+        }
+        const hv = header('MCP-Protocol-Version');
+        if (hv !== version) return failHttp(res, 400, id, MODERN_ERRORS.headerMismatch, `Header mismatch: MCP-Protocol-Version header value '${String(hv || '')}' does not match body value '${version}'`);
+        const hm = header('Mcp-Method');
+        if (hm !== method) return failHttp(res, 400, id, MODERN_ERRORS.headerMismatch, `Header mismatch: Mcp-Method header value '${String(hm || '')}' does not match body value '${method}'`);
+        if (method === 'tools/call') {
+            const hn = header('Mcp-Name');
+            const name = String(params.name || '');
+            if (hn !== name) return failHttp(res, 400, id, MODERN_ERRORS.headerMismatch, `Header mismatch: Mcp-Name header value '${String(hn || '')}' does not match body value '${name}'`);
+        }
+        try {
+            if (method === 'server/discover') {
+                return ok(res, id, {
+                    resultType: 'complete',
+                    supportedVersions: [...MODERN_VERSIONS, ...SUPPORTED_VERSIONS],
+                    capabilities: { tools: {} },
+                    instructions: INSTRUCTIONS,
+                    ttlMs: DISCOVER_TTL_MS, cacheScope: 'public',
+                    _meta: { [META_SERVER]: SERVER_INFO },
+                });
             }
-            return failRpc(res, id, JSONRPC_ERRORS.method, `unknown method ${method}`);
+            if (method === 'tools/list') return ok(res, id, { resultType: 'complete', tools: await listTools(who), ttlMs: TOOLS_TTL_MS, cacheScope: 'private' });
+            if (method === 'tools/call') return ok(res, id, { resultType: 'complete', ...(await callTool(who, params)) });
+            if (method.startsWith('notifications/')) return send(res, 202, undefined);
+            return failHttp(res, 404, id, JSONRPC_ERRORS.method, `Method not found: ${method}`);
         } catch (e) {
             return failRpc(res, id, JSONRPC_ERRORS.internal, String(e.message || 'the server failed').slice(0, 300));
         }
-    };
+    }
 }
 
-module.exports = { createMcpHandler, toTools, PROTOCOL_VERSION, SUPPORTED_VERSIONS, SERVER_INFO, PUBLIC_PERSON_TOOL, MY_TRUST_TOOL };
+module.exports = { createMcpHandler, toTools, PROTOCOL_VERSION, SUPPORTED_VERSIONS, MODERN_VERSIONS, SERVER_INFO, PUBLIC_PERSON_TOOL, MY_TRUST_TOOL };
