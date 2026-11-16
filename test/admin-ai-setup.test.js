@@ -87,6 +87,11 @@ function upstream() {
         r = await call(owner, 'PUT', '/api/admin/ai/setup/free/pictures', { per_day: 6 });
         assert.strictEqual(ai.seen.at(-1).url, '/api/v1/setup/free/pictures', 'the pictures each person may make a day');
         assert.deepStrictEqual(ai.seen.at(-1).body, { per_day: 6 });
+        // Free AI by rank (2026-11-16): the owner's factors go through as they are; an admin is refused.
+        r = await call(owner, 'PUT', '/api/admin/ai/setup/allowances', { owner: 'unlimited', streamer: 3 });
+        assert.strictEqual(ai.seen.at(-1).url, '/api/v1/setup/allowances');
+        assert.deepStrictEqual(ai.seen.at(-1).body, { owner: 'unlimited', streamer: 3 });
+        assert.strictEqual((await call(admin, 'PUT', '/api/admin/ai/setup/allowances', { user: 9 })).status, 403, 'owner only');
         r = await call(owner, 'POST', '/api/admin/ai/setup/recommended', {});
         assert.strictEqual(ai.seen.at(-1).url, '/api/v1/setup/recommended');
 

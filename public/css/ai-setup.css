@@ -240,3 +240,13 @@
 .setup-agent-pick:hover { background: color-mix(in srgb, var(--text-primary, #e8ecf3) 6%, transparent); }
 .setup-agent-pick[aria-checked="true"] { background: color-mix(in srgb, var(--accent, #3b82f6) 16%, transparent); box-shadow: inset 3px 0 0 var(--accent, #3b82f6); }
 .setup-agent-pick .muted { font-size: 12px; }
+
+/* Free AI by rank (2026-11-16): one row per rank; the factor hides while the rank is unlimited. */
+.setup-ranks { display: grid; gap: 10px; }
+.setup-rank-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; }
+.setup-rank-name { display: grid; gap: 2px; min-width: 0; }
+.setup-rank-name .muted { font-size: 12.5px; }
+.setup-rank-factor { display: inline-flex; align-items: center; gap: 8px; }
+.setup-rank-factor[hidden] { display: none; }
+.setup-rank-factor input { width: 84px; min-height: 40px; }
+@media (max-width: 560px) { .setup-rank-row { grid-template-columns: minmax(0, 1fr) auto; } .setup-rank-factor { grid-column: 1 / -1; } }

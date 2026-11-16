@@ -667,10 +667,25 @@ function renderAiSetupFree() {
                     <span class="muted">pictures${Number(pf.pictures_per_day) === 0 ? ' · making pictures is off' : ''}</span>
                     <button class="btn btn-primary btn-sm" onclick="saveAiSetupFreePictures()">Save</button></div>
             </div>`;
+    // By rank (2026-11-16; the owner: "owner rank should be able to use more tokens per day"): each rank's share of the
+    // free daily allowance, unlimited or a factor, from AI's setup state (`allowances`).
+    const al = aiSetupState.allowances || null;
+    const byRank = !al ? '<p class="setup-note">OpenVibe.AI\'s next release adds this setting.</p>'
+        : `<div class="setup-ranks">${al.ranks.map((x) => {
+            const unl = x.factor === 'unlimited';
+            const amount = unl ? 'No daily cap (the rate limits still apply)' : `${Number(x.tokens_per_day || 0).toLocaleString()} tokens a day · ${aiSetupFreeWords(x.tokens_per_day)}`;
+            return `<div class="setup-rank-row" data-rank="${esc(x.rank)}">
+                <span class="setup-rank-name"><strong>${esc(x.label)}</strong><span class="muted" data-rank-amount>${esc(amount)}</span></span>
+                <label class="pai-switch"><input type="checkbox" role="switch" data-ov-native data-rank-unlimited ${unl ? 'checked' : ''} onchange="aiSetupRankChanged(this)"><span class="pai-track" aria-hidden="true"><span class="pai-knob"></span></span><span>Unlimited</span></label>
+                <span class="setup-rank-factor"${unl ? ' hidden' : ''}><input type="number" min="0" max="9999" step="0.5" value="${esc(String(unl ? 1 : x.factor))}" aria-label="${esc(x.label)}: times the allowance" data-rank-factor oninput="aiSetupRankChanged(this)"><span class="muted">× the allowance</span></span>
+            </div>`;
+        }).join('')}
+            <div class="setup-free-row"><span class="muted">The allowance is ${Number(al.daily_tokens || 0).toLocaleString()} tokens a day.</span><button class="btn btn-primary btn-sm" onclick="saveAiSetupRanks()">Save</button></div></div>`;
     main.innerHTML = `<article class="setup-card">
         <header class="setup-card-head"><div><span class="setup-kicker">For everyone</span><h3 id="setup-step-title">Free use and budgets</h3>
             <p class="setup-what">What people get free, what the server spends at most, and what happens past it.</p></div></header>
         <section class="setup-free-sec"><h4>Free AI</h4>${free}</section>
+        <section class="setup-free-sec"><h4>By rank</h4>${byRank}</section>
         <section class="setup-free-sec"><h4>Pictures</h4>${pictures}</section>
         <section class="setup-free-sec"><h4>Most the server spends a month</h4>
             <p>${caps.length ? `<strong>${aiSetupMoney(total)}</strong> across ${caps.length} job${caps.length === 1 ? '' : 's'} with a cap.` : 'No job has a cap yet: the server spends what the jobs use.'}</p>
@@ -678,6 +693,30 @@ function renderAiSetupFree() {
         <section class="setup-free-sec"><h4>Past the free part</h4>
             <p>People use their own key${credits ? ', or their Credits (Credits are on).' : '. Credits are off, so nothing is charged.'}</p></section>
     </article>`;
+}
+/** A rank's row as it is edited: the factor shows only when not unlimited, and the amount follows the factor. */
+function aiSetupRankChanged(el) {
+    const row = el && el.closest('.setup-rank-row');
+    if (!row || !aiSetupState || !aiSetupState.allowances) return;
+    const unl = row.querySelector('[data-rank-unlimited]').checked;
+    const factorBox = row.querySelector('.setup-rank-factor');
+    if (factorBox) factorBox.hidden = unl;
+    const f = Math.max(0, Number(row.querySelector('[data-rank-factor]').value) || 0);
+    const tokens = Math.floor(Number(aiSetupState.allowances.daily_tokens || 0) * f);
+    row.querySelector('[data-rank-amount]').textContent = unl ? 'No daily cap (the rate limits still apply)' : `${tokens.toLocaleString()} tokens a day · ${aiSetupFreeWords(tokens)}`;
+}
+async function saveAiSetupRanks() {
+    const body = {};
+    document.querySelectorAll('.setup-rank-row').forEach((row) => {
+        const unl = row.querySelector('[data-rank-unlimited]').checked;
+        body[row.dataset.rank] = unl ? 'unlimited' : Math.max(0, Math.min(9999, Number(row.querySelector('[data-rank-factor]').value) || 0));
+    });
+    try {
+        const out = await api('/api/admin/ai/setup/allowances', { method: 'PUT', body });
+        if (aiSetupState && out && out.allowances) aiSetupState.allowances = out.allowances;
+        toast('Free AI by rank saved');
+    } catch (err) { toast((err && err.message) || 'That did not save', 'error'); }
+    if (aiSetupStep === AI_SETUP_FREE) renderAiSetup();
 }
 async function saveAiSetupFreePictures() {
     const input = document.getElementById('setup-free-pictures');
