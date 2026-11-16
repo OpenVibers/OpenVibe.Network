@@ -255,3 +255,10 @@
 .setup-machine { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; min-width: 0; }
 .setup-machine-name { display: grid; gap: 2px; min-width: 0; }
 .setup-machine-name .muted, .setup-machine-from { font-size: 12.5px; color: var(--text-secondary); overflow-wrap: anywhere; }
+/* 2026-11-16 (plan §AD.15): "Set this up for me", the proposal before anything is saved. */
+.setup-plan .setup-table{min-width:0}
+.setup-plan-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:650;color:var(--accent-light,var(--accent));background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.setup-plan-state{display:inline-block;margin-top:4px;font-size:11.5px;color:var(--text-muted)}
+.setup-plan-state.ok{color:var(--success-text,var(--success,#16a34a))}
+.setup-plan-state.todo{color:var(--warning)}
+.setup-start-card .btn [data-ov-icon],.setup-card-head .btn [data-ov-icon]{width:16px;height:16px;vertical-align:-3px}
