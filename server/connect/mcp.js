@@ -28,6 +28,7 @@
  * The tools are the actions, named as they are (github.issue.create). A tool that fails answers with
  * isError and a short line; nothing secret is ever in the answer.
  */
+const mcpKit = require('openvibe-sdk/mcp');
 const { resolveCaller } = require('./auth');
 const PUBLIC_PERSON_TOOL = {
     name: 'network.person_page.read',
@@ -46,11 +47,9 @@ const PROTOCOL_VERSION = '2025-06-18';
 // The versions this server speaks. The client's own version is echoed when it is one of these, so a
 // newer client is not told it is talking to an older server than it is.
 const SUPPORTED_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26'];
-// The stateless era (2026-07-28): no handshake, the version and the method on every request.
-const MODERN_VERSIONS = ['2026-07-28'];
-const META_VERSION = 'io.modelcontextprotocol/protocolVersion';
-const META_SERVER = 'io.modelcontextprotocol/serverInfo';
-const MODERN_ERRORS = { headerMismatch: -32020, missingCapability: -32021, unsupportedVersion: -32022 };
+// The stateless era (2026-07-28): no handshake, the version and the method on every request. Its checks and result
+// shapes are openvibe-sdk/mcp's (0.177.0), shared with every OpenVibe MCP server.
+const MODERN_VERSIONS = mcpKit.MODERN_VERSIONS;
 const INSTRUCTIONS = 'The tools here act in the person\'s own apps, with the person\'s own credentials. A send, a delete or a pay action asks the person first and waits.';
 // How long a client may keep the tool list (it is this caller's: private) and the discovery (everyone's: public).
 const TOOLS_TTL_MS = 60000;
@@ -69,13 +68,6 @@ const send = (res, status, body, headers = {}) => {
 const ok = (res, id, result) => send(res, 200, { jsonrpc: '2.0', id, result });
 const failRpc = (res, id, code, message) => send(res, 200, { jsonrpc: '2.0', id, error: { code, message } });
 const failHttp = (res, status, id, code, message, data) => send(res, status, { jsonrpc: '2.0', id, error: { code, message, ...(data ? { data } : {}) } });
-
-/** The version a 2026-07-28 request names in its _meta, or null for a handshake-era request. */
-function modernVersion(params) {
-    const meta = params && params._meta && typeof params._meta === 'object' ? params._meta : null;
-    const v = meta && meta[META_VERSION];
-    return typeof v === 'string' && v ? v : null;
-}
 
 /** The tools this caller may use, as MCP tools. */
 function toTools(actions) {
@@ -116,8 +108,7 @@ function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null
         const params = body.params && typeof body.params === 'object' ? body.params : {};
 
         // The stateless era: the version, the method and the tool are in the headers too, and must agree with the body.
-        const modern = modernVersion(params);
-        if (modern) return serveModern({ req, res, who, id, method, params, version: modern });
+        if (mcpKit.requestVersion(params)) return serveModern({ req, res, who, id, method, params });
 
         try {
             if (method === 'initialize') {
@@ -177,37 +168,20 @@ function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null
                 }
     }
 
-    /** A 2026-07-28 request: headers checked against the body, then served with resultType on every result. */
-    async function serveModern({ req, res, who, id, method, params, version }) {
-        const header = (name) => { const v = req.get(name); return typeof v === 'string' ? v.trim() : null; };
-        if (!MODERN_VERSIONS.includes(version)) {
-            return failHttp(res, 400, id, MODERN_ERRORS.unsupportedVersion, 'Unsupported protocol version',
-                { supported: [...MODERN_VERSIONS, ...SUPPORTED_VERSIONS], requested: version });
-        }
-        const hv = header('MCP-Protocol-Version');
-        if (hv !== version) return failHttp(res, 400, id, MODERN_ERRORS.headerMismatch, `Header mismatch: MCP-Protocol-Version header value '${String(hv || '')}' does not match body value '${version}'`);
-        const hm = header('Mcp-Method');
-        if (hm !== method) return failHttp(res, 400, id, MODERN_ERRORS.headerMismatch, `Header mismatch: Mcp-Method header value '${String(hm || '')}' does not match body value '${method}'`);
-        if (method === 'tools/call') {
-            const hn = header('Mcp-Name');
-            const name = String(params.name || '');
-            if (hn !== name) return failHttp(res, 400, id, MODERN_ERRORS.headerMismatch, `Header mismatch: Mcp-Name header value '${String(hn || '')}' does not match body value '${name}'`);
-        }
+    /** A 2026-07-28 request: headers checked against the body (openvibe-sdk/mcp), then served with resultType on every result. */
+    async function serveModern({ req, res, who, id, method, params }) {
+        const versions = [...MODERN_VERSIONS, ...SUPPORTED_VERSIONS];
+        const refused = mcpKit.checkRequest({ header: (name) => req.get(name), method, params, versions: MODERN_VERSIONS, supported: versions });
+        if (refused) return failHttp(res, refused.status, id, refused.error.code, refused.error.message, refused.error.data);
         try {
             if (method === 'server/discover') {
-                return ok(res, id, {
-                    resultType: 'complete',
-                    supportedVersions: [...MODERN_VERSIONS, ...SUPPORTED_VERSIONS],
-                    capabilities: { tools: {} },
-                    instructions: INSTRUCTIONS,
-                    ttlMs: DISCOVER_TTL_MS, cacheScope: 'public',
-                    _meta: { [META_SERVER]: SERVER_INFO },
-                });
+                return ok(res, id, mcpKit.discoverResult({ serverInfo: SERVER_INFO, capabilities: { tools: {} }, instructions: INSTRUCTIONS, versions, ttlMs: DISCOVER_TTL_MS }));
             }
-            if (method === 'tools/list') return ok(res, id, { resultType: 'complete', tools: await listTools(who), ttlMs: TOOLS_TTL_MS, cacheScope: 'private' });
-            if (method === 'tools/call') return ok(res, id, { resultType: 'complete', ...(await callTool(who, params)) });
+            if (method === 'tools/list') return ok(res, id, mcpKit.listResult('tools', await listTools(who), { ttlMs: TOOLS_TTL_MS, cacheScope: 'private' }));
+            if (method === 'tools/call') return ok(res, id, mcpKit.complete(await callTool(who, params)));
             if (method.startsWith('notifications/')) return send(res, 202, undefined);
-            return failHttp(res, 404, id, JSONRPC_ERRORS.method, `Method not found: ${method}`);
+            const unknown = mcpKit.methodNotFound(method);
+            return failHttp(res, unknown.status, id, unknown.error.code, unknown.error.message);
         } catch (e) {
             return failRpc(res, id, JSONRPC_ERRORS.internal, String(e.message || 'the server failed').slice(0, 300));
         }
