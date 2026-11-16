@@ -984,7 +984,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     const dockAuth = (req) => (/^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '');
     const DOCK_ID = /^[A-Za-z0-9._~:-]{1,160}$/;
     const dockId = (v) => (DOCK_ID.test(String(v || '')) ? String(v) : '');
-    function dockRelay(service, method, upstream, { image = false, maxBytes = 64 * 1024 } = {}) {
+    function dockRelay(service, method, upstream, { image = false, maxBytes = 64 * 1024, timeoutMs = 15000 } = {}) {
         const upstreamPath = typeof upstream === 'function' ? upstream : () => upstream;
         const fallback = service === 'codes' ? 'http://127.0.0.1:4900' : 'http://127.0.0.1:4950';
         return async (req, res) => {
@@ -994,7 +994,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             const path = upstreamPath(req);
             if (!path) return res.status(404).json({ error: 'not found' });
             const headers = { Accept: image ? 'image/jpeg, image/webp' : 'application/json', Authorization: auth };
-            const init = { method, headers, redirect: 'manual', signal: AbortSignal.timeout(15000) };
+            const init = { method, headers, redirect: 'manual', signal: AbortSignal.timeout(timeoutMs) };
             if (method !== 'GET') { headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(req.body || {}); }
             try {
                 const r = await fetch(new URL(path, svcUrl(service, fallback)).href, init);
@@ -1045,6 +1045,12 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // 2026-11-13: your agents' faces for the menu's stack behind your picture (Actor #475: face, state, step, asks),
     // through the Frame because every site's connect-src allows openvibe.network and refuses openvibe.actor.
     router.get('/actor/faces', dockRelay('actor', 'GET', '/api/v1/me/agents/faces'));
+    // Your Actor's pictures (2026-11-16, the owner: "an avatar generator … on the image models configured in the admin"):
+    // the ones you have and the styles, three new ones drawn by OpenVibe.AI as you (on your allowance; a minute at
+    // most), and wearing one (Actor checks it is yours; POST here so the preflight stays GET, POST, PATCH, DELETE).
+    router.get('/actor/pictures', dockRelay('actor', 'GET', '/api/v1/me/faces'));
+    router.post('/actor/pictures/generate', dockJson, dockRelay('actor', 'POST', '/api/v1/me/faces/generate', { timeoutMs: 90000 }));
+    router.post('/actor/face', dockJson, dockRelay('actor', 'PUT', '/api/v1/agents/actor/face'));
     for (const what of ['pause', 'resume', 'tell']) router.post(`/actor/${what}`, dockJson, dockRelay('actor', 'POST', `/api/v1/me/actor/${what}`));
     for (const what of ['answer', 'decline']) router.post(`/actor/asks/:id/${what}`, dockJson, dockRelay('actor', 'POST', (req) => (dockId(req.params.id) ? `/api/v1/me/actor/asks/${encodeURIComponent(req.params.id)}/${what}` : null)));
     // One owner's agent sheet on any site. Actor checks ownership and capabilities; the relay accepts only its
