@@ -267,8 +267,20 @@
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
                 <div class="form-field">
-                    <label>Icon (emoji)</label>
-                    <span class="admin-field"><input type="text" id="broadcast-icon" aria-label="Notification icon" aria-describedby="help-broadcast-icon" value="📢" style="text-align:center"><span class="admin-help" id="help-broadcast-icon"><strong>Notification icon.</strong> The default is the announcement emoji. Use one recognizable emoji, for example 📢.</span></span>
+                    <label id="broadcast-icon-label">Icon</label>
+                    <span class="admin-field"><input type="hidden" id="broadcast-icon" value="📢">
+                    <span class="bc-icons" role="radiogroup" aria-labelledby="broadcast-icon-label" aria-describedby="help-broadcast-icon">
+                        <button type="button" role="radio" aria-checked="true" tabindex="0" data-emoji="📢" title="Announcement" aria-label="Announcement"><i data-ov-icon="megaphone" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="🚀" title="Something new" aria-label="Something new"><i data-ov-icon="rocket" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="⚠️" title="Warning" aria-label="Warning"><i data-ov-icon="alert" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="🔧" title="Maintenance" aria-label="Maintenance"><i data-ov-icon="wrench" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="🔴" title="Live" aria-label="Live"><i data-ov-icon="live" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="📅" title="Event" aria-label="Event"><i data-ov-icon="calendar" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="🎁" title="Gift" aria-label="Gift"><i data-ov-icon="gift" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="🏆" title="Winners" aria-label="Winners"><i data-ov-icon="trophy" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="💜" title="Thanks" aria-label="Thanks"><i data-ov-icon="heart" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="📰" title="News" aria-label="News"><i data-ov-icon="news" aria-hidden="true"></i></button>
+                    </span><span class="admin-help" id="help-broadcast-icon"><strong>Icon.</strong> The announcement email leads with it.</span></span>
                 </div>
                 <div class="form-field">
                     <label>Priority</label>
