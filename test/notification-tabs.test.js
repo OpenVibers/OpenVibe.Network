@@ -24,7 +24,13 @@ assert.strictEqual(tabs.tabWhere('all'), null, 'All is no filter');
 assert.strictEqual(tabs.tabWhere('nope'), null, 'an unknown tab is All');
 assert.deepStrictEqual(tabs.tabWhere('agents').params, ['CONFIRMATION_REQUESTED', 'AGENT\\_%', 'RUN\\_%'], 'prefixes escape LIKE wildcards');
 assert.strictEqual(tabs.inTab('agents', 'system', 'AGENT_TASK_DONE'), true);
-assert.strictEqual(tabs.inTab('mentions', 'social', 'FOLLOW'), false, 'a follow is not a mention');
+// 2026-11-16: Mentions became People (a follow is people's doing), and every notification has one tab: an agent's
+// notice sent as a service is the Agents', never Deals' too (the owner's screenshot).
+assert.strictEqual(tabs.inTab('mentions', 'social', 'FOLLOW'), true, 'a follow is under People');
+assert.deepStrictEqual(tabs.IDS.filter((id) => id !== 'all' && tabs.inTab(id, 'service', 'AGENT_TASK_FAILED')), ['agents'], 'an agent\'s notice, sent as a service: Agents only');
+assert.deepStrictEqual(tabs.IDS.filter((id) => id !== 'all' && tabs.inTab(id, 'stream', 'MENTION')), ['mentions'], 'a mention in a stream: People only');
+assert.deepStrictEqual(tabs.IDS.filter((id) => id !== 'all' && tabs.inTab(id, 'service', 'DEAL_ALERT')), ['alerts'], 'a deal: Deals only');
+assert.ok(/NOT \(type IN/.test(tabs.tabWhere('alerts').sql), 'the list\'s filter leaves out what an earlier tab claims');
 assert.deepStrictEqual(tabs.countsByTab([{ category: 'social', type: 'MENTION', count: '2' }, { category: 'stream', type: 'STREAM_LIVE', count: 3 }]),
     { all: 5, mentions: 2, live: 3, alerts: 0, system: 0, agents: 0 }, 'counts add up per tab, string counts included');
 
