@@ -37,6 +37,7 @@ const { createFrameChoices } = require('./choices');
 const { createFrameAsk } = require('./ask');
 const { createFrameCaption } = require('./caption');
 const { createFrameCodeSearch } = require('./code-search');
+const { createFrameTools } = require('./tools');
 const { read: readCommands } = require('./commands');
 const { createFrameMentions } = require('./mentions');
 const { createFrameRuns } = require('./runs');
@@ -1115,6 +1116,8 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // moved to these routes, then go in one cut.
     const frameRuns = createFrameRuns({ svcUrl, personOf, now });
     router.use('/runs', frameRuns.router);
+    // The composer's Tools (Shared 4.284.0): openvibe.tools through the Frame, which every site's CSP allows.
+    router.use(createFrameTools({ toolsUrl: svcUrl('tools', 'http://127.0.0.1:4001'), now }));
 
     // GET /api/frame/suggest?q=&owner=&limit= — the navbar's magnifier (openvibe-shared search.js): OpenVibe.Search's
     // suggestions, asked through Network because every site's connect-src already lets the navbar reach
