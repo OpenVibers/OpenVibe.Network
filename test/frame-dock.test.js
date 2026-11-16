@@ -64,6 +64,9 @@ const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 
         if (/^\/api\/v1\/tasks\/[A-Za-z0-9._~-]+\/(takeover|giveback)$/.test(u.pathname) && req.method === 'POST') return res.end(JSON.stringify({ ok: true }));
         if (u.pathname === '/api/v1/me/actor' && req.method === 'GET') return res.end(JSON.stringify({ id: 'act_1', name: 'My Actor', status: 'resting', asks: [] }));
         if (u.pathname === '/api/v1/me/actor' && req.method === 'PATCH') return res.end(JSON.stringify({ id: 'act_1', ...JSON.parse(req.body || '{}') }));
+        if (u.pathname === '/api/v1/me/faces' && req.method === 'GET') return res.end(JSON.stringify({ faces: [{ id: 'fac_0123456789ab', url: 'https://actor.test/faces/fac_0123456789ab' }], styles: [{ id: 'openvibe', name: 'OpenVibe' }] }));
+        if (u.pathname === '/api/v1/me/faces/generate' && req.method === 'POST') { const b = JSON.parse(req.body || '{}'); res.statusCode = 201; return res.end(JSON.stringify({ faces: Array.from({ length: b.n || 1 }, (_, i) => ({ id: `fac_new${i}aaaaaaaa`, url: `https://actor.test/faces/fac_new${i}aaaaaaaa` })), cost_usd: 0.01, asked: b })); }
+        if (u.pathname === '/api/v1/agents/actor/face' && req.method === 'PUT') return res.end(JSON.stringify({ agent: 'agt_1', face: `face:${JSON.parse(req.body || '{}').face}`, face_url: '/faces/x' }));
         if (u.pathname === '/api/v1/me/agents/faces' && req.method === 'GET') return res.end(JSON.stringify({ agents: [{ id: 'agt_1', name: 'Juniper', avatar_url: null, hue: 258, glyph: 'spark', state: 'working', step: 'Read the job posts', asks: 0 }] }));
         if (/^\/api\/v1\/me\/actor\/(pause|resume|tell)$/.test(u.pathname) && req.method === 'POST') return res.end(JSON.stringify({ ok: true }));
         if (/^\/api\/v1\/me\/actor\/asks\/[A-Za-z0-9._~-]+\/(answer|decline)$/.test(u.pathname) && req.method === 'POST') return res.end(JSON.stringify({ ok: true }));
@@ -166,6 +169,26 @@ const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 
         assert.ok(asked.some((x) => x.url === '/api/v1/me/actor' && x.method === 'PATCH'), 'PATCH reaches Actor');
         const anon = await fetch(`${base}/actor`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: '{}' });
         assert.strictEqual(anon.status, 401, 'never without the person');
+    }
+    // Your Actor's pictures (11-16): the list, three drawn as the person, and wearing one (POST here, PUT to Actor).
+    {
+        ({ r, d } = await get('/actor/pictures', { Authorization: TOKEN }));
+        assert.strictEqual(r.status, 200);
+        assert.strictEqual(d.faces[0].id, 'fac_0123456789ab');
+        const post = (path, body, headers = { Authorization: TOKEN }) => fetch(`${base}${path}`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        let pr = await post('/actor/pictures/generate', { description: 'a calm fox', style: 'openvibe', n: 3 });
+        let pd = await pr.json();
+        assert.strictEqual(pr.status, 201, 'drawn');
+        assert.strictEqual(pd.faces.length, 3);
+        assert.deepStrictEqual(pd.asked, { description: 'a calm fox', style: 'openvibe', n: 3 }, 'the ask goes to Actor as it is');
+        pr = await post('/actor/face', { face: 'fac_new0aaaaaaaa' });
+        pd = await pr.json();
+        assert.deepStrictEqual([pr.status, pd.face], [200, 'face:fac_new0aaaaaaaa']);
+        assert.ok(asked.some((x) => x.url === '/api/v1/agents/actor/face' && x.method === 'PUT'), 'wearing one is a PUT at Actor');
+        const before = asked.length;
+        assert.strictEqual((await post('/actor/pictures/generate', { n: 1 }, {})).status, 401, 'never without the person');
+        assert.strictEqual((await post('/actor/face', { face: null }, {})).status, 401);
+        assert.strictEqual(asked.length, before, 'signed out asks Actor nothing');
     }
     // Your agents' faces for the menu's stack.
     ({ r, d } = await get('/actor/faces', { Authorization: TOKEN }));
