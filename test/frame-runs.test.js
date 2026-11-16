@@ -217,6 +217,10 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         assert.deepStrictEqual([toActor.kind, toActor.agent, toActor.model], ['task', undefined, { id: 'deepseek/deepseek-chat', source: 'openvibe' }], 'a task for your default agent, on the model you picked');
         q = await pick({ text: 'Tidy my downloads folder', agent: 'auto', where: { kind: 'machine', id: 'dev_01K9R2V6M8Q4T0B7C3D5E9F2GH' } });
         assert.deepStrictEqual(q, [201, 'machine'], 'Auto on your computer is a machine run');
+        // A way chosen on the chip (Actor's engines, 11-16) starts on Actor, whatever the words say, and goes with it.
+        q = await pick({ text: 'Fix the login on my-site', engine: { kind: 'model', model: 'openai/gpt-5.2' } });
+        assert.deepStrictEqual(q, [201, 'actor'], 'an engine is Actor\'s to run');
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body.engine, { kind: 'model', model: 'openai/gpt-5.2' });
 
         // Your Actor's conversation (Actor#517): read whole, and the next words come back as the step the thread reads.
         assert.ok(seen.some((x) => x.svc === 'actor' && x.method === 'GET' && /^\/api\/v1\/runs\?limit=\d+&conversations=1/.test(x.url)), 'the list asks Actor for conversations');
@@ -229,6 +233,15 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         ({ r, d } = await go('/actor:tsk_ACTOR1/messages', { method: 'POST', body: { text: 'Shorter', model: { id: 'deepseek/deepseek-v4-flash', source: 'openvibe', name: 'DeepSeek V4 Flash' } } }));
         assert.strictEqual(r.status, 201, JSON.stringify(d));
         assert.deepStrictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body.model, { id: 'deepseek/deepseek-v4-flash' }, 'the model goes to Actor with the words');
+        // The way the conversation is worked, swapped on the chip (Actor's engines, 11-16): to Actor with the words, its
+        // shape only (Actor checks the rest); a bad shape is dropped, never forwarded.
+        ({ r, d } = await go('/actor:tsk_ACTOR1/messages', { method: 'POST', body: { text: 'Pick one', engine: { kind: 'decisions', model: 'gemini/gemini-decision-1', extra: 'x' } } }));
+        assert.strictEqual(r.status, 201, JSON.stringify(d));
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body.engine, { kind: 'decisions', model: 'gemini/gemini-decision-1' }, 'the engine goes to Actor with the words');
+        ({ r, d } = await go('/actor:tsk_ACTOR1/messages', { method: 'POST', body: { text: 'Again', engine: { kind: 'Bad Kind!' } } }));
+        assert.strictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body.engine, undefined, 'a bad shape is dropped');
+        ({ r, d } = await go('/actor:tsk_ACTOR1/messages', { method: 'POST', body: { text: 'Back to normal', engine: 'auto' } }));
+        assert.strictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body.engine, 'auto', 'auto gives it back');
 
         // Say, stop, approvals.
         ({ r, d } = await go('/chat:c_keys/messages', { method: 'POST', body: { text: 'Under $70?' } }));
