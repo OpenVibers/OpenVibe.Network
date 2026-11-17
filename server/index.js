@@ -1109,6 +1109,8 @@ app.use('/api/admin/grants', requireAuth, require('./identity/grants-admin').rou
 // Community theme review queue (WS-E task 2): submissions stay private until an admin approves them.
 app.use('/api/admin/themes', requireAuth, requireAdmin, require('./themes/routes').reviewRouter());
 // Operator parity checklist (WS-D task 5): where each operator job is done now, with each service's readiness.
+// The hosting plan (plan §AD.18): the admin panel's Hosting tab.
+app.use('/api/admin/hosting-plan', requireAuth, requireAdmin, require('./admin/hosting-plan').router());
 app.use('/api/admin/operator-checklist', requireAuth, requireAdmin, require('./admin/operator-checklist').router({ statusRows: () => require('./status/routes').rows(ecosystem) }));
 // The Storage tab's cloud scan: Network asks OpenVibe.Media itself, with Network's own service token and the
 // owner's usr_ in X-OV-Subject (server/admin/storage.js).
