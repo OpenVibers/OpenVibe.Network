@@ -77,6 +77,7 @@
                 <button class="admin-tab-btn owner-only" onclick="showTab('eventsops',this)"><i class="fa-solid fa-paper-plane"></i> Event deliveries</button>
                 <button class="admin-tab-btn" onclick="showTab('analytics',this)"><i class="fa-solid fa-chart-column"></i> Analytics</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('domains',this)"><i class="fa-solid fa-globe"></i> Domains</button>
+                <button class="admin-tab-btn" onclick="showTab('hosting',this)"><i class="fa-solid fa-server"></i> Hosting</button>
             </div>
         </div>
         <button class="tabs-scroll-btn" id="main-tabs-right" onclick="scrollMainTabs(1)" title="Scroll right" aria-label="Scroll right">
@@ -343,6 +344,11 @@
         <div style="display:flex;justify-content:center;margin-top:12px"><button id="modlog-more" class="btn" hidden onclick="loadModLog(false)">Load more</button></div>
     </div>
 
+    <!-- The hosting plan (plan §AD.18): today, the recommendation, the phases and the prices compared (js/admin/hosting.js) -->
+    <div class="section admin-clarity" id="sec-hosting">
+        <div id="hosting-content"><div class="loading">Loading...</div></div>
+    </div>
+
     <!-- Operator parity checklist (WS-D task 5): where each operator job is done, and what has no console yet -->
     <div class="section admin-clarity" id="sec-checklist">
         <p class="admin-intro">This checklist shows whether key operational areas are ready. Open the linked page when an item needs attention; a missing console means the listed command or API is the available route.</p>
@@ -600,6 +606,7 @@
 <script src="/js/admin/content.js" defer></script>
 <script src="/js/admin/analytics.js" defer></script>
 <script src="/js/admin/domains.js" defer></script>
+<script src="/js/admin/hosting.js" defer></script>
 <script src="/js/admin/boot.js" defer></script>
   <script src="https://openvibe.live/live-notify.js" async></script>
 </body>

@@ -35,6 +35,7 @@ const tabLoaders = {
     eventsops: () => loadDeliveries(),
     analytics: loadAnalytics,
     domains: loadDomains,
+    hosting: loadHosting,
 };
 
 // ═══════════════════════════════════════════════════════════════
