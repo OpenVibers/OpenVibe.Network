@@ -123,6 +123,9 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
         assert.deepStrictEqual(list.runs.map((r) => [r.ref, r.kind]), [[`group:${id}`, 'group']], 'listed as a run');
         const steps = await (await fetch(`${runBase}/group:${id}/steps`, { headers: { Authorization: BO } })).json();
         assert.deepStrictEqual(steps.steps.slice(0, 2).map((x) => [x.from, x.author.name]), [['person', 'Gbo'], ['agent', 'Actor']], 'each step names who said it');
+        assert.deepStrictEqual([steps.steps[0].author.you, steps.steps[2].author.you], [true, false], 'your own words are yours, Gada\'s are hers');
+        const asAda = await (await fetch(`${runBase}/group:${id}/steps`, { headers: { Authorization: ADA } })).json();
+        assert.strictEqual(asAda.steps[0].author.you, false, 'the same step, read by someone else');
         assert.strictEqual(steps.steps.find((x) => x.author.handle === 'codes').files[0].name, 'patch.diff');
         const said = await fetch(`${runBase}/group:${id}/messages`, { method: 'POST', headers: { Authorization: BO, 'Content-Type': 'application/json' }, body: JSON.stringify({ text: '@actor one more thing' }) });
         assert.strictEqual(said.status, 201, 'said through the runs API');

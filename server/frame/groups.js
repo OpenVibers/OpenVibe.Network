@@ -267,7 +267,7 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
         return {
             group: { id: g.id, title: g.title, created_at: g.created_at, updated_at: g.updated_at },
             members: (await members(g.id)).map(memberOut),
-            messages: all.filter((m) => Number(m.seq) > after || m.state === 'working').map(messageOut),
+            messages: all.filter((m) => Number(m.seq) > after || m.state === 'working').map((m) => messageOut(m, subject)),
             space: spaceOf(all),
             busy: !!(q && (q.running || q.items.length)) || all.some((m) => m.state === 'working'),
         };
@@ -289,7 +289,7 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
         return g;
     }
     const memberOut = (r) => { const c = configOf(r); return { id: r.member_id, kind: r.kind, name: r.name, handle: r.handle, ...(r.kind === 'agent' ? { product: c.product, engine: c.engine || null, harness: c.harness || null, lead: !!c.lead, coder: !!c.coder } : {}) }; };
-    const messageOut = (m) => ({ seq: Number(m.seq), from: m.from_id, kind: m.from_kind, text: m.text, files: filesOf(m), state: m.state, why: m.why || null, usd: m.usd == null ? null : Number(m.usd), at: m.created_at });
+    const messageOut = (m, subject) => ({ seq: Number(m.seq), from: m.from_id, kind: m.from_kind, ...(m.from_kind === 'person' ? { you: m.by_subject === subject } : {}), text: m.text, files: filesOf(m), state: m.state, why: m.why || null, usd: m.usd == null ? null : Number(m.usd), at: m.created_at });
     async function addPerson(id, username, by) {
         if (!USERNAME.test(String(username || ''))) throw fail(422, 'groups.username_invalid', 'Name a person by their username');
         const u = await db.prepare('SELECT subject_id, username, display_name FROM users WHERE lower(username) = lower(?) AND subject_id IS NOT NULL AND COALESCE(is_banned, 0) = 0').get(String(username));
@@ -385,7 +385,8 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
             const rows = await members(id);
             const all = (await messages(id, after, limit)).map((m) => ({
                 run_id: id, seq: Number(m.seq), kind: 'message', from: m.from_kind === 'agent' ? 'agent' : 'person',
-                author: authorOf(rows, m.from_id), text: m.text || null, files: filesOf(m),
+                author: { ...authorOf(rows, m.from_id), ...(m.from_kind === 'person' ? { you: m.by_subject === owner.id } : {}) },
+                text: m.text || null, files: filesOf(m), attachments: filesOf(m),
                 status: m.state === 'working' ? 'running' : m.state === 'failed' ? 'failed' : 'done', started_at: m.created_at,
                 ...(m.why ? { why: m.why } : {}), ...(m.usd != null ? { cost: { usd: Number(m.usd) } } : {}),
             }));
