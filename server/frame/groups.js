@@ -296,7 +296,8 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
         if (!ok) throw fail(404, 'groups.not_found', 'No such group, or you are not in it');
         return g;
     }
-    const memberOut = (r) => { const c = configOf(r); return { id: r.member_id, kind: r.kind, name: r.name, handle: r.handle, ...(r.kind === 'agent' ? { product: c.product, engine: c.engine || null, harness: c.harness || null, lead: !!c.lead, coder: !!c.coder, ...(c.agent ? { personal: true, owner: c.owner || null } : {}) } : {}) }; };
+    // Someone's own agent says whose it is by name (the person who added it, while they are in the group).
+    const memberOut = (r, _i, all) => { const c = configOf(r); return { id: r.member_id, kind: r.kind, name: r.name, handle: r.handle, ...(r.kind === 'agent' ? { product: c.product, engine: c.engine || null, harness: c.harness || null, lead: !!c.lead, coder: !!c.coder, ...(c.agent ? { personal: true, owner_name: ((all || []).find((x) => x.kind === 'person' && x.subject === c.owner) || {}).name || null } : {}) } : {}) }; };
     const messageOut = (m, subject) => ({ seq: Number(m.seq), from: m.from_id, kind: m.from_kind, ...(m.from_kind === 'person' ? { you: m.by_subject === subject } : {}), text: m.text, files: filesOf(m), state: m.state, why: m.why || null, usd: m.usd == null ? null : Number(m.usd), at: m.created_at });
     async function addPerson(id, username, by) {
         if (!USERNAME.test(String(username || ''))) throw fail(422, 'groups.username_invalid', 'Name a person by their username');

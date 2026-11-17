@@ -142,7 +142,7 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
         const added = await call(ADA, 'POST', `/${id}/members`, { agent: { handle: 'scout', name: 'Scout', product: 'actor', agent: SCOUT } });
         assert.strictEqual(added.status, 201, JSON.stringify(added.json));
         const scout = added.json.members.find((m) => m.handle === 'scout');
-        assert.deepStrictEqual([scout.product, scout.personal, scout.owner, scout.engine], ['actor', true, ada.subject_id, null]);
+        assert.deepStrictEqual([scout.product, scout.personal, scout.owner_name, scout.engine, scout.owner], ['actor', true, 'Gada', null, undefined], 'whose, by name; no subject id');
         const before = calls.length;
         await call(ADA, 'POST', `/${id}/messages`, { text: '@scout look into the venue' });
         const mine = await until(async () => { const v = (await call(ADA, 'GET', `/${id}`)).json; const m = v.messages.filter((x) => x.from === 'agent:scout'); return !v.busy && m.length ? m : null; });
