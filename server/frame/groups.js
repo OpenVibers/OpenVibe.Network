@@ -34,6 +34,7 @@ const group = require('openvibe-sdk/agents/group');
 
 const ID = /^grp_[0-9a-f]{20}$/;
 const HANDLE = /^[a-z][a-z0-9_-]{1,23}$/;
+const AGENT_ID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
 const USERNAME = /^[A-Za-z0-9_.-]{2,40}$/;
 const BEARER = /^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/;
 const ACTOR_ENGINES = ['agent', 'model', 'harness', 'openai-agent', 'open-model', 'decisions'];
@@ -63,7 +64,12 @@ function agentOf(a) {
     if (!HANDLE.test(handle)) throw fail(422, 'groups.handle_invalid', 'A handle is 2–24 letters, digits, - or _, starting with a letter (it is how people @mention it)');
     const name = clip(a.name, 60) || handle;
     const config = { product, ...(a.lead ? { lead: true } : {}), ...(a.coder || product === 'codes' ? { coder: true } : {}) };
-    if (product === 'actor' && a.engine) {
+    // Your own Actor agent (an agt_ id, 11-17: "different actors using different harnesses"): its own instructions,
+    // memory and engine come with it, so no engine is stored here.
+    if (product === 'actor' && a.agent != null) {
+        if (!AGENT_ID.test(String(a.agent))) throw fail(422, 'groups.agent_id_invalid', 'Your own agent is named by its agt_ id');
+        config.agent = String(a.agent);
+    } else if (product === 'actor' && a.engine) {
         const kind = typeof a.engine === 'string' ? a.engine : a.engine.kind;
         if (!ACTOR_ENGINES.includes(kind)) throw fail(422, 'groups.engine_invalid', `Actor's engine is one of ${ACTOR_ENGINES.join(', ')}`);
         const harness = typeof a.engine === 'object' && a.engine.harness ? String(a.engine.harness) : null;
@@ -84,6 +90,7 @@ function startBody(config, text) {
     if (config.product === 'codes') {
         return { text, kind: 'code', agent: config.harness || 'codes', ...(config.model ? { model: { id: config.model } } : {}) };
     }
+    if (config.agent) return { text, kind: 'task', agent: config.agent };
     return { text, kind: 'task', agent: 'actor', ...(config.engine ? { engine: config.engine } : {}) };
 }
 
@@ -138,6 +145,7 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
     /** One agent turn on the person's own account: start or continue its run, wait for its answer. */
     async function turn(id, member, subject, auth, words) {
         const config = configOf(member);
+        if (config.agent && config.owner !== subject) throw fail(403, 'groups.own_agent', 'this is someone\'s own agent: it answers only the person who added it');
         const known = await db.prepare('SELECT run_ref, seen_seq FROM frame_group_runs WHERE group_id = ? AND member_id = ? AND subject = ?').get(id, member.member_id, subject);
         let ref = known && known.run_ref;
         let seen = known ? Number(known.seen_seq) || 0 : 0;
@@ -288,7 +296,7 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
         if (!ok) throw fail(404, 'groups.not_found', 'No such group, or you are not in it');
         return g;
     }
-    const memberOut = (r) => { const c = configOf(r); return { id: r.member_id, kind: r.kind, name: r.name, handle: r.handle, ...(r.kind === 'agent' ? { product: c.product, engine: c.engine || null, harness: c.harness || null, lead: !!c.lead, coder: !!c.coder } : {}) }; };
+    const memberOut = (r) => { const c = configOf(r); return { id: r.member_id, kind: r.kind, name: r.name, handle: r.handle, ...(r.kind === 'agent' ? { product: c.product, engine: c.engine || null, harness: c.harness || null, lead: !!c.lead, coder: !!c.coder, ...(c.agent ? { personal: true, owner: c.owner || null } : {}) } : {}) }; };
     const messageOut = (m, subject) => ({ seq: Number(m.seq), from: m.from_id, kind: m.from_kind, ...(m.from_kind === 'person' ? { you: m.by_subject === subject } : {}), text: m.text, files: filesOf(m), state: m.state, why: m.why || null, usd: m.usd == null ? null : Number(m.usd), at: m.created_at });
     async function addPerson(id, username, by) {
         if (!USERNAME.test(String(username || ''))) throw fail(422, 'groups.username_invalid', 'Name a person by their username');
@@ -299,8 +307,14 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
         await db.prepare(`INSERT INTO frame_group_members (group_id, member_id, kind, name, handle, subject, config, added_by, added_at) VALUES (?, ?, 'person', ?, ?, ?, '{}'::jsonb, ?, ?)
             ON CONFLICT (group_id, member_id) DO NOTHING`).run(id, `usr:${u.username.toLowerCase()}`, clip(u.display_name || u.username, 60), u.username.toLowerCase().slice(0, 24), u.subject_id, by, iso());
     }
-    async function addAgent(id, a, by) {
+    async function addAgent(id, a, by, auth) {
         const { handle, name, config } = agentOf(a);
+        if (config.agent) {
+            // Yours only: the agent's sheet answers its owner (Actor checks), so a stranger's id is refused here.
+            const sheet = await frame(`/agents/${encodeURIComponent(config.agent)}/sheet`, { auth }).catch(() => null);
+            if (!sheet) throw fail(403, 'groups.agent_not_yours', 'Only your own agents join a group');
+            config.owner = by;
+        }
         const rows = await members(id);
         if (rows.filter((r) => r.kind === 'agent').length >= MAX_AGENTS) throw fail(422, 'groups.too_many_agents', `A group has at most ${MAX_AGENTS} agents`);
         if (rows.some((r) => r.handle === handle)) throw fail(409, 'groups.handle_taken', `@${handle} is already in this group`);
@@ -343,7 +357,7 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
         if (!staff) throw fail(403, 'groups.staff_only', 'Admins and the owner add members for now');
         const b = req.body || {};
         if (b.username) await addPerson(g.id, b.username, subject);
-        else if (b.agent) await addAgent(g.id, b.agent, subject);
+        else if (b.agent) await addAgent(g.id, b.agent, subject, req.get('authorization'));
         else throw fail(422, 'groups.member_invalid', 'Add a person { username } or an agent { agent }');
         res.status(201).json({ members: (await members(g.id)).map(memberOut) });
     }));

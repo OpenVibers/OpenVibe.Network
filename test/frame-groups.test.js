@@ -49,6 +49,10 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
     });
     fake.get('/api/frame/runs/:ref', (req, res) => { const r = runOf(req.params.ref); res.json({ ref: req.params.ref, status: r.status, cost: { usd: 0.01 } }); });
     fake.get('/api/frame/runs/:ref/steps', (req, res) => { const r = runOf(req.params.ref); res.json({ steps: r.steps.filter((s) => s.seq > Number(req.query.after || 0)) }); });
+    // Ada's own Actor agent: its sheet answers her only (Actor checks the owner).
+    const SCOUT = 'agt_01J0SC0VT000000000000000000'.slice(0, 30);
+    fake.get('/api/frame/agents/:id/sheet', (req, res) => (req.params.id === SCOUT && req.headers.authorization === 'Bearer tok-ada-0123456789'
+        ? res.json({ agent: { id: SCOUT, name: 'Scout' } }) : res.status(404).json({ error: 'Not found' })));
     function answer(id) {
         const r = runs.get(id);
         const told = r.steps[r.steps.length - 1].text;
@@ -131,6 +135,25 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
         assert.strictEqual(said.status, 201, 'said through the runs API');
         await until(async () => { const v = (await call(BO, 'GET', `/${id}`)).json; return !v.busy && v.messages.length >= 9 ? v : null; });
         assert.strictEqual((await fetch(`${runBase}/group:${id}/steps`, { headers: { Authorization: CY } })).status, 404, 'a stranger reads no steps');
+
+        // Your own agent joins: checked against your agent sheet, started as that agent, answering only you.
+        assert.strictEqual((await call(ADA, 'POST', `/${id}/members`, { agent: { handle: 'stray', product: 'actor', agent: 'agt_01J0N0TADA00000000000000000'.slice(0, 30) } })).status, 403, 'not hers');
+        assert.strictEqual((await call(ADA, 'POST', `/${id}/members`, { agent: { handle: 'bad', product: 'actor', agent: 'agt_x' } })).status, 422);
+        const added = await call(ADA, 'POST', `/${id}/members`, { agent: { handle: 'scout', name: 'Scout', product: 'actor', agent: SCOUT } });
+        assert.strictEqual(added.status, 201, JSON.stringify(added.json));
+        const scout = added.json.members.find((m) => m.handle === 'scout');
+        assert.deepStrictEqual([scout.product, scout.personal, scout.owner, scout.engine], ['actor', true, ada.subject_id, null]);
+        const before = calls.length;
+        await call(ADA, 'POST', `/${id}/messages`, { text: '@scout look into the venue' });
+        const mine = await until(async () => { const v = (await call(ADA, 'GET', `/${id}`)).json; const m = v.messages.filter((x) => x.from === 'agent:scout'); return !v.busy && m.length ? m : null; });
+        assert.strictEqual(mine[0].state, 'done');
+        const scoutStart = calls.slice(before).find((c) => c.op === 'start');
+        assert.deepStrictEqual([scoutStart.auth, scoutStart.body.agent, scoutStart.body.kind, scoutStart.body.engine], [ADA, SCOUT, 'task', undefined], 'started as her agent, on her account');
+        await call(BO, 'POST', `/${id}/messages`, { text: '@scout and for me?' });
+        const others = await until(async () => { const v = (await call(BO, 'GET', `/${id}`)).json; const m = v.messages.filter((x) => x.from === 'agent:scout'); return !v.busy && m.length >= 2 ? m : null; });
+        assert.deepStrictEqual([others[1].state, /answers only the person who added it/.test(others[1].text)], ['failed', true], 'someone else\'s agent does not run on Bo\'s account');
+        assert.ok(!calls.slice(before).some((c) => c.auth === BO && c.body && c.body.agent === SCOUT), 'no run of Scout as Bo');
+        assert.strictEqual((await call(ADA, 'DELETE', `/${id}/members/agent:scout`)).status, 200);
 
         // Members: admins add and remove; a plain member does not; the last person stays.
         assert.strictEqual((await call(BO, 'POST', `/${id}/members`, { username: 'gcy' })).status, 403);
