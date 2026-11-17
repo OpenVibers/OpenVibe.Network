@@ -1290,6 +1290,15 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         res.status(got.status).send(JSON.stringify(got.body));
     });
 
+    // GET /api/frame/usage?days= — what the person's answers used (Actor's /api/v1/me/usage, as them; server/frame/usage.js).
+    const usage = require('./usage').createUsage({ svcUrl, log: console });
+    router.get('/usage', async (req, res) => {
+        res.set({ 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization, Origin', 'Cache-Control': 'private, no-store' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? String(req.headers.authorization) : '';
+        const got = await usage.get({ auth, days: req.query.days });
+        res.status(got.status).send(JSON.stringify(got.body));
+    });
+
     // GET /api/frame/commands?site=<host>&q= — the composer's slash commands (composer-post-ask-do.md, R3):
     // every site's /ask, /do, /remind and /timer, the site's own from its manifest, and a signed-in person's
     // saved snippets. Site commands come first, a name appears once, and q filters by name or hint.
