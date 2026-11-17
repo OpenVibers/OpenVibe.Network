@@ -1124,7 +1124,9 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // moved to these routes, then go in one cut.
     // Group conversations (plan §AD.19): people and agents in one thread; each agent's turn runs through the runs below on
     // the account of the person whose message started the round (server/frame/groups.js). A group is a run too.
-    const frameGroups = require('./groups').createFrameGroups({ db, personOf, frameUrl: `http://127.0.0.1:${(config && config.port) || 4000}/api/frame`, log: console });
+    // The check before a room's reviewers: OpenVibe.Design's page audit of the hand-over's links (server/frame/room-check.js).
+    const roomCheck = require('./room-check').createRoomCheck({ designUrl: config && config.designUrl });
+    const frameGroups = require('./groups').createFrameGroups({ db, personOf, frameUrl: `http://127.0.0.1:${(config && config.port) || 4000}/api/frame`, log: console, check: roomCheck });
     const frameRuns = createFrameRuns({ svcUrl, personOf, now, extra: { group: frameGroups.adapter } });
     router.use('/runs', frameRuns.router);
     router.use('/groups', frameGroups.router);
