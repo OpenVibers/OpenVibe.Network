@@ -73,5 +73,26 @@ const AUTH = 'Bearer tok_abcdefghijklmnopqrstuvwxyz';
     assert.strictEqual(part.body.balance, null);
     assert.deepStrictEqual(part.body.partial, ['billing'], 'the part that did not answer is named');
     assert.ok(part.body.allowance, 'the rest stands');
+    // Each coding agent on the person's computers with its windows (2026-11-17, the owner: "usage stats and tokens and all
+    // that for each harness"), from Bot's machines and the fleet each Link reports; nothing but labels and numbers passes.
+    const fleet = async (subject) => {
+        assert.strictEqual(subject, 'usr_me');
+        return [
+            { id: 'dev_tower', name: 'Tower', fleet: [
+                { agent: 'claude', name: 'Claude Code', installed: true, signed_in: true, windows: [{ name: '5-hour', pct: 40, resets_at: '2026-11-17T20:00:00Z' }, { name: 'weekly', used: 30, limit: 100 }], key: 'sk-never' },
+                { agent: 'codex', installed: false },
+            ] },
+            { id: 'dev_lap', name: 'Laptop', fleet: [{ agent: 'claude', name: 'Claude Code', signed_in: false, windows: [{ name: '5-hour', pct: 72 }] }] },
+            { id: 'dev_old', name: 'Old' },
+        ];
+    };
+    const withUse = await createResources({ svcUrl, fetchImpl, computers, fleet, log: { warn() {} } }).get({ auth: AUTH, subject: 'usr_me' });
+    assert.deepStrictEqual(withUse.body.harnesses, [{ agent: 'claude', name: 'Claude Code', machines: ['Tower', 'Laptop'], signed_in: true,
+        windows: [{ name: '5-hour', pct: 72, resets_at: null }, { name: 'weekly', pct: 30, resets_at: null }] }],
+    'each coding agent once, where it is, signed in on one, the fullest reading of a window; one not installed is left out');
+    assert.ok(!JSON.stringify(withUse.body).includes('sk-never'), 'no key');
+    // Without a fleet reader (or nothing reported yet): no harnesses, and the rest still answers.
+    assert.deepStrictEqual(got.body.harnesses, []);
+
     console.log('frame-resources: one read of your AI (allowance, keys by name, who may use them, Balance), as you, nothing secret');
 })().catch((err) => { console.error(err); process.exit(1); });

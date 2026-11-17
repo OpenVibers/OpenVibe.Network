@@ -104,7 +104,7 @@ function createRunOptions({ svcUrl = (n, f) => f, fetchImpl = globalThis.fetch, 
         const agents = BASE_AGENTS.map((a) => (a.id === 'actor' ? { ...a, name } : a)).concat(list);
         return { body: { agents, places: BASE_PLACES.concat(mine) }, cache: false };
     }
-    return { get, harnesses, computers, BASE_AGENTS, BASE_PLACES };
+    return { get, harnesses, computers, machines, BASE_AGENTS, BASE_PLACES };
 }
 
 module.exports = { createRunOptions, makerLine, BASE_AGENTS, BASE_PLACES };

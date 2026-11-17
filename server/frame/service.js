@@ -1280,7 +1280,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // GET /api/frame/resources — everything an answer can run on, for the person (plan §AD.17; server/frame/resources.js):
     // their free AI left, their keys' names and states, which services may use them, their Balance. As them, never kept.
     // Its road reads the person's computers the way the run options do (one lookup: run-options.computers).
-    const resources = require('./resources').createResources({ svcUrl, computers: (subject) => runOptions.computers(subject), log: console });
+    const resources = require('./resources').createResources({ svcUrl, computers: (subject) => runOptions.computers(subject), fleet: (subject) => runOptions.machines(subject), log: console });
     router.get('/resources', async (req, res) => {
         res.set({ 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization, Origin', 'Cache-Control': 'private, no-store' });
         const auth = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? String(req.headers.authorization) : '';
