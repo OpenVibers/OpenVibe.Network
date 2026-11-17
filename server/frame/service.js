@@ -1273,6 +1273,16 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         res.send(JSON.stringify(got.body));
     });
 
+    // GET /api/frame/resources — everything an answer can run on, for the person (plan §AD.17; server/frame/resources.js):
+    // their free AI left, their keys' names and states, which services may use them, their Balance. As them, never kept.
+    const resources = require('./resources').createResources({ svcUrl, log: console });
+    router.get('/resources', async (req, res) => {
+        res.set({ 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization, Origin', 'Cache-Control': 'private, no-store' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? String(req.headers.authorization) : '';
+        const got = await resources.get({ auth });
+        res.status(got.status).send(JSON.stringify(got.body));
+    });
+
     // GET /api/frame/commands?site=<host>&q= — the composer's slash commands (composer-post-ask-do.md, R3):
     // every site's /ask, /do, /remind and /timer, the site's own from its manifest, and a signed-in person's
     // saved snippets. Site commands come first, a name appears once, and q filters by name or hint.
