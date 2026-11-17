@@ -35,7 +35,7 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
         const id = `r${runs.size + 1}`;
         const product = req.body.kind === 'code' ? 'codes' : 'actor';
         runs.set(id, { id, product, auth: req.headers.authorization, steps: [{ seq: 1, from: 'person', kind: 'message', text: req.body.text }], status: 'running', body: req.body });
-        calls.push({ op: 'start', id, auth: req.headers.authorization, body: req.body });
+        calls.push({ op: 'start', id, auth: req.headers.authorization, body: req.body, at: Date.now() });
         setTimeout(() => answer(id), 30);
         res.status(201).json({ id, ref: `${product}:${id}`, status: 'running' });
     });
@@ -57,7 +57,11 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
         const r = runs.get(id);
         const told = r.steps[r.steps.length - 1].text;
         let text;
-        if (r.product === 'codes') text = 'Fixed the build in the repo. DONE';
+        // A reviewer (plan §AD.25): Design asks for one fix in its first review and approves after; the Codex critic approves.
+        if (/You are reviewing/.test(told)) {
+            r.reviews = (r.reviews || 0) + 1;
+            text = r.body.engine && r.body.engine.specialist === 'design' && r.reviews === 1 ? 'The tabs read well.\nCHANGES\n1. The gauges are full width: draw each to its share.' : 'Reads right.\nAPPROVED';
+        } else if (r.product === 'codes') text = /asked for changes above/.test(told) ? 'Fixed the gauges. DONE' : 'Fixed the build in the repo. DONE';
         else if (/handoff please/.test(told)) text = 'I planned it. @codes please fix the failing test.';
         else text = 'Here is the plan.';
         r.steps.push({ seq: r.steps.length + 1, from: 'agent', kind: 'message', text, ...(r.product === 'codes' ? { files: [{ id: 'med_01J00000000000000000000000', name: 'patch.diff', url: 'https://openvibe.media/o/med_01J00000000000000000000000' }] } : {}) });
@@ -170,9 +174,43 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
         assert.strictEqual((await call(ADA, 'DELETE', `/${id}/members/agent:workbuddy`)).status, 200);
         assert.strictEqual((await call(ADA, 'DELETE', `/${id}/members/usr:gcy`)).status, 200);
 
+        // A room (plan §AD.25): a group started with no agents named has Actor (lead), Codes (coder) and Design (a reviewer:
+        // Actor's loop with the design specialist); the critics are presets.
+        const room = await call(ADA, 'POST', '', { title: 'Usage sheet' });
+        assert.strictEqual(room.status, 201, JSON.stringify(room.json));
+        const rv = (await call(ADA, 'GET', `/${room.json.id}`)).json;
+        const roles = rv.members.filter((m) => m.kind === 'agent').map((m) => [m.handle, !!m.lead, !!m.coder, !!m.reviewer]);
+        assert.deepStrictEqual(roles, [['actor', true, false, false], ['codes', false, true, false], ['design', false, false, true]], 'Actor, Codes and Design by default');
+        assert.deepStrictEqual(rv.members.find((m) => m.handle === 'design').engine, { kind: 'agent', specialist: 'design' });
+        const ps = (await call(ADA, 'GET', '/presets')).json.agents;
+        assert.deepStrictEqual(ps.filter((x) => x.reviewer).map((x) => x.handle), ['design', 'codex-review', 'muse-review', 'claude-review', 'model-review'], 'Design and four critics');
+        assert.strictEqual((await call(ADA, 'POST', `/${room.json.id}/members`, { agent: ps.find((x) => x.handle === 'codex-review') })).status, 201);
+        const group = require('openvibe-sdk/agents/group');
+        if (typeof group.verdict === 'function') {
+            // Codes builds; Design and the Codex critic look at once; Design asks for a fix; Codes fixes; both approve.
+            const was = calls.length;
+            await call(ADA, 'POST', `/${room.json.id}/messages`, { text: '@codes build the usage sheet' });
+            const done = await until(async () => { const v = (await call(ADA, 'GET', `/${room.json.id}`)).json; return !v.busy && v.messages.length >= 7 ? v : null; }, 15000);
+            assert.deepStrictEqual(done.messages.map((m) => m.from), ['usr:gada', 'agent:codes', 'agent:design', 'agent:codex-review', 'agent:codes', 'agent:design', 'agent:codex-review'], 'build, review, fix, review');
+            assert.deepStrictEqual(done.messages.slice(2, 4).map((m) => m.why), ['review 1 of 2', 'review 1 of 2']);
+            assert.match(done.messages[4].why, /@design asked for changes/);
+            assert.match(done.messages[6].text, /APPROVED$/);
+            const starts = calls.slice(was).filter((c) => c.op === 'start');
+            const d = starts.find((c) => c.body.engine && c.body.engine.specialist === 'design'), x = starts.find((c) => c.body.engine && c.body.engine.harness === 'codex');
+            assert.ok(d && x && Math.abs(d.at - x.at) < 25, `the reviewers started together (${d && x ? Math.abs(d.at - x.at) : '?'} ms apart)`);
+            assert.match(d.body.text, /You are reviewing @codes's work/);
+            assert.deepStrictEqual(d.body.engine, { kind: 'agent', specialist: 'design' }, 'Design runs as Actor\'s design specialist');
+            const fix = calls.slice(was).filter((c) => c.op === 'say' && /asked for changes above/.test(c.text));
+            assert.strictEqual(fix.length, 1, 'Codes was told what to fix');
+            assert.match(fix[0].text, /The gauges are full width/);
+        } else console.log('  (the review round runs with openvibe-sdk 0.181.0)');
+        assert.strictEqual((await call(ADA, 'POST', `/${room.json.id}/members`, { agent: { handle: 'x2', product: 'actor', engine: { kind: 'model', specialist: 'design' } } })).status, 422, 'a specialist is on the agent engine only');
+
         // Roles map to the Frame's run start.
         assert.deepStrictEqual(startBody(agentOf({ handle: 'oc', product: 'codes', harness: 'opencode' }).config, 'hi'), { text: 'hi', kind: 'code', agent: 'opencode' });
         assert.deepStrictEqual(startBody(agentOf({ handle: 'one', product: 'actor', engine: 'model' }).config, 'hi'), { text: 'hi', kind: 'task', agent: 'actor', engine: { kind: 'model' } });
+        assert.deepStrictEqual(startBody(agentOf({ handle: 'design', product: 'actor', engine: { kind: 'agent', specialist: 'design' }, reviewer: true }).config, 'hi'), { text: 'hi', kind: 'task', agent: 'actor', engine: { kind: 'agent', specialist: 'design' } });
+        assert.strictEqual(agentOf({ handle: 'cr', product: 'codes', reviewer: true }).config.reviewer, undefined, 'a reviewer is an Actor role');
         console.log('frame-groups: people and agents in one thread, each turn on the speaker\'s own account, a shared space, members by rank');
     } finally { server.close(); fakeServer.close(); }
     process.exit(0);
