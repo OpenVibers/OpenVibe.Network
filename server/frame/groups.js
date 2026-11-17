@@ -38,7 +38,7 @@ const AGENT_ID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
 const USERNAME = /^[A-Za-z0-9_.-]{2,40}$/;
 const BEARER = /^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/;
 const ACTOR_ENGINES = ['agent', 'model', 'harness', 'openai-agent', 'open-model', 'decisions'];
-const HARNESSES = ['claude-code', 'codex', 'opencode', 'gemini', 'hermes', 'dsh'];
+const HARNESSES = ['claude-code', 'codex', 'opencode', 'gemini', 'hermes', 'dsh', 'codebuddy-code'];
 const MAX_AGENTS = 8;
 const MAX_PEOPLE = 50;
 const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim().slice(0, n);
@@ -53,6 +53,9 @@ const PRESETS = [
     { handle: 'claude', name: 'Actor · Claude Code', product: 'actor', engine: { kind: 'harness', harness: 'claude-code' }, line: 'Actor working through Claude Code' },
     { handle: 'oneshot', name: 'Actor · one model', product: 'actor', engine: { kind: 'model' }, line: 'One model, one answer: fast and cheap' },
     { handle: 'opencode', name: 'Codes · OpenCode', product: 'codes', harness: 'opencode', coder: true, line: 'Codes on the OpenCode harness' },
+    // WorkBuddy's agent (2026-11-17): CodeBuddy Code on the person's own WorkBuddy login, where Tencent's Hy4 flash is free
+    // to 30 November 2026 (OpenVibe.Codes #539).
+    { handle: 'workbuddy', name: 'Codes · CodeBuddy (WorkBuddy)', product: 'codes', harness: 'codebuddy-code', coder: true, line: 'WorkBuddy\'s agent on Tencent\'s Hy4, on your own login' },
 ];
 
 /** An agent's stored role from what a client sent: the product, then only the settings that product reads. */
