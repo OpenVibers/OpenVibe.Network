@@ -567,6 +567,10 @@ const DEFAULT_GRANTS = [
     // Plan T16/T17 (contracts 0.162.0): a person's OpenVibe.Actor agent routes coding work to OpenVibe.Codes, which runs
     // it on that person's own machine (X-OV-Subject); Codes shows Actor only the tasks Actor started for that person.
     ...['codes.task.start', 'codes.task.read', 'codes.task.cancel'].map((c) => ['actor', c, 'openvibe.codes', []]),
+    // Plan §AD.22 (2026-11-17): the other way round. A person's Codes conductor hands desktop and browser work to their
+    // Actor (codes_actor_task), which runs it on their own machine or an OpenVibe shared node, acting as that person with
+    // X-OV-Subject; Actor shows Codes only the tasks Codes started for them, and their own level still decides each step.
+    ...['actor.task.create', 'actor.task.read'].map((c) => ['codes', c, 'openvibe.actor', []]),
     // Plan T18/T16: a watch's codes-run action starts a coding task for its owner on Codes (Watch#55).
     ['watch', 'codes.task.start', 'openvibe.codes', []],
     // Plan T2 lane B step 3: Host places and runs per project, so it reads a project's tenancy, placement and quotas.
