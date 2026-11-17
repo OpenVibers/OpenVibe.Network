@@ -32,6 +32,21 @@ const BASE_PLACES = [
     { kind: 'openvibe', name: 'OpenVibe', line: "OpenVibe's own computers" },
 ];
 
+// Codes names a harness's maker by a slug ("anthropic", "opencode-go", "custom"): the line says it as people do (11-17,
+// Your AI on a phone read "A coding agent · commandcode").
+const MAKERS = { anthropic: 'Anthropic', openai: 'OpenAI', google: 'Google', meta: 'Meta', minimax: 'MiniMax', deepseek: 'DeepSeek',
+    commandcode: 'Command Code', 'opencode-go': 'OpenCode', opencode: 'OpenCode', aider: 'Aider', openvibe: 'OpenVibe', xai: 'xAI',
+    mistral: 'Mistral', qwen: 'Qwen', moonshot: 'Moonshot', zhipu: 'Zhipu', cursor: 'Cursor', github: 'GitHub', amazon: 'Amazon', sourcegraph: 'Sourcegraph' };
+function makerLine(provider) {
+    const slug = String(provider || '').trim();
+    if (!slug) return 'A coding agent';
+    if (/^custom$/i.test(slug)) return 'A coding agent on the provider you choose';
+    if (/^self-?hosted$/i.test(slug)) return 'A coding agent on a model you host';
+    const known = MAKERS[slug.toLowerCase()];
+    const name = known || (/^[a-z0-9-]+$/.test(slug) ? slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : slug);
+    return `A coding agent by ${clip(name, 40)}`;
+}
+
 function createRunOptions({ svcUrl = (n, f) => f, fetchImpl = globalThis.fetch, bot = null, now = Date.now, log = console } = {}) {
     let harnessList = null, harnessAt = 0, harnessJob = null;
     async function harnesses() {
@@ -42,7 +57,7 @@ function createRunOptions({ svcUrl = (n, f) => f, fetchImpl = globalThis.fetch, 
                 const r = await fetchImpl(new URL('/api/v1/harnesses', svcUrl('codes', 'http://127.0.0.1:4900')).href, { headers: { Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(3000) });
                 const j = r.ok ? await r.json() : null;
                 const list = (j && Array.isArray(j.harnesses) ? j.harnesses : []).filter((h) => h && ID.test(String(h.id || '')) && h.id !== 'openvibe-ai')
-                    .map((h) => ({ id: String(h.id), name: clip(h.name || h.id, 60), line: `A coding agent${h.provider ? ` · ${clip(h.provider, 40)}` : ''}`, kind: 'harness' }));
+                    .map((h) => ({ id: String(h.id), name: clip(h.name || h.id, 60), line: makerLine(h.provider), kind: 'harness' }));
                 harnessList = list; harnessAt = now();
             } catch (err) { if (log.warn) log.warn(`[run-options] Codes' harnesses: ${err && err.message}`); }
             harnessJob = null;
@@ -86,4 +101,4 @@ function createRunOptions({ svcUrl = (n, f) => f, fetchImpl = globalThis.fetch, 
     return { get, harnesses, BASE_AGENTS, BASE_PLACES };
 }
 
-module.exports = { createRunOptions, BASE_AGENTS, BASE_PLACES };
+module.exports = { createRunOptions, makerLine, BASE_AGENTS, BASE_PLACES };
