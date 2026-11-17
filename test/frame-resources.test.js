@@ -28,12 +28,18 @@ const AUTH = 'Bearer tok_abcdefghijklmnopqrstuvwxyz';
         return reply(404, {});
     };
     const svcUrl = (name, fallback) => ({ ai: 'http://ai.test', billing: 'http://billing.test' }[name] || fallback);
-    const r = createResources({ svcUrl, fetchImpl, log: { warn() {} } });
+    let pcsUp = true;
+    const computers = async (subject) => {
+        if (!pcsUp) throw new Error('Bot did not answer');
+        assert.strictEqual(subject, 'usr_me', 'the person\'s own computers');
+        return [{ kind: 'machine', id: 'dev_tower', name: 'Tower', online: true }, { kind: 'machine', id: 'dev_old', name: 'Old', online: false, disabled: true }];
+    };
+    const r = createResources({ svcUrl, fetchImpl, computers, log: { warn() {} } });
 
     const out = await r.get({ auth: '' });
     assert.strictEqual(out.status, 401, 'signed out');
 
-    const got = await r.get({ auth: AUTH });
+    const got = await r.get({ auth: AUTH, subject: 'usr_me' });
     assert.strictEqual(got.status, 200);
     assert.deepStrictEqual(got.body.allowance, { tier: 'standard', unlimited: false, tokens: 50000, used: 12000, left: 38000, resets_at: '2026-11-18T00:00:00.000Z' });
     assert.deepStrictEqual(got.body.keys, [{ provider: 'anthropic', status: 'ok', checked_at: '2026-11-17T03:00:00Z' }, { provider: 'openrouter', status: 'failed', checked_at: null }], 'names and states only');
@@ -41,8 +47,26 @@ const AUTH = 'Bearer tok_abcdefghijklmnopqrstuvwxyz';
     assert.deepStrictEqual(got.body.key_apps, [{ service: 'actor', providers: ['anthropic', 'openrouter'] }, { service: 'codes', providers: ['*'] }], 'one row per service, as AI\'s rows group');
     assert.deepStrictEqual(got.body.balance, { amount: '1234', scale: 2, currency: 'USD', purpose: 'For the AI API, the Exchange and pro products' });
     assert.deepStrictEqual(got.body.partial, []);
+    // The road, in the one order (openvibe-sdk/agents/roads): 38,000 left covers an agent turn, so the free AI takes it.
+    assert.deepStrictEqual([got.body.road.agent.road, got.body.road.agent.need, got.body.road.chat.road], ['free', 12000, 'free']);
+    assert.match(got.body.road.agent.say, /free AI answers \(38k tokens left today\)/);
     assert.ok(asked.every(([, , a]) => a === AUTH), 'every read as the person');
     assert.deepStrictEqual([...new Set(asked.map(([h]) => h))].sort(), ['ai.test', 'billing.test']);
+
+    // Less left than an agent turn takes: the key AI lets Actor use (anthropic, ok; openrouter failed), then the computer.
+    const lowFetch = async (url, init) => (new URL(url).pathname === '/api/v1/me/allowance'
+        ? reply(200, { allowance: { tier: 'standard', unlimited: false, tokens: 50000, used: 46000, left: 4000, resets_at: '2026-11-18T00:00:00.000Z' } }) : fetchImpl(url, init));
+    const low = await createResources({ svcUrl, fetchImpl: lowFetch, computers, log: { warn() {} } }).get({ auth: AUTH, subject: 'usr_me' });
+    assert.deepStrictEqual([low.body.road.agent.road, low.body.road.agent.provider], ['key', 'anthropic']);
+    assert.deepStrictEqual(low.body.road.agent.ladder.map((s) => [s.road, s.open]), [['choice', false], ['free', false], ['key', true]]);
+    assert.strictEqual(low.body.road.chat.road, 'free', 'Chat\'s one model answers with anything left');
+    const noKeyFetch = async (url, init) => (new URL(url).pathname === '/api/v1/me/key-apps' ? reply(200, { apps: [] }) : lowFetch(url, init));
+    const pc = await createResources({ svcUrl, fetchImpl: noKeyFetch, computers, log: { warn() {} } }).get({ auth: AUTH, subject: 'usr_me' });
+    assert.deepStrictEqual([pc.body.road.agent.road, pc.body.road.agent.machine], ['computer', { id: 'dev_tower', name: 'Tower' }], 'the online one, not the offline one');
+    pcsUp = false;
+    const none = await createResources({ svcUrl, fetchImpl: noKeyFetch, computers, log: { warn() {} } }).get({ auth: AUTH, subject: 'usr_me' });
+    assert.deepStrictEqual([none.body.road.agent.road, none.body.road.agent.chat_only, none.body.partial], ['none', true, ['computers']]);
+    pcsUp = true;
 
     billingUp = false;
     const part = await r.get({ auth: AUTH });
