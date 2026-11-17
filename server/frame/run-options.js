@@ -94,14 +94,17 @@ function createRunOptions({ svcUrl = (n, f) => f, fetchImpl = globalThis.fetch, 
         if (!can) return { ...place, disabled: true, line: 'Your computer · turn on running tasks for it on openvibe.link/machines' };
         return place;
     }
+    /** The person's computers as places, the ones that can run something first (also the resources' road reads it). */
+    async function computers(subject) {
+        return (await machines(subject)).map(placeOf).sort((x, y) => Number(!!x.disabled) - Number(!!y.disabled) || x.name.localeCompare(y.name));
+    }
     async function get({ auth = '', subject = null } = {}) {
         if (!auth) return { body: { agents: BASE_AGENTS, places: BASE_PLACES }, cache: true };
-        const [name, list, mine] = await Promise.all([actorName(auth), harnesses(), machines(subject)]);
+        const [name, list, mine] = await Promise.all([actorName(auth), harnesses(), computers(subject)]);
         const agents = BASE_AGENTS.map((a) => (a.id === 'actor' ? { ...a, name } : a)).concat(list);
-        const computers = mine.map(placeOf).sort((x, y) => Number(!!x.disabled) - Number(!!y.disabled) || x.name.localeCompare(y.name));
-        return { body: { agents, places: BASE_PLACES.concat(computers) }, cache: false };
+        return { body: { agents, places: BASE_PLACES.concat(mine) }, cache: false };
     }
-    return { get, harnesses, BASE_AGENTS, BASE_PLACES };
+    return { get, harnesses, computers, BASE_AGENTS, BASE_PLACES };
 }
 
 module.exports = { createRunOptions, makerLine, BASE_AGENTS, BASE_PLACES };
