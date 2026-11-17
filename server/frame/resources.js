@@ -11,7 +11,14 @@
  *     key_apps:  [{ service, providers }]                                          which services may use those keys
  *     balance:   { amount, scale, currency, purpose } | null                       Billing's Balance (USD, for AI)
  *     road:      { agent, chat }                                                    what takes the next turn in each mode
+ *     harnesses: [{ agent, name, machines, signed_in, windows: [{ name, pct, resets_at }] }]
+ *                                                                                  the coding agents on their computers
  *     partial:   ['ai' | 'billing' | 'computers']                                  what did not answer
+ *
+ * harnesses (2026-11-17, the owner: "display usage stats and tokens and all that for each harness or API balances or
+ * cost"): each coding agent on the person's computers with its limit windows, as their Links report them through Bot
+ * (labels, a percentage and a time; the fullest reading of a window across machines wins). What their answers used is
+ * Actor's own read (GET /api/v1/me/usage): AI's usage rows name the service that asked, not the person.
  *   }
  *
  * `road` is openvibe-sdk/agents/roads' answer over these facts and the person's computers (the order Actor's engine
@@ -30,7 +37,7 @@ const KEY_OK = (status) => !status || /^(ok|ready|active|valid)$/i.test(status);
 const SERVICE = /^[a-z][a-z0-9.:-]{0,60}$/;
 const clip = (s, n) => String(s == null ? '' : s).slice(0, n);
 
-function createResources({ svcUrl = (n, f) => f, fetchImpl = globalThis.fetch, computers = null, log = console } = {}) {
+function createResources({ svcUrl = (n, f) => f, fetchImpl = globalThis.fetch, computers = null, fleet = null, log = console } = {}) {
     async function read(service, fallback, path, auth) {
         const r = await fetchImpl(new URL(path, svcUrl(service, fallback)).href, {
             headers: { Accept: 'application/json', Authorization: auth }, redirect: 'error', signal: AbortSignal.timeout(6000),
@@ -43,12 +50,13 @@ function createResources({ svcUrl = (n, f) => f, fetchImpl = globalThis.fetch, c
     async function get({ auth, subject = null }) {
         if (!auth) return { status: 401, body: { error: 'sign in to see your AI' } };
         const partial = [];
-        const [allowance, keys, apps, wallet, pcs] = await Promise.allSettled([
+        const [allowance, keys, apps, wallet, pcs, machines] = await Promise.allSettled([
             read('ai', 'http://127.0.0.1:4700', '/api/v1/me/allowance', auth),
             read('ai', 'http://127.0.0.1:4700', '/api/v1/me/credentials', auth),
             read('ai', 'http://127.0.0.1:4700', '/api/v1/me/key-apps', auth),
             read('billing', 'http://127.0.0.1:4600', '/api/v1/me/wallet', auth),
             typeof computers === 'function' && subject ? computers(subject) : Promise.resolve([]),
+            typeof fleet === 'function' && subject ? fleet(subject) : Promise.resolve([]),
         ]);
         if ([allowance, keys, apps].some((x) => x.status === 'rejected')) partial.push('ai');
         if (wallet.status === 'rejected') partial.push('billing');
@@ -77,6 +85,7 @@ function createResources({ svcUrl = (n, f) => f, fetchImpl = globalThis.fetch, c
             balance: null,
             partial,
         };
+        body.harnesses = harnessesOf(machines.status === 'fulfilled' ? machines.value : []);
         const b = wallet.status === 'fulfilled' && wallet.value && wallet.value.balances && wallet.value.balances.balance;
         if (b) body.balance = { amount: clip(b.amount, 30), scale: num(b.scale) || 0, currency: clip(b.currency, 8) || 'USD', purpose: clip(b.purpose, 200) || null };
         // What takes the next turn, in the one order (openvibe-sdk/agents/roads): a key counts for the services AI says may
@@ -99,4 +108,32 @@ function createResources({ svcUrl = (n, f) => f, fetchImpl = globalThis.fetch, c
     return { get };
 }
 
-module.exports = { createResources };
+/** Bot's machines (each with the fleet its Link reports) → each coding agent once: where it is, signed in, its windows. */
+function harnessesOf(machines) {
+    const by = new Map();
+    for (const m of Array.isArray(machines) ? machines : []) {
+        if (!m || !Array.isArray(m.fleet)) continue;
+        for (const e of m.fleet.slice(0, 20)) {
+            const agent = String((e && e.agent) || '');
+            if (!/^[a-z][a-z0-9-]{1,40}$/.test(agent) || e.installed === false) continue;
+            const h = by.get(agent) || { agent, name: clip(e.name || agent, 60), machines: [], signed_in: false, windows: new Map() };
+            const where = clip(m.name || m.id, 60);
+            if (where && !h.machines.includes(where)) h.machines.push(where);
+            if (e.signed_in === true) h.signed_in = true;
+            for (const w of (Array.isArray(e.windows) ? e.windows : []).slice(0, 10)) {
+                if (!w || typeof w !== 'object') continue;
+                const name = clip(w.name || w.label || 'window', 40);
+                const used = Number(w.used ?? w.used_percent), limit = Number(w.limit ?? w.total);
+                let pct = Number(w.pct);
+                if (!Number.isFinite(pct) && Number.isFinite(used) && Number.isFinite(limit) && limit > 0) pct = (used / limit) * 100;
+                const was = h.windows.get(name);
+                const next = { name, pct: Number.isFinite(pct) ? Math.max(0, Math.min(100, Math.round(pct))) : null, resets_at: clip(w.resets_at || w.reset_at, 40) || null };
+                if (!was || (next.pct != null && (was.pct == null || next.pct > was.pct))) h.windows.set(name, next);
+            }
+            by.set(agent, h);
+        }
+    }
+    return [...by.values()].slice(0, 20).map((h) => ({ ...h, machines: h.machines.slice(0, 10), windows: [...h.windows.values()] }));
+}
+
+module.exports = { createResources, harnessesOf };
