@@ -524,6 +524,9 @@ const DEFAULT_GRANTS = [
     // Bot, only as that machine's owner (X-OV-Subject) and only where the owner turned on "Let my agent use this
     // computer"; the level the owner set on the machine decides what may happen there.
     ['actor', 'bot.computer.control', 'openvibe.bot', []],
+    // A page Link drew for the Design bot (computer_page_check, plan §AD.25), judged by Vision's review panel: several
+    // models on Design's rules, their agreement counted (Vision #225). Vision's own account pays, as for anyone.
+    ['actor', 'vision.model.compare', 'openvibe.vision', []],
     // Plan L55 C1b (contracts 0.268.0): a chat turn shows the desk the agent works on, live, and lets the person take it
     // over. Actor asks Bot for a short-lived watch link to that desk (the private desk or its own desk-<name>, never the
     // owner's screen), only for the person's own machine and only where they let their agent use it.
