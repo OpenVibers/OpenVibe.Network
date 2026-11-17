@@ -64,6 +64,9 @@ const S = ctx.__s;
     assert.match(page, /\$7\.00 <span class="muted">\(new; about \$3\.40 a month now\)/);
     assert.match(page, /One job waits for a provider/);
     assert.match(page, />Use these</);
+    // Let the agent do it (plan §AD.15): Shared's agent button, with this page as context; the owner presses send.
+    assert.match(page, /<button class="btn btn-outline" id="setup-plan-agent" data-ov-agent="Let the agent do it" data-ov-agent-context="page" data-ov-agent-approve="first"/);
+    assert.match(page, /data-ov-agent-task="Set up OpenVibe\.AI from this page: [^"]*ask me before anything that costs money or saves a setting\."/);
     assert.strictEqual(calls.filter(([m]) => m !== 'GET').length, 0, 'nothing is saved by looking');
 
     // Use these: exactly the proposed models and new caps; the key-less model is not pinned.
