@@ -18,6 +18,8 @@ for (const row of [...p.compute, ...p.database, ...p.storage]) {
 }
 assert.ok(p.compute.length >= 5 && p.database.length >= 5 && p.storage.length >= 4, 'prices compared');
 assert.ok(p.owner.length >= 1, 'what needs the owner');
+assert.ok(p.live && p.live.database.some(([, u]) => u === 'https://openvibe.host/catalog?kind=database'), 'the live comparison on openvibe.host');
+assert.ok(p.database.some((r) => /OVHcloud managed PostgreSQL/.test(r.option) && r.read === '2026-11-17'), 'OVHcloud\'s managed PostgreSQL, dated');
 
 const index = fs.readFileSync(path.join(__dirname, '..', 'server', 'index.js'), 'utf8');
 assert.match(index, /app\.use\('\/api\/admin\/hosting-plan', requireAuth, requireAdmin, require\('\.\/admin\/hosting-plan'\)\.router\(\)\)/, 'admin only');

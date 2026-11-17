@@ -703,6 +703,8 @@ html[data-ov-motion="off"] .bc-icons [role="radio"] { transition: none; }
 #sec-hosting .hp-h { display: flex; align-items: center; gap: 10px; margin: 26px 0 10px; font-size: 1.05rem; }
 #sec-hosting .hp-h i { display: grid; place-items: center; width: 20px; height: 20px; color: var(--accent, #60a5fa); }
 #sec-hosting .hp-lede { margin: 0 0 12px; color: var(--text-secondary, #b6c2d9); }
+#sec-hosting .hp-live { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 10px 0 0; color: var(--text-secondary, #b6c2d9); font-size: .9rem; }
+#sec-hosting .hp-live i { color: var(--accent, #60a5fa); }
 #sec-hosting .hp-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 170px), 1fr)); gap: 10px; }
 #sec-hosting .hp-fact { display: grid; gap: 2px; min-width: 0; }
 #sec-hosting .hp-fact b { font-size: 1.25rem; }
