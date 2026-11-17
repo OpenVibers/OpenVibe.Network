@@ -21,6 +21,12 @@ const AI_SETUP_DONE = 'done';
 // and a safe monthly cap from the keys already saved; the owner reads it, and "Use these" saves them all.
 const AI_SETUP_PLAN = 'plan';
 const AI_SETUP_CAP_FLOOR = 5;     // a kind with no cap gets at least $5 a month
+// "Let the agent do it" (plan §AD.15): what the agent is asked, with this page as its context. It proposes; the owner
+// approves anything that costs money.
+const AI_SETUP_AGENT_TASK = 'Set up OpenVibe.AI from this page: for each task kind pick the cheapest working model among '
+    + 'the providers that already have a key, give each kind with no cap a monthly cap of twice its last 30 days (at least $'
+    + AI_SETUP_CAP_FLOOR + '), and leave every provider without a key off. Say what you would change and why, and ask me '
+    + 'before anything that costs money or saves a setting.';
 const AI_SETUP_LINKS = {
     altare: 'https://altare.gg/console', gemini: 'https://aistudio.google.com/api-keys', machines: 'https://openvibe.link/machines',
     openaiCredits: 'https://developers.openai.com/api/docs/guides/chatgpt-api-credits', credits: 'https://openvibe.exchange/console/providers',
@@ -674,6 +680,8 @@ function renderAiSetupPlan() {
             <button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_START}')">Back</button>
             <div class="setup-foot-next">
                 ${waiting.length ? `<button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_PROVIDERS}')">Providers and keys</button>` : ''}
+                <button class="btn btn-outline" id="setup-plan-agent" data-ov-agent="Let the agent do it" data-ov-agent-context="page" data-ov-agent-approve="first"
+                    data-ov-agent-task="${esc(AI_SETUP_AGENT_TASK)}">Let the agent do it</button>
                 <button class="btn btn-primary" id="setup-plan-apply" onclick="applyAiSetupPlan()" ${changes ? '' : 'disabled'}>${changes ? 'Use these' : 'Nothing to change'}</button>
             </div>
         </footer>
