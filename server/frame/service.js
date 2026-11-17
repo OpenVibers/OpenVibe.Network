@@ -1122,8 +1122,12 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // Frame Runs (agent-engine.md §3): every run on OpenVibe (Vibe's chats, Codes' tasks, Actor's tasks) in one shape
     // under one address, /api/frame/runs/<product>:<id>. The product-specific relays above stay until the menu has
     // moved to these routes, then go in one cut.
-    const frameRuns = createFrameRuns({ svcUrl, personOf, now });
+    // Group conversations (plan §AD.19): people and agents in one thread; each agent's turn runs through the runs below on
+    // the account of the person whose message started the round (server/frame/groups.js). A group is a run too.
+    const frameGroups = require('./groups').createFrameGroups({ db, personOf, frameUrl: `http://127.0.0.1:${(config && config.port) || 4000}/api/frame`, log: console });
+    const frameRuns = createFrameRuns({ svcUrl, personOf, now, extra: { group: frameGroups.adapter } });
     router.use('/runs', frameRuns.router);
+    router.use('/groups', frameGroups.router);
     // The composer's Tools (Shared 4.284.0): openvibe.tools through the Frame, which every site's CSP allows.
     router.use(createFrameTools({ toolsUrl: svcUrl('tools', 'http://127.0.0.1:4001'), now }));
 

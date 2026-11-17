@@ -49,7 +49,7 @@ const LIST_DEADLINE_MS = 4000;
 const CALL_TIMEOUT_MS = 15000;
 const POLL_MS = 1500;
 const STREAM_MS = 55000;
-const KINDS = new Set(['chat', 'ask', 'task', 'code', 'machine', 'goal']);
+const KINDS = new Set(['chat', 'ask', 'task', 'code', 'machine', 'goal', 'group']);
 const STATUSES = new Set(['planning', 'running', 'waiting', 'done', 'failed', 'stopped']);
 
 const iso = (t) => {
@@ -84,7 +84,7 @@ const CODES_TARGET = { create: 'new', openvibe: 'openvibe' };
  *  account export; ?archived=1 lists them too. */
 const RUNS_SINCE = (() => { const t = Date.parse(String(process.env.FRAME_RUNS_SINCE || '2026-11-15T00:00:00Z')); return Number.isFinite(t) ? t : 0; })();
 
-function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = async () => null, fetchImpl = fetch, now = Date.now, log = console, since = RUNS_SINCE } = {}) {
+function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = async () => null, fetchImpl = fetch, now = Date.now, log = console, since = RUNS_SINCE, extra = {} } = {}) {
     const base = {
         chat: svcUrl('chat', 'http://127.0.0.1:4400'),
         codes: svcUrl('codes', 'http://127.0.0.1:4900'),
@@ -311,7 +311,9 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         async answer(auth, owner, id, approval, answer) { return call('actor', `/api/v1/runs/${encodeURIComponent(id)}/approvals/${encodeURIComponent(approval)}`, { auth, method: 'POST', body: { answer } }); },
     };
 
-    const PRODUCTS = { chat, codes, actor };
+    // Products that live beside the Frame (11-17: a group conversation, server/frame/groups.js) join the same list, read
+    // and say through the same routes.
+    const PRODUCTS = { chat, codes, actor, ...Object.fromEntries(Object.entries(extra || {}).filter(([k, a]) => /^[a-z][a-z0-9-]{0,30}$/.test(k) && a && typeof a.list === 'function')) };
     const productFor = (ref) => {
         const m = REF.exec(String(ref || ''));
         if (!m || !PRODUCTS[m[1]]) throw fail(404, 'runs.not_found', 'No such run');
@@ -320,6 +322,7 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
     /** Which product starts a run: its kind, else a target (code), else the person's Actor (it answers, or hands the
      *  work on). Chat's old Vibe character answers only when Actor cannot be reached. */
     const starterFor = (body) => {
+        if (body.kind === 'group' && PRODUCTS.group) return PRODUCTS.group;
         if (body.kind === 'code' || body.target) return codes;
         return actor;
     };
