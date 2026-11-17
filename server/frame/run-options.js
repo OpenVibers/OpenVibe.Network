@@ -57,7 +57,10 @@ function createRunOptions({ svcUrl = (n, f) => f, fetchImpl = globalThis.fetch, 
                 const r = await fetchImpl(new URL('/api/v1/harnesses', svcUrl('codes', 'http://127.0.0.1:4900')).href, { headers: { Accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(3000) });
                 const j = r.ok ? await r.json() : null;
                 const list = (j && Array.isArray(j.harnesses) ? j.harnesses : []).filter((h) => h && ID.test(String(h.id || '')) && h.id !== 'openvibe-ai')
-                    .map((h) => ({ id: String(h.id), name: clip(h.name || h.id, 60), line: makerLine(h.provider), kind: 'harness' }));
+                    .map((h) => ({ id: String(h.id), name: clip(h.name || h.id, 60), line: makerLine(h.provider), kind: 'harness' }))
+                    // One name once: Codes lists a harness and its ACP twin under the same name ("Codex", "Codex"); the
+                    // first is the one a person picks.
+                    .filter((h, i, all) => all.findIndex((x) => x.name.toLowerCase() === h.name.toLowerCase()) === i);
                 harnessList = list; harnessAt = now();
             } catch (err) { if (log.warn) log.warn(`[run-options] Codes' harnesses: ${err && err.message}`); }
             harnessJob = null;

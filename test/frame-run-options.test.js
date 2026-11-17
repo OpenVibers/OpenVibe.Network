@@ -19,7 +19,7 @@ const reply = (status, body) => new Response(JSON.stringify(body), { status, hea
         if (u.pathname === '/api/v1/harnesses') {
             harnessCalls++;
             if (!codesUp) throw new Error('down');
-            return reply(200, { harnesses: [{ id: 'claude-code', name: 'Claude Code', provider: 'anthropic' }, { id: 'openvibe-ai', name: 'OpenVibe.AI' }, { id: 'codex', name: 'Codex', provider: 'openai' }, { id: '../x', name: 'bad' }] });
+            return reply(200, { harnesses: [{ id: 'claude-code', name: 'Claude Code', provider: 'anthropic' }, { id: 'openvibe-ai', name: 'OpenVibe.AI' }, { id: 'codex', name: 'Codex', provider: 'openai' }, { id: '../x', name: 'bad' }, { id: 'codex-acp', name: 'Codex', provider: 'openai' }] });
         }
         if (u.pathname === '/api/v1/me/actor') { assert.strictEqual(init.headers.Authorization, 'Bearer tok_abcdefghijklmnopqrstuvwxyz'); return reply(200, { name: actorName }); }
         return reply(404, {});
@@ -50,6 +50,7 @@ const reply = (status, body) => new Response(JSON.stringify(body), { status, hea
     // Codes' maker slugs read as people say them (11-17).
     const lineOf = (id) => (got.body.agents.find((x) => x.id === id) || {}).line;
     assert.deepStrictEqual([lineOf('claude-code'), lineOf('codex')], ['A coding agent by Anthropic', 'A coding agent by OpenAI']);
+    assert.strictEqual(got.body.agents.filter((x) => x.name === 'Codex').length, 1, 'a name once: the ACP twin is left out');
     const { makerLine } = require('../server/frame/run-options');
     assert.deepStrictEqual(['custom', 'commandcode', 'opencode-go', 'self-hosted', 'acme-labs', ''].map(makerLine),
         ['A coding agent on the provider you choose', 'A coding agent by Command Code', 'A coding agent by OpenCode', 'A coding agent on a model you host', 'A coding agent by Acme Labs', 'A coding agent']);
