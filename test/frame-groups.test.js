@@ -161,6 +161,13 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
         assert.strictEqual((await call(CY, 'GET', `/${id}`)).status, 200, 'now Cy is in it');
         assert.strictEqual((await call(ADA, 'POST', `/${id}/members`, { agent: { handle: 'codex', product: 'codes' } })).status, 409, 'a handle once');
         assert.strictEqual((await call(ADA, 'POST', `/${id}/members`, { agent: { handle: 'x1', product: 'actor', engine: { kind: 'harness', harness: 'nope' } } })).status, 422);
+        // WorkBuddy's agent: a preset, and Codes on the codebuddy-code harness.
+        const presets = (await call(ADA, 'GET', '/presets')).json;
+        assert.ok(presets.harnesses.includes('codebuddy-code') && presets.agents.some((x) => x.handle === 'workbuddy' && x.harness === 'codebuddy-code'), 'WorkBuddy\'s agent is offered');
+        const wb = await call(ADA, 'POST', `/${id}/members`, { agent: presets.agents.find((x) => x.handle === 'workbuddy') });
+        assert.strictEqual(wb.status, 201, JSON.stringify(wb.json));
+        assert.deepStrictEqual(['product', 'harness'].map((k) => wb.json.members.find((m) => m.handle === 'workbuddy')[k]), ['codes', 'codebuddy-code']);
+        assert.strictEqual((await call(ADA, 'DELETE', `/${id}/members/agent:workbuddy`)).status, 200);
         assert.strictEqual((await call(ADA, 'DELETE', `/${id}/members/usr:gcy`)).status, 200);
 
         // Roles map to the Frame's run start.
