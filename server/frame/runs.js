@@ -61,14 +61,14 @@ const iso = (t) => {
 const clip = (v, n) => String(v == null ? '' : v).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').trim().slice(0, n);
 /**
  * The way an Actor conversation is worked (Actor's engines, 11-16): a kind's name ('agent', 'model', 'decisions',
- * 'harness', 'openai-agent', 'open-model', 'auto') or { kind, model?, harness? }. Only its shape is checked here; Actor
- * checks the rest and refuses in words.
+ * 'harness', 'openai-agent', 'open-model', 'auto') or { kind, model?, harness?, specialist? } (a specialist such as
+ * 'design' on the agent engine, plan §AD.25). Only its shape is checked here; Actor checks the rest and refuses in words.
  */
 function engineOf(v) {
     const KIND = /^[a-z][a-z-]{1,30}$/;
     if (typeof v === 'string') return KIND.test(v) ? v : null;
     if (!v || typeof v !== 'object' || Array.isArray(v) || typeof v.kind !== 'string' || !KIND.test(v.kind)) return null;
-    return { kind: v.kind, ...(typeof v.model === 'string' && v.model.trim() ? { model: v.model.trim().slice(0, 256) } : {}), ...(typeof v.harness === 'string' && v.harness.trim() ? { harness: v.harness.trim().slice(0, 40) } : {}) };
+    return { kind: v.kind, ...(typeof v.model === 'string' && v.model.trim() ? { model: v.model.trim().slice(0, 256) } : {}), ...(typeof v.harness === 'string' && v.harness.trim() ? { harness: v.harness.trim().slice(0, 40) } : {}), ...(typeof v.specialist === 'string' && /^[a-z][a-z0-9-]{1,30}$/.test(v.specialist) ? { specialist: v.specialist } : {}) };
 }
 const httpsUrl = (v) => { try { const u = new URL(String(v)); return u.protocol === 'https:' ? u.toString() : null; } catch { return null; } };
 const fail = (status, code, message) => Object.assign(new Error(message), { status, code });
