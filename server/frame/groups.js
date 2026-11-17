@@ -114,7 +114,7 @@ function startBody(config, text) {
     return { text, kind: 'task', agent: 'actor', ...(config.engine ? { engine: config.engine } : {}) };
 }
 
-function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetch, now = Date.now, log = console, pollMs = 3000, turnTimeoutMs = 10 * 60 * 1000 } = {}) {
+function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetch, now = Date.now, log = console, pollMs = 3000, turnTimeoutMs = 10 * 60 * 1000, check = null } = {}) {
     const iso = () => new Date(now()).toISOString();
     const queues = new Map();   // group id → [{ seq, subject, auth }] waiting to be answered, and whether a round runs
 
@@ -217,7 +217,8 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
                 const { seq, subject, auth } = q.items.shift();
                 const rows = await members(id);
                 const team = sdkMembers(rows);
-                const policy = (await db.prepare('SELECT policy FROM frame_groups WHERE id = ?').get(id) || {}).policy || {};
+                // The check before the reviewers (plan §AD.25, server/frame/room-check.js) is free: on wherever Design is.
+                const policy = { gate: !!(check && check.enabled), ...((await db.prepare('SELECT policy FROM frame_groups WHERE id = ?').get(id) || {}).policy || {}) };
                 const all = await messages(id);
                 const start = all.find((m) => Number(m.seq) === Number(seq));
                 if (!start) continue;
@@ -253,12 +254,28 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
                     const after = historyOf(await messages(id));
                     for (const done of outs) {
                         if (!done) continue;
-                        const nx = group.next({ message: { from: done.speaker, fromKind: 'agent', text: done.out.text }, members: team, history: after, policy });
+                        let nx = group.next({ message: { from: done.speaker, fromKind: 'agent', text: done.out.text }, members: team, history: after, policy });
+                        if (nx.gate) nx = await checkFirst(id, subject, done.out.text, nx, team, policy);
                         for (const s of nx.speakers) if (!queue.some((x) => x.id === s)) queue.push({ id: s, why: nx.why, parallel: !!nx.parallel });
                     }
                 }
             }
         } finally { q.running = false; if (q.items.length) setImmediate(() => work(id)); else queues.delete(id); }
+    }
+
+    /**
+     * A builder said DONE in a room with reviewers: the free check runs first (openvibe-sdk/agents/group 0.185.0). Its
+     * message is posted from `gate` when it found something to say; with nothing to check (no page link, Design not
+     * there) it passes without a message and the reviewers look.
+     */
+    async function checkFirst(id, subject, doneText, nx, team, policy) {
+        let said = null;
+        try { said = check ? await check.run(doneText, { mayBlock: nx.mayBlock !== false }) : null; } catch (err) {
+            if (log.warn) log.warn(`[groups] ${id} check: ${err && (err.code || err.message)}`);
+        }
+        if (said && said.text) await insertMessage(id, { from: 'gate', kind: 'gate', subject, text: said.text, state: 'done', why: said.blocked ? 'the check found faults' : 'the check before the reviewers' });
+        const text = said && said.text ? said.text : '';
+        return group.next({ message: { from: 'gate', fromKind: 'gate', text }, members: team, history: historyOf(await messages(id)), policy });
     }
 
     const staffOf = async (subject) => {
@@ -432,8 +449,9 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
             await mine(id, owner.id);
             const rows = await members(id);
             const all = (await messages(id, after, limit)).map((m) => ({
-                run_id: id, seq: Number(m.seq), kind: 'message', from: m.from_kind === 'agent' ? 'agent' : 'person',
-                author: { ...authorOf(rows, m.from_id), ...(m.from_kind === 'person' ? { you: m.by_subject === owner.id } : {}) },
+                run_id: id, seq: Number(m.seq), kind: 'message', from: m.from_kind === 'person' ? 'person' : 'agent',
+                author: m.from_kind === 'gate' ? { id: 'gate', kind: 'check', name: 'The check', handle: 'check' }
+                    : { ...authorOf(rows, m.from_id), ...(m.from_kind === 'person' ? { you: m.by_subject === owner.id } : {}) },
                 text: m.text || null, files: filesOf(m), attachments: filesOf(m),
                 status: m.state === 'working' ? 'running' : m.state === 'failed' ? 'failed' : 'done', started_at: m.created_at,
                 ...(m.why ? { why: m.why } : {}), ...(m.usd != null ? { cost: { usd: Number(m.usd) } } : {}),

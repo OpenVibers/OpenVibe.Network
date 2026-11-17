@@ -61,6 +61,10 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
         if (/You are reviewing/.test(told)) {
             r.reviews = (r.reviews || 0) + 1;
             text = r.body.engine && r.body.engine.specialist === 'design' && r.reviews === 1 ? 'The tabs read well.\nCHANGES\n1. The gauges are full width: draw each to its share.' : 'Reads right.\nAPPROVED';
+        } else if (r.product === 'codes' && (r.shop || /build the shop page/.test(told))) {
+            r.shop = true;
+            text = /The check found faults above/.test(told) ? 'Swapped the select for our picker: https://shop.example/usage. DONE'
+                : /asked for changes above/.test(told) ? 'Fixed the gauges: https://shop.example/usage. DONE' : 'Built it.\nWhere to see it: https://shop.example/usage\nPR: https://github.com/OpenVibers/x/pull/9\nDONE';
         } else if (r.product === 'codes') text = /asked for changes above/.test(told) ? 'Fixed the gauges. DONE' : 'Fixed the build in the repo. DONE';
         else if (/handoff please/.test(told)) text = 'I planned it. @codes please fix the failing test.';
         else text = 'Here is the plan.';
@@ -68,7 +72,16 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
         r.status = 'waiting';
     }
     const fakeServer = await new Promise((r) => { const s = http.createServer(fake).listen(0, '127.0.0.1', () => r(s)); });
-    const groups = createFrameGroups({ db, frameUrl: `http://127.0.0.1:${fakeServer.address().port}/api/frame`, personOf: async (req) => people[req.headers.authorization] || null, pollMs: 20, log: { warn() {}, error() {} } });
+    // OpenVibe.Design's page audit (faked): the first look at the shop page finds a native select, later ones nothing.
+    const audited = [];
+    const designFetch = async (url, init) => {
+        const page = JSON.parse(init.body).params.arguments.url;
+        audited.push(page);
+        const findings = audited.length === 1 ? [{ id: 'native-controls', rule: 'no-native-controls', severity: 'high', says: 'A native select shows.', fix: 'Use the shared picker.', count: 1 }] : [];
+        return new Response(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { content: [{ type: 'text', text: '{}' }], structuredContent: { url: page, findings } } }), { status: 200, headers: { 'content-type': 'application/json' } });
+    };
+    const check = require('../server/frame/room-check').createRoomCheck({ designUrl: 'http://design.test', fetchImpl: designFetch });
+    const groups = createFrameGroups({ check, db, frameUrl: `http://127.0.0.1:${fakeServer.address().port}/api/frame`, personOf: async (req) => people[req.headers.authorization] || null, pollMs: 20, log: { warn() {}, error() {} } });
     const app = express();
     app.use('/api/frame/groups', groups.router);
     // The one runs list: a group is a run beside chats, tasks and coding runs (the other products are down here).
@@ -204,6 +217,32 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
             assert.strictEqual(fix.length, 1, 'Codes was told what to fix');
             assert.match(fix[0].text, /The gauges are full width/);
         } else console.log('  (the review round runs with openvibe-sdk 0.181.0)');
+        assert.deepStrictEqual(audited, [], 'a hand-over with no page link is not checked');
+
+        if ('gate' in group.POLICY) {
+            // The check before the reviewers (openvibe-sdk 0.185.0; Stageshow's gate): Codes hands over a page; Design's
+            // free audit finds a native select and sends it back before any reviewer is paid; the fix passes the check,
+            // and the reviewers see what it found.
+            const shop = await call(ADA, 'POST', '', { title: 'Shop page' });
+            assert.strictEqual(shop.status, 201);
+            const was = calls.length;
+            await call(ADA, 'POST', `/${shop.json.id}/messages`, { text: '@codes build the shop page' });
+            const done = await until(async () => { const v = (await call(ADA, 'GET', `/${shop.json.id}`)).json; return !v.busy && v.messages.length >= 9 ? v : null; }, 15000);
+            assert.deepStrictEqual(done.messages.map((m) => [m.from, m.kind]), [['usr:gada', 'person'], ['agent:codes', 'agent'], ['gate', 'gate'], ['agent:codes', 'agent'], ['gate', 'gate'], ['agent:design', 'agent'], ['agent:codes', 'agent'], ['gate', 'gate'], ['agent:design', 'agent']],
+                'build, the check sends it back, fix, the check passes, review, fix, the check, review');
+            assert.match(done.messages[2].text, /^Checked https:\/\/shop\.example\/usage with openvibe\.design's audit \(its markup, no model\): 1 finding\.\nCHANGES\n1\. high: A native select shows\./);
+            assert.strictEqual(done.messages[2].why, 'the check found faults');
+            assert.match(done.messages[3].why, /the check found faults/);
+            assert.match(done.messages[4].text, /nothing wrong in the markup/);
+            assert.deepStrictEqual(done.messages.slice(5, 6).map((m) => m.why), ['review 1 of 2'], 'the bounce was no review');
+            assert.deepStrictEqual(audited, ['https://shop.example/usage', 'https://shop.example/usage', 'https://shop.example/usage'], 'the page each time, never the PR');
+            const starts = calls.slice(was).filter((c) => c.op === 'start' && c.body.engine && c.body.engine.specialist === 'design');
+            assert.match(starts[0].body.text, /What the check before you found \(free, measured, no model\):\nChecked https:\/\/shop\.example\/usage[^\n]*nothing wrong in the markup/, 'Design sees what the check found');
+            const told = calls.slice(was).filter((c) => c.op === 'say' && /The check found faults above/.test(c.text));
+            assert.strictEqual(told.length, 1, 'Codes was told what the check found');
+            const steps = (await groups.adapter.steps(ADA, { id: people[ADA].subject_id }, shop.json.id)).steps;
+            assert.deepStrictEqual(steps.filter((s) => s.author.id === 'gate').map((s) => [s.from, s.author.name]), [['agent', 'The check'], ['agent', 'The check'], ['agent', 'The check']], 'the session view names it');
+        } else console.log('  (the check before the reviewers runs with openvibe-sdk 0.185.0)');
         assert.strictEqual((await call(ADA, 'POST', `/${room.json.id}/members`, { agent: { handle: 'x2', product: 'actor', engine: { kind: 'model', specialist: 'design' } } })).status, 422, 'a specialist is on the agent engine only');
 
         // Roles map to the Frame's run start.
