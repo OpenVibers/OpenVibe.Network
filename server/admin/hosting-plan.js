@@ -95,6 +95,8 @@ const COMPUTE = [
 ];
 
 const DATABASE = [
+    { option: 'OVHcloud managed PostgreSQL (same region)', price: 'Essential: $255.72 at 4 vCPU / 15 GB, 1 node; Business: $654.22 at 2 nodes', storage: '320 GB included, up to 960 GB', pitr: 'included', pooling: 'PgBouncer pools', src: 'https://api.us.ovhcloud.com/1.0/order/catalog/public/cloud?ovhSubsidiary=US', read: '2026-11-17' },
+    { option: 'Linode (Akamai) managed PostgreSQL', price: '$136 at 4 vCPU / 8 GB, 1 node; $410 at 3 nodes', storage: '130 GB included', pitr: 'daily backups', pooling: '—', src: 'https://api.linode.com/v4/databases/types', read: '2026-11-17' },
     { option: 'Self-hosted on the bare-metal server (recommended now)', price: 'included in the server', storage: 'local NVMe', pitr: 'pgBackRest to S3 (running today)', pooling: 'PgBouncer (running today)', src: null, read: CHECKED },
     { option: 'Neon (Launch)', price: '$189.76 at 2 CU, $344.52 at 4 CU (always on)', storage: '$0.35 / GB-month', pitr: 'built in, 6 h–30 d by plan', pooling: 'managed PgBouncer', src: 'https://neon.com/guides/best-postgres-hosting-saas-and-ai-agents-2026', read: '2026-11-13' },
     { option: 'Supabase (Pro)', price: '$36.50 + compute', storage: '$0.125 / GB over 8 GB', pitr: 'add-on ~$100 / $200 / $400 for 7 / 14 / 28 days', pooling: 'Supavisor', src: 'https://supabase.com/docs/guides/platform/manage-your-usage/point-in-time-recovery', read: '2026-10-22' },
@@ -118,8 +120,15 @@ const ORCHESTRATION = [
     { option: 'Managed Kubernetes', cost: '≈ $73 a month for the control plane alone', upkeep: 'workloads only', note: 'Before a single pod runs', src: 'https://medium.com/@ArkProtocol1/forget-eks-a-few-hetzner-boxes-replaced-our-800-month-bill-b4c7ddf991cc' },
 ];
 
+// The same comparisons, live: openvibe.host reads the providers' own catalogs every day (OVHcloud's bare metal, Public
+// Cloud and managed PostgreSQL, Linode, Lightsail, Azure, DigitalOcean, Hetzner Cloud), each price dated and sourced.
+const LIVE = {
+    compute: [['Dedicated servers', 'https://openvibe.host/catalog?kind=dedicated'], ['Cloud instances', 'https://openvibe.host/catalog?kind=cloud']],
+    database: [['Managed databases', 'https://openvibe.host/catalog?kind=database']],
+};
+
 function plan() {
-    return { checked: CHECKED, now: NOW, recommendation: RECOMMENDATION, phases: PHASES, compute: COMPUTE, database: DATABASE, storage: STORAGE, orchestration: ORCHESTRATION,
+    return { checked: CHECKED, now: NOW, recommendation: RECOMMENDATION, phases: PHASES, compute: COMPUTE, database: DATABASE, storage: STORAGE, orchestration: ORCHESTRATION, live: LIVE,
         owner: ['Order the phase-1 server (money): an OVH US Eco Rise or Advance-1 in Hillsboro.'] };
 }
 
