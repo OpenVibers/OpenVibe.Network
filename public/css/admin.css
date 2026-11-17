@@ -720,3 +720,7 @@ html[data-ov-motion="off"] .bc-icons [role="radio"] { transition: none; }
 #sec-hosting .hp-table td { vertical-align: top; min-width: 110px; }
 #sec-hosting .hp-needs { margin-top: 22px; border-left: 3px solid var(--warning, #f5a524); }
 #sec-hosting .hp-needs ul { margin: 6px 0 0; padding-left: 20px; }
+
+/* The Team tab (js/admin/team.js, plan §AD.19): the shared session surface, given the height it needs. */
+#sec-team .team-host { position: relative; height: min(78vh, 900px); min-height: 520px; border: 1px solid var(--border, rgba(255,255,255,.1)); border-radius: 16px; overflow: hidden; }
+@media (max-width: 600px) { #sec-team .team-host { height: calc(100dvh - 140px); min-height: 0; border-radius: 12px; } }

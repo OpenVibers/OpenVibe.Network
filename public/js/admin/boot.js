@@ -36,6 +36,7 @@ const tabLoaders = {
     analytics: loadAnalytics,
     domains: loadDomains,
     hosting: loadHosting,
+    team: loadTeam,
 };
 
 // ═══════════════════════════════════════════════════════════════

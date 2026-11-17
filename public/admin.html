@@ -78,6 +78,7 @@
                 <button class="admin-tab-btn" onclick="showTab('analytics',this)"><i class="fa-solid fa-chart-column"></i> Analytics</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('domains',this)"><i class="fa-solid fa-globe"></i> Domains</button>
                 <button class="admin-tab-btn" onclick="showTab('hosting',this)"><i class="fa-solid fa-server"></i> Hosting</button>
+                <button class="admin-tab-btn" onclick="showTab('team',this)"><i class="fa-solid fa-people-group"></i> Team</button>
             </div>
         </div>
         <button class="tabs-scroll-btn" id="main-tabs-right" onclick="scrollMainTabs(1)" title="Scroll right" aria-label="Scroll right">
@@ -344,6 +345,11 @@
         <div style="display:flex;justify-content:center;margin-top:12px"><button id="modlog-more" class="btn" hidden onclick="loadModLog(false)">Load more</button></div>
     </div>
 
+    <!-- Group conversations (plan §AD.19): people and agents in one thread, in the session surface every site opens (js/admin/team.js) -->
+    <div class="section" id="sec-team">
+        <div id="team-content"><div class="loading">Loading...</div></div>
+    </div>
+
     <!-- The hosting plan (plan §AD.18): today, the recommendation, the phases and the prices compared (js/admin/hosting.js) -->
     <div class="section admin-clarity" id="sec-hosting">
         <div id="hosting-content"><div class="loading">Loading...</div></div>
@@ -607,6 +613,7 @@
 <script src="/js/admin/analytics.js" defer></script>
 <script src="/js/admin/domains.js" defer></script>
 <script src="/js/admin/hosting.js" defer></script>
+<script src="/js/admin/team.js" defer></script>
 <script src="/js/admin/boot.js" defer></script>
   <script src="https://openvibe.live/live-notify.js" async></script>
 </body>
