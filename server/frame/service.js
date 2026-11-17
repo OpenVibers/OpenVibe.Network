@@ -1299,6 +1299,21 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         res.status(got.status).send(JSON.stringify(got.body));
     });
 
+    // POST /api/frame/speech — answers read aloud in an OpenVibe voice (Shared 4.308.0 ov-speak.js; server/frame/speech.js):
+    // AI's /v1/audio/speech on behalf of the signed-in person, whose allowance pays.
+    const speech = privateKey && issuer ? require('./speech').createSpeech({ privateKey, issuer, aiUrl: aiUrl || 'http://127.0.0.1:4700', log: console }) : null;
+    router.post('/speech', express.json({ limit: '8kb' }), async (req, res) => {
+        res.set({ 'Cache-Control': 'private, no-store', Vary: 'Authorization, Origin' });
+        const user = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? await personOf(req).catch(() => null) : null;
+        const subject = user && (user.subject_id || user.subject || null);
+        if (!subject) return res.status(401).json({ error: 'Sign in to hear OpenVibe voices' });
+        if (!speech) return res.status(503).json({ error: 'OpenVibe voices are not set up here' });
+        const b = req.body && typeof req.body === 'object' ? req.body : {};
+        const out = await speech.speak({ subject, text: b.text, voice: b.voice, speed: b.speed });
+        if (out.audio) { res.set('Content-Type', out.type); return res.status(200).send(out.audio); }
+        return res.status(out.status).json({ error: out.error });
+    });
+
     // GET /api/frame/commands?site=<host>&q= — the composer's slash commands (composer-post-ask-do.md, R3):
     // every site's /ask, /do, /remind and /timer, the site's own from its manifest, and a signed-in person's
     // saved snippets. Site commands come first, a name appears once, and q filters by name or hint.
