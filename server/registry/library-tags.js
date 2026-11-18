@@ -4,7 +4,11 @@
  * consumer can pin today rather than the version Network happens to have installed (it said
  * openvibe-sdk v0.5.0 while v0.8.0 was out). Read at boot and hourly; a failure keeps the last
  * answer, and until there is one the installed version stands. GITHUB_TOKEN raises the rate limit.
+ * When GitHub refuses (403/429: its rate limit), the same tags come from OpenVibe.Git's mirror (11-18: no GitHub token
+ * on the new host, anonymous calls shared by everything on it ran out, and the registry kept saying Contracts v0.446.0
+ * while v0.448.0 was out).
  */
+const FORGE = 'https://git.openvibe.codes';
 const REPOS = { 'openvibe-sdk': 'OpenVibe.SDK', 'openvibe-shared': 'OpenVibe.Shared', 'openvibe-contracts': 'OpenVibe.Contracts', 'openvibe-publishing': 'OpenVibe.Publishing' };
 const SEMVER = /^v(\d+)\.(\d+)\.(\d+)$/;
 
@@ -34,8 +38,16 @@ function createLibraryTags({ fetchImpl = globalThis.fetch, token = () => process
                     headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'OpenVibe.Network registry', ...(auth ? { Authorization: `Bearer ${auth}` } : {}) },
                     signal: AbortSignal.timeout(10000),
                 });
-                if (!res.ok) continue;
-                const tag = latestOf((await res.json()).map((t) => t && t.name));
+                let names = null;
+                if (res.ok) names = (await res.json()).map((t) => t && t.name);
+                else if (res.status === 403 || res.status === 429) {
+                    const m = await fetchImpl(`${FORGE}/api/v1/repos/openvibers/${repo.toLowerCase()}/tags`, {
+                        headers: { Accept: 'application/json', 'User-Agent': 'OpenVibe.Network registry' }, signal: AbortSignal.timeout(10000),
+                    });
+                    if (m.ok) { const b = await m.json(); names = (Array.isArray(b) ? b : (b && b.tags) || []).map((t) => t && t.name); }
+                }
+                if (!names) continue;
+                const tag = latestOf(names);
                 if (tag) latest.set(pkg, tag);
             } catch (err) { if (log && log.warn) log.warn(`[registry] ${repo} tags: ${err.message}`); }
         }
