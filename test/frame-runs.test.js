@@ -60,7 +60,12 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         if (u.pathname === '/api/v1/tasks' && req.method === 'POST') {
             const b = await readBody(req); seen.at(-1).body = b;
             // Codes' make mode: one of the person's repositories named in the words starts a task; anything else is new.
-            if (b && b.mode === 'make') return /my-site/.test(String(b.text)) ? sendJson(res, 201, { id: 'tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH', url: 'https://openvibe.codes/tasks/x' }) : sendJson(res, 200, { id: null, url: 'https://openvibe.space/build' });
+            if (b && b.mode === 'make') {
+                if (/my-site/.test(String(b.text))) return sendJson(res, 201, { id: 'tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH', url: 'https://openvibe.codes/tasks/x' });
+                // Code mode's scratch (plan §AD.28 item 3): a new repository on OpenVibe Git, unless Git is closed.
+                if (b.scratch === true && !/no-git/.test(String(b.text))) return sendJson(res, 201, { id: 'tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH', url: 'https://openvibe.codes/tasks/x', repository: { full_name: 'ada/goal-bar', html_url: 'https://git.openvibe.codes/ada/goal-bar', private: true } });
+                return sendJson(res, 200, { id: null, url: 'https://openvibe.space/build', ...(b.scratch === true ? { scratch: { code: 'repo.git_off', detail: 'closed' } } : {}) });
+            }
             return sendJson(res, 201, { id: 'tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH' });
         }
         if (/\/api\/v1\/tasks\/tsk_[0-9A-Z]+\/stop$/.test(u.pathname)) return sendJson(res, 200, { ok: true });
@@ -176,9 +181,14 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         ({ r, d } = await go('/', { method: 'POST', body: { text: 'What happened in tech news today?' } }));
         actorDown = false;
         assert.strictEqual(r.status, 201); assert.strictEqual(d.ref, 'chat:c_new'); assert.strictEqual(r.headers.get('x-ov-placed'), 'vibe');
+        // Code mode with no repository (plan §AD.28 item 3): Codes' make mode with scratch, which makes one on OpenVibe Git.
         ({ r, d } = await go('/', { method: 'POST', body: { text: 'Add a goal bar', kind: 'code', target: 'openvibe' } }));
-        assert.strictEqual(r.status, 422, 'Codes needs a repository until Create and OpenVibe ship');
-        assert.match(d.error, /repository/);
+        assert.strictEqual(r.status, 201, JSON.stringify(d)); assert.strictEqual(d.kind, 'code'); assert.strictEqual(r.headers.get('x-ov-placed'), 'codes');
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'codes' && x.method === 'POST').at(-1).body, { mode: 'make', text: 'Add a goal bar', scratch: true });
+        // Codes cannot take it (OpenVibe Git closed): the person's Actor answers, never a refusal for a missing repository.
+        ({ r, d } = await go('/', { method: 'POST', body: { text: 'Add a goal bar no-git', kind: 'code' } }));
+        assert.strictEqual(r.status, 201, JSON.stringify(d)); assert.strictEqual(r.headers.get('x-ov-placed'), 'actor');
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body, { text: 'Add a goal bar no-git', kind: 'task' });
         ({ r, d } = await go('/', { method: 'POST', body: { text: 'Fix the login redirect', target: { repo: 'me/site' } }, headers: { 'Idempotency-Key': 'k-123' } }));
         assert.strictEqual(r.status, 201); assert.strictEqual(d.kind, 'code');
         const started = seen.filter((x) => x.svc === 'codes' && x.method === 'POST' && x.url === '/api/v1/tasks').at(-1);
@@ -208,17 +218,17 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         let q = await pick({ text: 'Fix the login on my-site', agent: 'claude-code', model: { id: 'anthropic/claude-sonnet', source: 'keys' }, where: { kind: 'machine', id: 'dev_01K9R2V6M8Q4T0B7C3D5E9F2GH', name: 'Studio PC' } });
         assert.deepStrictEqual(q, [201, 'codes']);
         assert.deepStrictEqual(seen.filter((x) => x.svc === 'codes' && x.method === 'POST').at(-1).body,
-            { mode: 'make', text: 'Fix the login on my-site', harness: 'claude-code', model: 'anthropic/claude-sonnet', machine: 'dev_01K9R2V6M8Q4T0B7C3D5E9F2GH' }, 'Codes gets the harness, the model and the computer');
+            { mode: 'make', text: 'Fix the login on my-site', harness: 'claude-code', model: 'anthropic/claude-sonnet', machine: 'dev_01K9R2V6M8Q4T0B7C3D5E9F2GH', scratch: true }, 'Codes gets the harness, the model and the computer');
         // 2026-11-16 ("make sure reasoning effort is configurable and … all settings for all harnesses exist"): the effort and
         // what the agent may do go to Codes too; anything else is dropped, never passed on.
         q = await pick({ text: 'Fix the login on my-site', agent: 'claude-code', effort: 'high', permission: 'read' });
         assert.deepStrictEqual(seen.filter((x) => x.svc === 'codes' && x.method === 'POST').at(-1).body,
-            { mode: 'make', text: 'Fix the login on my-site', harness: 'claude-code', effort: 'high', permission: 'read' });
+            { mode: 'make', text: 'Fix the login on my-site', harness: 'claude-code', effort: 'high', permission: 'read', scratch: true });
         q = await pick({ text: 'Fix the login on my-site', agent: 'claude-code', effort: 'turbo', permission: 'root' });
         assert.deepStrictEqual(seen.filter((x) => x.svc === 'codes' && x.method === 'POST').at(-1).body,
-            { mode: 'make', text: 'Fix the login on my-site', harness: 'claude-code' }, 'an effort or a permission that is not one of the ladder is dropped');
+            { mode: 'make', text: 'Fix the login on my-site', harness: 'claude-code', scratch: true }, 'an effort or a permission that is not one of the ladder is dropped');
         q = await pick({ text: 'Fix the login on my-site', agent: 'codes' });
-        assert.deepStrictEqual(seen.filter((x) => x.svc === 'codes' && x.method === 'POST').at(-1).body, { mode: 'make', text: 'Fix the login on my-site' }, 'Codes itself: its own pick of harness');
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'codes' && x.method === 'POST').at(-1).body, { mode: 'make', text: 'Fix the login on my-site', scratch: true }, 'Codes itself: its own pick of harness');
         q = await pick({ text: 'How do I fix my login page?', agent: 'actor', model: { id: 'deepseek/deepseek-chat', source: 'openvibe' } });
         assert.deepStrictEqual(q, [201, 'actor'], 'your Actor, even for a question');
         const toActor = seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body;
