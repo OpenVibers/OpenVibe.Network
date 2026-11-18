@@ -29,5 +29,7 @@ const { getDb, seedDb } = require('../server/db/database');
     assert.deepEqual(JSON.parse(computer.redirect_uris), ['https://openvibe.computer/auth/callback']);
     const directory = await db.prepare("SELECT redirect_uris FROM oauth_clients WHERE client_id = 'directory'").get();
     assert.deepEqual(JSON.parse(directory.redirect_uris), ['https://openvibe.directory/auth/callback']);
+    const finance = await db.prepare("SELECT redirect_uris FROM oauth_clients WHERE client_id = 'finance'").get();
+    assert.deepEqual(JSON.parse(finance.redirect_uris), ['https://openvibe.finance/auth/callback']);
     console.log('web client callbacks: exact URIs, idempotence and credential preservation passed');
 })().catch(err => { console.error(err); process.exitCode = 1; });
