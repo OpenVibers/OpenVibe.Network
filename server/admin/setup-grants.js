@@ -9,7 +9,11 @@
  *                                                                → 201 { grant: { id, ref, service, namespace, keys,
  *                                                                        expires_at } }   the id is shown once
  *   GET    /api/admin/setup/grants        owner                 → the owner's live grants (ref, row, expiry; never ids)
- *   DELETE /api/admin/setup/grants/:ref   owner                 → revoked
+ *   DELETE /api/admin/setup/grants/:ref[?task=tsk_…]  owner     → { state: revoked | saving | spent | save_failed,
+ *                                                                  task_stopped, task_state: stopped | stopping |
+ *                                                                  not_stopped }: the agent's task is stopped too
+ *                                                                  (11-14 review); spent only once the key is written,
+ *                                                                  task_stopped only once Actor says it ended (11-15)
  *   GET    /api/admin/setup/grants/agent/:task         owner  → the agent's work for the Setup row's overlay: { state,
  *                                                                ended, error, needs_you: { what }, desk, page }
  *   GET    /api/admin/setup/grants/agent/:task/still   owner  → its desk's latest picture (image, no-store)
@@ -52,7 +56,7 @@ class GrantError extends Error {
 // The providers whose new keys OpenVibe.Actor can read from their page (Actor's server/setup/grants.js KEY_SHAPES).
 const AGENT_PROVIDERS = ['openai', 'anthropic', 'deepseek', 'openrouter', 'groq', 'gemini', 'kimi', 'xai', 'fireworks', 'resend', 'stripe'];
 
-function createSetupGrants({ db, proxy, isFresh, now = () => Date.now(), log = console, actorUrl = '', actorPublicUrl = 'https://openvibe.actor', fetchImpl = globalThis.fetch } = {}) {
+function createSetupGrants({ db, proxy, isFresh, now = () => Date.now(), log = console, actorUrl = '', actorPublicUrl = 'https://openvibe.actor', fetchImpl = globalThis.fetch, stopPollMs = 1000 } = {}) {
     /**
      * Start the owner's agent on the grant (Actor's POST /api/v1/tasks with { setup }, with the owner's own Bearer): the grant id
      * goes from here to Actor and nowhere else, so the browser never holds it. A start that fails revokes the grant.
@@ -115,14 +119,59 @@ function createSetupGrants({ db, proxy, isFresh, now = () => Date.now(), log = c
             created_at: new Date(r.created_at).toISOString(), expires_at: new Date(r.expires_at).toISOString() }));
     }
 
-    async function revoke(req, ref) {
-        if (!REF_RE.test(ref)) throw new GrantError(404, 'setup_grant.not_found', 'no such grant');
-        const r = await db.prepare(`UPDATE setup_grants SET revoked_at = ? WHERE owner_user_id = ? AND substr(id_hash, 1, 12) = ?
-            AND used_at IS NULL AND revoked_at IS NULL`).run(iso(now()), req.user.id, ref);
-        if (!Number(r.changes)) throw new GrantError(404, 'setup_grant.not_found', 'no such grant');
+    /**
+     * Stop the agent's task (Actor's POST /api/v1/tasks/:id/cancel, the owner's own Bearer) → 'stopped' when Actor says
+     * it ended (200, or 409: it had ended already), 'stopping' when Actor took the cancel but the task is still winding
+     * down (202: it finishes the step it is on; read again three times, a second apart), 'not_stopped' otherwise. An
+     * accepted cancel is never reported as a stopped task (the 11-15 review).
+     */
+    const ENDED = new Set(['succeeded', 'failed', 'cancelled']);
+    const endedTask = (t) => Boolean(t && typeof t === 'object' && (t.finished_at || ENDED.has(String(t.state || ''))));
+    async function stopAgent(req, task) {
+        const auth = String(req.headers && req.headers.authorization || '');
+        if (!TASK_RE.test(task) || !/^Bearer\s+\S+/.test(auth) || !actorUrl) return 'not_stopped';
+        const base = `${actorUrl.replace(/\/+$/, '')}/api/v1/tasks/${encodeURIComponent(task)}`;
+        const headers = { Accept: 'application/json', Authorization: auth };
+        let res;
+        try {
+            res = await fetchImpl(`${base}/cancel`, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(10_000),
+                headers: { ...headers, 'Content-Type': 'application/json' }, body: '{}' });
+        } catch { return 'not_stopped'; }
+        if (res.status === 409) return 'stopped';
+        if (!res.ok) return 'not_stopped';
+        if (endedTask(await res.json().catch(() => null))) return 'stopped';
+        for (let i = 0; i < 3; i++) {
+            await new Promise((r) => setTimeout(r, stopPollMs));
+            try {
+                const again = await fetchImpl(base, { method: 'GET', redirect: 'error', signal: AbortSignal.timeout(5000), headers });
+                if (again.ok && endedTask(await again.json().catch(() => null))) return 'stopped';
+            } catch { /* read again */ }
+        }
+        return 'stopping';
     }
 
-    /** The agent's one save. The grant is spent first (atomically), so a replay or a race finds nothing. */
+    /**
+     * Take a grant back (the 11-14 review): honest about what happened. A grant whose key the agent saved says so (the
+     * key stays in Setup, for the owner to remove there); a save still being written is "saving", one that failed
+     * "save_failed" (11-15: used_at alone only means the agent claimed it); a live one is revoked; and with its task the
+     * agent's task is stopped too, so nothing keeps working on the owner's behalf. → { state, task_stopped, task_state }
+     */
+    async function revoke(req, ref, task = null) {
+        if (!REF_RE.test(ref)) throw new GrantError(404, 'setup_grant.not_found', 'no such grant');
+        await db.prepare(`UPDATE setup_grants SET revoked_at = ? WHERE owner_user_id = ? AND substr(id_hash, 1, 12) = ?
+            AND used_at IS NULL AND revoked_at IS NULL`).run(iso(now()), req.user.id, ref);
+        const row = await db.prepare('SELECT used_at, revoked_at, saved_at, save_failed_at FROM setup_grants WHERE owner_user_id = ? AND substr(id_hash, 1, 12) = ?').get(req.user.id, ref);
+        if (!row) throw new GrantError(404, 'setup_grant.not_found', 'no such grant');
+        const state = !row.used_at ? 'revoked' : row.saved_at ? 'spent' : row.save_failed_at ? 'save_failed' : 'saving';
+        const taskState = task ? await stopAgent(req, String(task)) : null;
+        return { state, task_stopped: taskState === null ? null : taskState === 'stopped', task_state: taskState };
+    }
+
+    /**
+     * The agent's one save. The grant is claimed first (used_at, atomically), so a replay or a race finds nothing; it is
+     * spent (saved_at) only once every key is written, and a write that fails is recorded (save_failed_at, save_error)
+     * so Stop and Setup never call it saved.
+     */
     async function save(req, id, body) {
         if (!ID_RE.test(id)) throw new GrantError(404, 'setup_grant.not_found', 'no such grant');
         const b = body && typeof body === 'object' ? body : {};
@@ -147,10 +196,18 @@ function createSetupGrants({ db, proxy, isFresh, now = () => Date.now(), log = c
         // The owner's own save, as the owner (the proxy's secret path), one key at a time.
         const ownerReq = { app: req.app, headers: {}, user: { id: grant.owner_user_id, subject_id: grant.owner_subject }, savedBy: 'agent', run };
         const out = [];
-        for (const key of keys) {
-            await proxy.saveSecretAsOwner(ownerReq, { service: grant.service, namespace: grant.namespace, key, value: values[key] });
-            out.push({ key, hint: hintOf(values[key]) });
+        try {
+            for (const key of keys) {
+                await proxy.saveSecretAsOwner(ownerReq, { service: grant.service, namespace: grant.namespace, key, value: values[key] });
+                out.push({ key, hint: hintOf(values[key]) });
+            }
+        } catch (err) {
+            const code = String((err && (err.code || err.status)) || 'save_failed').replace(/[^A-Za-z0-9_.-]/g, '').slice(0, 60) || 'save_failed';
+            await db.prepare('UPDATE setup_grants SET save_failed_at = ?, save_error = ? WHERE id_hash = ?').run(iso(now()), code, hash);
+            log.warn && log.warn(`[setup-grants] ${grant.service}/${grant.namespace}: the agent's save failed after ${out.length} of ${keys.length} key(s) (${code})`);
+            throw err;
         }
+        await db.prepare('UPDATE setup_grants SET saved_at = ? WHERE id_hash = ?').run(iso(now()), hash);
         log.info && log.info(`[setup-grants] ${grant.service}/${grant.namespace}: ${keys.length} key(s) saved by the owner's agent${run ? ` (run ${run})` : ''}`);
         return { saved: true, service: grant.service, namespace: grant.namespace, keys: out };
     }
@@ -212,7 +269,9 @@ function createSetupGrants({ db, proxy, isFresh, now = () => Date.now(), log = c
         r.use(express.json({ limit: '8kb' }));
         r.post('/', async (req, res) => { try { res.status(201).json({ ok: true, grant: await create(req, req.body) }); } catch (err) { send(res, err); } });
         r.get('/', async (req, res) => { try { res.set('Cache-Control', 'no-store').json({ ok: true, grants: await list(req) }); } catch (err) { send(res, err); } });
-        r.delete('/:ref', async (req, res) => { try { await revoke(req, String(req.params.ref)); res.json({ ok: true }); } catch (err) { send(res, err); } });
+        r.delete('/:ref', async (req, res) => {
+            try { res.set('Cache-Control', 'no-store').json({ ok: true, ...(await revoke(req, String(req.params.ref), req.query.task ? String(req.query.task) : null)) }); } catch (err) { send(res, err); }
+        });
         r.get('/agent/:task', async (req, res) => { try { res.set('Cache-Control', 'no-store').json({ ok: true, agent: await agentView(req, String(req.params.task)) }); } catch (err) { send(res, err); } });
         r.get('/agent/:task/still', async (req, res) => {
             try {

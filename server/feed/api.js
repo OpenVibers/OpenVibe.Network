@@ -17,7 +17,7 @@
  */
 const express = require('express');
 const store = require('./store');
-const { cardOf, oneCardPerThing, foldCards, rankCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD, RUN_PAGE } = require('./card');
+const { cardOf, oneCardPerThing, foldCards, rankCards, spreadCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD, RUN_PAGE } = require('./card');
 const { createPictures } = require('./pictures');
 const { createFeedSources } = require('./sources');
 const { createEffects } = require('./effects');
@@ -150,8 +150,20 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
             card.group.count = n;
             card.counts = { ...card.counts, people: n };
         }
-        cards = rankCards(cards, { followed: new Set(followed), affinity, now: now() });
+        cards = spreadCards(rankCards(cards, { followed: new Set(followed), affinity, now: now() }));
         const items = cards.slice(0, want).map(pictures.card);
+        // A run's card (g:…, an hour of deals or jobs) counts its own views (11-15, the owner: "why is there no view count
+        // on everything on the feed?"): under feed:group:<id>, the ref the views beacon counts it by. Before, it showed its
+        // first row's views, and nothing counted the run, so it stayed at 0.
+        const runs = items.filter((c) => /^g:[A-Za-z0-9_.:-]{1,80}$/.test(String(c.id || '')));
+        if (runs.length) {
+            try {
+                const held = runs.map((c) => ({ ref: { service: 'feed', kind: 'group', id: c.id.slice(2) }, counts: {} }));
+                await require('../views/counts').attachCounts(held);
+                // Views only: feed.item@1's counts name views, likes, comments, watchers and people (no "engaged").
+                runs.forEach((c, i) => { c.counts = { ...(c.counts || {}), views: Math.max(0, Number(held[i].counts && held[i].counts.views) || 0) }; });
+            } catch { /* the count it had */ }
+        }
         // The next page starts at the newest row whose card this page did not show (it used to start after every row
         // read, so the cards past the first `want` were never seen); a row of a shown burst or group counts as shown.
         const shown = new Set();
@@ -245,7 +257,7 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
             const read = await store.listItems(db, { q, followed, viewerSubject: viewer && viewer.subject, limit: 400, since: new Date(now() - 365 * 86400000).toISOString() });
             const actors = await actorsFor(db, read.rows);
             const cards = foldCards(oneCardPerThing(read.rows.map((r) => cardOf(r, actors.get(r.actor_subject) || null))).filter((c) => searchMatches(c, q)), now()).map(({ bulk, ...c }) => c);
-            res.json({ items: rankCards(cards, { followed: new Set(followed), now: now() }).slice(0, want).map(pictures.card), next_cursor: null });
+            res.json({ items: spreadCards(rankCards(cards, { followed: new Set(followed), now: now() })).slice(0, want).map(pictures.card), next_cursor: null });
         } catch (err) { next(err); }
     };
     const router = express.Router();

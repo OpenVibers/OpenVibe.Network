@@ -13,7 +13,8 @@
  *   PATCH  /api/v1/machines/:id         network.machines.manage → { machine }                (a new name)
  *   PUT    /api/v1/machines/:id/roles   network.machines.manage → { machine }                (the whole set)
  *   POST   /api/v1/machines/:id/revoke  network.machines.manage → { machine }
- *   POST   /api/v1/machines/:id/agent-computer, /watch-probe, /ai-models, /shared-desks → { machine } (own session)
+ *   POST   /api/v1/machines/:id/agent-computer, /watch-probe, /ai-models, /shared-desks, /shared-desktops, /shared-jobs
+ *                                                                          → { machine } (own session)
  *   POST   /api/v1/machines/:id/screen  network.machines.manage → 201 { machine_id, … } (the live screen)
  *   GET    /api/v1/machines/:id/screen  network.machines.read   → { live, signaling_url, … }
  *   DELETE /api/v1/machines/:id/screen  network.machines.manage → { stopped }
@@ -113,6 +114,21 @@ function machineOf(m) {
     out.can_run = out.roles.map((role) => ({ 'codes.worker': 'worker', 'desks.host': 'browser', 'ai.host': 'models', 'bot.robot': 'robot' }[role] || role));
     if (typeof m.last_seen_at === 'string' && m.last_seen_at) out.last_seen_at = m.last_seen_at;
     if (typeof m.node_version === 'string' && m.node_version) out.node_version = m.node_version;
+    // What the machine is, in one line (Bot's specs_words, Link v0.66: CPU, threads, memory, GPU, OS), and the few facts
+    // a picker weighs. Bot has bounded them; only these pass.
+    if (typeof m.specs_words === 'string' && m.specs_words) out.specs_words = m.specs_words.slice(0, 200);
+    if (m.specs && typeof m.specs === 'object') {
+        const s = m.specs, gpu = Array.isArray(s.gpus) && s.gpus[0] && typeof s.gpus[0] === 'object' ? s.gpus[0] : null;
+        const v = s.virtualization && typeof s.virtualization === 'object' ? s.virtualization : {};
+        out.specs = {
+            memory_mb: Number.isFinite(s.memory_mb) ? s.memory_mb : null,
+            threads: s.cpu && Number.isFinite(s.cpu.threads) ? s.cpu.threads : null,
+            gpu: gpu && typeof gpu.model === 'string' ? gpu.model.slice(0, 120) : null,
+            gpu_vram_mb: gpu && Number.isFinite(gpu.vram_mb) ? gpu.vram_mb : null,
+            disk_free_gb: Number.isFinite(s.disk_free_gb) ? s.disk_free_gb : null,
+            vm: v.kvm === true ? 'kvm' : v.apple_vz === true ? 'apple' : v.hyperv === true ? 'hyperv' : null,
+        };
+    }
     if (typeof m.node_id === 'string' && PRINCIPAL.test(m.node_id)) out.principal_id = m.node_id;
     // Bot has already bounded this Link heartbeat. Keep only the readiness facts the
     // owner's machine card needs; never pass a login, key, or account through.
@@ -130,6 +146,14 @@ function machineOf(m) {
         // 2026-11-12: the owner's AI may use the models here; the desks are lent to other people's agents.
         ai_models: m.ai_models === true,
         shared_desks: m.shared_desks === true,
+        // 2026-11-14 (Link v0.65.0): whole desktops lent too, and other people's jobs (coding tasks and agents). The
+        // worker's facts say whether this machine can: its classes and whether its Link serves other people.
+        shared_desktops: m.shared_desktops === true,
+        shared_jobs: m.shared_jobs === true,
+        worker: m.worker && typeof m.worker === 'object' ? {
+            classes: Array.isArray(m.worker.classes) ? m.worker.classes.filter((c) => typeof c === 'string' && /^[a-z]{1,16}$/.test(c)).slice(0, 8) : [],
+            serve_others: m.worker.serve_others === true,
+        } : null,
         computer: !!computer,
         ...(computer ? {
             level: typeof computer.level === 'string' ? computer.level : null,
@@ -215,6 +239,8 @@ function createBotClient({ baseUrl, privateKey, issuer, fetchImpl = globalThis.f
         watchProbe: (subject, id, on) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/watch-probe`, { on: !!on }, subject),
         aiModels: (subject, id, on) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/ai-models`, { on: !!on }, subject),
         sharedDesks: (subject, id, on) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/shared-desks`, { on: !!on }, subject),
+        sharedDesktops: (subject, id, on) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/shared-desktops`, { on: !!on }, subject),
+        sharedJobs: (subject, id, on) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/shared-jobs`, { on: !!on }, subject),
         screenStart: (subject, id, body) => call('POST', `/api/v1/machines/${encodeURIComponent(id)}/screen`, body || {}, subject),
         screenState: (subject, id) => call('GET', `/api/v1/machines/${encodeURIComponent(id)}/screen`, null, subject),
         screenStop: (subject, id) => call('DELETE', `/api/v1/machines/${encodeURIComponent(id)}/screen`, null, subject),
@@ -531,6 +557,23 @@ function routers({ bot, requireAuth, publicKey, issuer, db = (req) => req.app.lo
         const subject = await subjectOf(req);
         const on = booleanOn(req);
         const out = await bot.sharedDesks(subject, machineId(req), on);
+        res.json({ machine: machineOf(out && out.machine) });
+    }));
+    // 2026-11-14 (the owner: "desktop agents and running codes sessions and agents … shared for all users"): lend whole
+    // desktops, and run other people's coding tasks and agents. Bot refuses each where the machine's Link cannot keep
+    // that work in a sandbox of its own (409 bot.desktops_not_lent, bot.worker_not_shared).
+    hub.post('/:id/shared-desktops', manage, ownSession, express.json({ limit: '8kb' }), async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const subject = await subjectOf(req);
+        const on = booleanOn(req);
+        const out = await bot.sharedDesktops(subject, machineId(req), on);
+        res.json({ machine: machineOf(out && out.machine) });
+    }));
+    hub.post('/:id/shared-jobs', manage, ownSession, express.json({ limit: '8kb' }), async (req, res) => await send(res, async () => {
+        res.set('Cache-Control', 'private, no-store');
+        const subject = await subjectOf(req);
+        const on = booleanOn(req);
+        const out = await bot.sharedJobs(subject, machineId(req), on);
         res.json({ machine: machineOf(out && out.machine) });
     }));
 

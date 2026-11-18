@@ -57,6 +57,7 @@
                 <button class="admin-tab-btn" onclick="showTab('streams',this)"><i class="fa-solid fa-broadcast-tower"></i> Streams</button>
                 <button class="admin-tab-btn" onclick="showTab('lineage',this)"><i class="fa-solid fa-diagram-project"></i> Lineage</button>
                 <button class="admin-tab-btn" onclick="showTab('bans',this)"><i class="fa-solid fa-ban"></i> Bans</button>
+                <button class="admin-tab-btn" onclick="showTab('flagged-speech',this)"><i class="fa-solid fa-flag"></i> Flagged speech</button>
                 <button class="admin-tab-btn" onclick="showTab('chat-logs',this)"><i class="fa-solid fa-message"></i> Chat Logs</button>
                 <button class="admin-tab-btn" onclick="showTab('moderators',this)"><i class="fa-solid fa-shield-halved"></i> Moderators</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('settings',this)"><i class="fa-solid fa-gear"></i> Settings</button>
@@ -76,6 +77,8 @@
                 <button class="admin-tab-btn owner-only" onclick="showTab('eventsops',this)"><i class="fa-solid fa-paper-plane"></i> Event deliveries</button>
                 <button class="admin-tab-btn" onclick="showTab('analytics',this)"><i class="fa-solid fa-chart-column"></i> Analytics</button>
                 <button class="admin-tab-btn owner-only" onclick="showTab('domains',this)"><i class="fa-solid fa-globe"></i> Domains</button>
+                <button class="admin-tab-btn" onclick="showTab('hosting',this)"><i class="fa-solid fa-server"></i> Hosting</button>
+                <button class="admin-tab-btn" onclick="showTab('team',this)"><i class="fa-solid fa-people-group"></i> Team</button>
             </div>
         </div>
         <button class="tabs-scroll-btn" id="main-tabs-right" onclick="scrollMainTabs(1)" title="Scroll right" aria-label="Scroll right">
@@ -135,6 +138,13 @@
     <div class="section admin-clarity admin-cards" id="sec-bans">
         <p class="admin-intro">These people are currently banned on Live. Review the reason before restoring access; allowing access again removes the restriction, and a new ban can be applied from Users if needed.</p>
         <div id="bans-content"><div class="loading">Loading...</div></div>
+    </div>
+
+    <!-- Flagged speech: transcript windows OpenVibe.AI's hard floor flagged (Live GET /api/mod/transcript-flags) -->
+    <div class="section admin-clarity admin-cards" id="sec-flagged-speech">
+        <p class="admin-intro">Moments in streams whose transcribed words read as one of the hard lines: sexual content involving a minor, non-consensual sexual content, or weapons of mass harm. The words are not kept. Open the recording at that moment and listen, act with the usual tools (remove the recording, ban), then mark it.</p>
+        <div class="sub-tabs" id="flagged-speech-filter" role="tablist" aria-label="Which flags"></div>
+        <div id="flagged-speech-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Chat Logs -->
@@ -221,7 +231,7 @@
             <div class="setup-head-text">
                 <a class="setup-back" href="/admin/ai"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> AI</a>
                 <h2>Set up AI</h2>
-                <p class="muted">Every AI job the network does, one step at a time. Add a key, run a tiny real request, and the route is ready. Keys are sealed in OpenVibe.AI and never shown again.</p>
+                <p class="muted">The AI this server runs on: every provider and its key, the model for every job (from every model there is), the coding agents and the computers they run on, and what it may spend. Keys are sealed in OpenVibe.AI and never shown again.</p>
             </div>
             <div class="setup-progress" id="setup-progress" aria-live="polite"><span class="muted">Loading…</span></div>
         </div>
@@ -259,8 +269,20 @@
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
                 <div class="form-field">
-                    <label>Icon (emoji)</label>
-                    <span class="admin-field"><input type="text" id="broadcast-icon" aria-label="Notification icon" aria-describedby="help-broadcast-icon" value="📢" style="text-align:center"><span class="admin-help" id="help-broadcast-icon"><strong>Notification icon.</strong> The default is the announcement emoji. Use one recognizable emoji, for example 📢.</span></span>
+                    <label id="broadcast-icon-label">Icon</label>
+                    <span class="admin-field"><input type="hidden" id="broadcast-icon" value="📢">
+                    <span class="bc-icons" role="radiogroup" aria-labelledby="broadcast-icon-label" aria-describedby="help-broadcast-icon">
+                        <button type="button" role="radio" aria-checked="true" tabindex="0" data-emoji="📢" title="Announcement" aria-label="Announcement"><i data-ov-icon="megaphone" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="🚀" title="Something new" aria-label="Something new"><i data-ov-icon="rocket" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="⚠️" title="Warning" aria-label="Warning"><i data-ov-icon="alert" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="🔧" title="Maintenance" aria-label="Maintenance"><i data-ov-icon="wrench" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="🔴" title="Live" aria-label="Live"><i data-ov-icon="live" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="📅" title="Event" aria-label="Event"><i data-ov-icon="calendar" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="🎁" title="Gift" aria-label="Gift"><i data-ov-icon="gift" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="🏆" title="Winners" aria-label="Winners"><i data-ov-icon="trophy" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="💜" title="Thanks" aria-label="Thanks"><i data-ov-icon="heart" aria-hidden="true"></i></button>
+                        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-emoji="📰" title="News" aria-label="News"><i data-ov-icon="news" aria-hidden="true"></i></button>
+                    </span><span class="admin-help" id="help-broadcast-icon"><strong>Icon.</strong> The announcement email leads with it.</span></span>
                 </div>
                 <div class="form-field">
                     <label>Priority</label>
@@ -321,6 +343,16 @@
         <p class="admin-filter-hint" id="help-modlog-filters">Blank filters include everything. <b>Service</b> narrows the log to one service, <b>Action</b> takes an exact action name (for example <code>site_ban</code>), <b>By</b> takes the staff account ID (<code>usr_&#8230;</code>), <b>Target</b> the account or item the action affected, and the two dates a window.</p>
         <div id="modlog-content"><div class="loading">Loading...</div></div>
         <div style="display:flex;justify-content:center;margin-top:12px"><button id="modlog-more" class="btn" hidden onclick="loadModLog(false)">Load more</button></div>
+    </div>
+
+    <!-- Group conversations (plan §AD.19): people and agents in one thread, in the session surface every site opens (js/admin/team.js) -->
+    <div class="section" id="sec-team">
+        <div id="team-content"><div class="loading">Loading...</div></div>
+    </div>
+
+    <!-- The hosting plan (plan §AD.18): today, the recommendation, the phases and the prices compared (js/admin/hosting.js) -->
+    <div class="section admin-clarity" id="sec-hosting">
+        <div id="hosting-content"><div class="loading">Loading...</div></div>
     </div>
 
     <!-- Operator parity checklist (WS-D task 5): where each operator job is done, and what has no console yet -->
@@ -580,6 +612,8 @@
 <script src="/js/admin/content.js" defer></script>
 <script src="/js/admin/analytics.js" defer></script>
 <script src="/js/admin/domains.js" defer></script>
+<script src="/js/admin/hosting.js" defer></script>
+<script src="/js/admin/team.js" defer></script>
 <script src="/js/admin/boot.js" defer></script>
   <script src="https://openvibe.live/live-notify.js" async></script>
 </body>

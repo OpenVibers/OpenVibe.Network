@@ -66,6 +66,20 @@ assert.match(CORE, /hash === 'pair' \? 'machines'/, '#pair opens Machines');
 assert.match(CORE, /if \(routeSection === 'machines' && hash === 'pair'\) setTimeout\(\(\) => mcPair\(\), 0\)/, '#pair starts pairing');
 assert.match(CORE, /if \(id === 'machines' && typeof loadMachines === 'function'\) loadMachines\(\);/, 'it loads when opened');
 assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the account hub, not a 404');
+{
+    // Every hub call skips the HTTP cache (11-14): a browser kept openvibe.link's old 301 to openvibe.network for
+    // /api/v1/me/nodes/*, so the machine switches read 401 long after nginx stopped sending it.
+    const vm = require('node:vm');
+    const fn = (name) => { const at = CORE.indexOf(`async function ${name}(`); assert.ok(at >= 0, name); let depth = 0; for (let i = CORE.indexOf(') {', at) + 2; i < CORE.length; i++) { if (CORE[i] === '{') depth++; else if (CORE[i] === '}' && --depth === 0) return CORE.slice(at, i + 1); } return ''; };
+    const seen = [];
+    const ctx = { API: 'https://openvibe.link', API_CREDENTIALS: 'include', getAuthToken: () => null, localStorage: { setItem() {} }, document: {}, location: { protocol: 'https:' },
+        AbortController, setTimeout, clearTimeout, fetch: async (url, o) => { seen.push([url, o.cache, o.credentials]); return { ok: true, headers: { get: () => null }, json: async () => ({}) }; } };
+    vm.createContext(ctx);
+    vm.runInContext(`${fn('fetchWithTimeout')}\n${fn('apiFetch')}\nthis.apiFetch = apiFetch;`, ctx);
+    ctx.apiFetch('/api/v1/me/nodes/lnk_x/access-settings').then(() => {
+        assert.deepStrictEqual(seen[0], ['https://openvibe.link/api/v1/me/nodes/lnk_x/access-settings', 'no-store', 'include'], 'a hub call never follows a cached redirect');
+    }).catch((e) => { console.error(e); process.exit(1); });
+}
 
 (async () => {
     // ── Two machines: the online one first, its roles as switches ──
@@ -205,6 +219,14 @@ assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the a
     assert.ok(p.calls.some((c) => c[0] === 'POST' && c[1] === '/api/v1/machines/dev_C/desks/desk-a/live'), 'the Live channel takes the desk with its warning first');
     assert.match(card.textContent, /openvibe\.live\/@ana/);
 
+    // ── What it is (Link v0.66): one line under the name, and the free disk when it runs low ──
+    {
+        const spec = { id: 'dev_S', kind: 'server', online: true, name: 'tower', roles: [], running: [], specs_words: 'Intel Core i7-7700 · 8 threads · 16 GB · Ubuntu 26.04', specs: { disk_free_gb: 9.5 } };
+        const sp = page({ answers: (m, url) => (url === '/api/v1/machines/roles' ? { roles: ROLES } : m === 'GET' && url === '/api/v1/machines' ? { machines: [spec] } : {}) });
+        await sp.sandbox.loadMachines();
+        assert.match(sp.ids['mc-list'].children[0].textContent, /Intel Core i7-7700 · 8 threads · 16 GB · Ubuntu 26\.04 · 9\.5 GB free/);
+    }
+
     // ── For other people: a shared desk host lends its browsers on the owner's click ──
     const lender = { id: 'dev_D', kind: 'server', online: true, name: 'ov-node-01', roles: ['desks.host'], running: [],
         controls: { computer: true, agent_computer: false, watch_probe: false, shared_desks: false, ai_models: false, level: 'trusted', probe: false,
@@ -225,6 +247,42 @@ assert.ok(NOT_FOUND.ACCOUNT_HUB_PATHS.includes('/machines'), '/machines is the a
     await flush();
     assert.deepStrictEqual(p.calls.find((c) => /\/shared-desks$/.test(c[1])), ['POST', '/api/v1/machines/dev_D/shared-desks', { on: true }]);
     assert.match(p.ids['mc-status'].textContent, /lends browsers to other people\u2019s agents/);
+
+    // ── For other people (2026-11-14): whole desktops and other people's coding tasks and agents, each only where the
+    // machine can keep that work in a locked box; elsewhere the switch is off and says how to set the machine up ──
+    const giver = { id: 'dev_G', kind: 'server', online: true, name: 'ov-node-01', roles: ['codes.worker', 'desks.host'], running: [],
+        controls: { computer: true, shared_desks: true, shared_desktops: false, shared_jobs: false, level: 'trusted', probe: false,
+            screen: { available: false, live: false }, desk: { available: true, sandboxed: true, max: 7, kinds: ['browser', 'desktop'] },
+            ai: { available: false }, worker: { classes: ['code'], serve_others: true } } };
+    const plainWorker = { id: 'dev_W', kind: 'server', online: true, name: 'tower', roles: ['codes.worker'], running: [],
+        controls: { computer: true, shared_desks: false, level: 'trusted', screen: { available: false }, desk: { available: true, sandboxed: true, max: 2, kinds: ['browser'] },
+            ai: { available: false }, worker: { classes: ['code'], serve_others: false } } };
+    p = page({ answers: (m, url, body) => {
+        if (url === '/api/v1/machines/roles') return { roles: ROLES };
+        if (m === 'GET' && url === '/api/v1/machines') return { machines: [giver, plainWorker] };
+        if (m === 'POST' && /\/dev_G\/shared-desktops$/.test(url)) { giver.controls.shared_desktops = body.on; return { machine: giver }; }
+        if (m === 'POST' && /\/dev_G\/shared-jobs$/.test(url)) { giver.controls.shared_jobs = body.on; return { machine: giver }; }
+        return {};
+    } });
+    await p.sandbox.loadMachines();
+    const [gcard, wcard] = p.ids['mc-list'].children;
+    const box = (card, suffix) => card.all((n) => n.tagName === 'INPUT' && new RegExp(`-${suffix}$`).test(n.getAttribute('id') || ''))[0];
+    assert.match(gcard.textContent, /Lend desktops to other people\u2019s agents.*A desktop counts as a whole desk: up to 7 at once/);
+    assert.match(gcard.textContent, /Run other people\u2019s coding tasks, agents and tools.*never get your sign-ins or your keys/);
+    const flip = async (suffix, route, said) => {
+        const b = box(gcard, suffix);
+        assert.ok(b && b.disabled !== true, `${suffix}: a machine that can, may`);
+        b.checked = true; b.fire('change');
+        await flush();
+        assert.deepStrictEqual(p.calls.find((c) => c[1].endsWith(`/${route}`)), ['POST', `/api/v1/machines/dev_G/${route}`, { on: true }]);
+        assert.match(p.ids['mc-status'].textContent, said);
+    };
+    await flip('lend-desktops', 'shared-desktops', /lends desktops to other people\u2019s agents/);
+    await flip('jobs', 'shared-jobs', /runs other people\u2019s coding tasks, agents and tools/);
+    assert.strictEqual(box(wcard, 'lend-desktops').disabled, true, 'a host that lends no desktops cannot');
+    assert.match(wcard.textContent, /openvibe-link install --desk-host --shared --desktops/);
+    assert.strictEqual(box(wcard, 'jobs').disabled, true, 'a worker that serves only its owner cannot');
+    assert.match(wcard.textContent, /openvibe-link install --worker --serve-others/);
 
     // ── Pairing: the code and the command, then the machine arriving ──
     machines = [];

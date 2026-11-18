@@ -22,6 +22,11 @@ function upstream() {
             if (/\/key$/.test(req.url)) return res.end(JSON.stringify({ ok: true, provider: 'deepseek', hint: { last4: '1234' }, configured: true }));
             if (/\/test\//.test(req.url) || /\/test$/.test(req.url)) return res.end(JSON.stringify({ ok: true, step: 'chat', answer: { text: 'ready' }, cost_usd: 0.0001 }));
             if (/\/recommended$/.test(req.url)) return res.end(JSON.stringify({ ok: true, applied: [{ step: 'chat', ok: true }] }));
+            // Codes' catalogue, every agent (?all=1, codes.harnesses): one off, one with two models.
+            if (req.url === '/api/v1/harnesses?all=1') return res.end(JSON.stringify({ harnesses: [
+                { id: 'claude-code', name: 'Claude Code', provider: 'anthropic', off: false, default_agent: 'claude-code-opus', default_model: 'opus', agents: [{ id: 'claude-code-opus', model: 'claude-opus-5-5' }, { id: 'claude-code-sonnet', model: 'claude-sonnet-5-5' }], models: [{ id: 'opus', name: 'Opus' }, { id: 'claude-opus-5-5', name: 'Claude Opus 5.5', note: '200K context' }, { name: 'no id' }] },
+                { id: 'codex', name: 'Codex', provider: 'openai', off: true, agents: [{ id: 'codex-default', model: 'gpt-5-codex' }] },
+                { id: 'Bad id!', name: 'x' }] }));
             return res.end(JSON.stringify({ ok: true, summary: { ready: 3, total: 8 }, steps: [{ id: 'chat', name: 'Chat and writing', ready: false }] }));
         });
     });
@@ -31,7 +36,7 @@ function upstream() {
 (async () => {
     const ai = await upstream();
     const app = express();
-    app.locals.config = { services: { ai: { internalUrl: ai.url } } };
+    app.locals.config = { services: { ai: { internalUrl: ai.url }, codes: { internalUrl: ai.url } } };
     app.locals.selfToken = (aud, caps) => { assert.strictEqual(aud, 'openvibe.ai'); assert.deepStrictEqual(caps, ['ai.provider.manage']); return 'network-signed-token'; };
     app.use(express.json());
     // The signed-in person: X-Test-User, or none for a 401. requireOwner reads req.user.
@@ -79,6 +84,14 @@ function upstream() {
         assert.strictEqual(ai.seen.at(-1).url, '/api/v1/setup/routes/chat');
         r = await call(owner, 'PUT', '/api/admin/ai/setup/caps/chat', { cap_usd: 5 });
         assert.strictEqual(ai.seen.at(-1).url, '/api/v1/setup/caps/chat');
+        r = await call(owner, 'PUT', '/api/admin/ai/setup/free/pictures', { per_day: 6 });
+        assert.strictEqual(ai.seen.at(-1).url, '/api/v1/setup/free/pictures', 'the pictures each person may make a day');
+        assert.deepStrictEqual(ai.seen.at(-1).body, { per_day: 6 });
+        // Free AI by rank (2026-11-16): the owner's factors go through as they are; an admin is refused.
+        r = await call(owner, 'PUT', '/api/admin/ai/setup/allowances', { owner: 'unlimited', streamer: 3 });
+        assert.strictEqual(ai.seen.at(-1).url, '/api/v1/setup/allowances');
+        assert.deepStrictEqual(ai.seen.at(-1).body, { owner: 'unlimited', streamer: 3 });
+        assert.strictEqual((await call(admin, 'PUT', '/api/admin/ai/setup/allowances', { user: 9 })).status, 403, 'owner only');
         r = await call(owner, 'POST', '/api/admin/ai/setup/recommended', {});
         assert.strictEqual(ai.seen.at(-1).url, '/api/v1/setup/recommended');
 
@@ -91,6 +104,15 @@ function upstream() {
         const aiJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'admin', 'ai.js'), 'utf8');
         assert.ok(aiJs.includes('loadAiSetupCard()'), 'the AI tab shows the setup card first');
 
+        // ── the coding agents: every one, the ones turned off marked, each with its models (2026-11-15, §AD.9 step 3) ──
+        {
+            const r = await call(owner, 'GET', '/api/admin/ai/setup/agents');
+            assert.strictEqual(r.status, 200);
+            const hs = r.json.harnesses;
+            assert.deepStrictEqual(hs.map((h) => [h.id, h.off, h.default_agent, h.agents.length]), [['claude-code', false, 'claude-code-opus', 2], ['codex', true, null, 1]], 'a bad id is left out');
+            assert.ok(ai.seen.some((x) => x.url === '/api/v1/harnesses?all=1'), 'every agent is asked for, off ones too');
+            assert.deepStrictEqual([hs[0].default_model, hs[0].models.map((m) => m.id)], ['opus', ['opus', 'claude-opus-5-5']], 'every model it runs (one without an id left out), and its default');
+        }
         // ── no signer: a clear 503, not an unhandled failure ─────────
         app.locals.selfToken = () => null;
         r = await call(owner, 'GET', '/api/admin/ai/setup');

@@ -24,7 +24,13 @@ assert.strictEqual(tabs.tabWhere('all'), null, 'All is no filter');
 assert.strictEqual(tabs.tabWhere('nope'), null, 'an unknown tab is All');
 assert.deepStrictEqual(tabs.tabWhere('agents').params, ['CONFIRMATION_REQUESTED', 'AGENT\\_%', 'RUN\\_%'], 'prefixes escape LIKE wildcards');
 assert.strictEqual(tabs.inTab('agents', 'system', 'AGENT_TASK_DONE'), true);
-assert.strictEqual(tabs.inTab('mentions', 'social', 'FOLLOW'), false, 'a follow is not a mention');
+// 2026-11-16: Mentions became People (a follow is people's doing), and every notification has one tab: an agent's
+// notice sent as a service is the Agents', never Deals' too (the owner's screenshot).
+assert.strictEqual(tabs.inTab('mentions', 'social', 'FOLLOW'), true, 'a follow is under People');
+assert.deepStrictEqual(tabs.IDS.filter((id) => id !== 'all' && tabs.inTab(id, 'service', 'AGENT_TASK_FAILED')), ['agents'], 'an agent\'s notice, sent as a service: Agents only');
+assert.deepStrictEqual(tabs.IDS.filter((id) => id !== 'all' && tabs.inTab(id, 'stream', 'MENTION')), ['mentions'], 'a mention in a stream: People only');
+assert.deepStrictEqual(tabs.IDS.filter((id) => id !== 'all' && tabs.inTab(id, 'service', 'DEAL_ALERT')), ['alerts'], 'a deal: Deals only');
+assert.ok(/NOT \(type IN/.test(tabs.tabWhere('alerts').sql), 'the list\'s filter leaves out what an earlier tab claims');
 assert.deepStrictEqual(tabs.countsByTab([{ category: 'social', type: 'MENTION', count: '2' }, { category: 'stream', type: 'STREAM_LIVE', count: 3 }]),
     { all: 5, mentions: 2, live: 3, alerts: 0, system: 0, agents: 0 }, 'counts add up per tab, string counts included');
 
@@ -54,23 +60,31 @@ const get = (path) => fetch(base + path, { headers: { authorization: `Bearer ${t
 const titles = (r) => r.body.notifications.map((n) => n.title.replace(' notice', '')).sort();
 
 try {
-    assert.deepStrictEqual(titles(await get('/api/notifications?tab=mentions')), ['dm', 'mention', 'reply'], 'Mentions: what people said to you');
+    // 2026-11-16: one tab each. People: what people said, did and shared (a follow too); an agent's notice is the Agents',
+    // never System's as well.
+    assert.deepStrictEqual(titles(await get('/api/notifications?tab=mentions')), ['dm', 'follow', 'mention', 'reply'], 'People: what people said and did');
     assert.deepStrictEqual(titles(await get('/api/notifications?tab=live')), ['live']);
-    assert.deepStrictEqual(titles(await get('/api/notifications?tab=alerts')), ['deal'], 'Deals & alerts: the service category');
-    assert.deepStrictEqual(titles(await get('/api/notifications?tab=system')), ['agent', 'confirm', 'login', 'ops'], 'System: system, admin and moderation');
+    assert.deepStrictEqual(titles(await get('/api/notifications?tab=alerts')), ['deal'], 'Deals: the service category');
+    assert.deepStrictEqual(titles(await get('/api/notifications?tab=system')), ['login', 'ops'], 'System: system, admin and moderation, never what Agents claims');
     assert.deepStrictEqual(titles(await get('/api/notifications?tab=agents')), ['agent', 'confirm'], 'Agents: approvals and AGENT_ work');
     assert.strictEqual((await get('/api/notifications?tab=bogus')).body.notifications.length, 11, 'an unknown tab lists everything');
     const tabTotal = await get('/api/notifications?tab=mentions&limit=2');
-    assert.deepStrictEqual([tabTotal.body.notifications.length, tabTotal.body.has_more, Number(tabTotal.body.total)], [2, true, 3], 'paging and the total follow the tab');
+    assert.deepStrictEqual([tabTotal.body.notifications.length, tabTotal.body.has_more, Number(tabTotal.body.total)], [2, true, 4], 'paging and the total follow the tab');
 
     let counts = await get('/api/notifications/unread-by-tab');
     assert.strictEqual(counts.status, 200);
-    assert.deepStrictEqual(counts.body.tabs, { all: 11, mentions: 3, live: 1, alerts: 1, system: 4, agents: 2 });
+    assert.deepStrictEqual(counts.body.tabs, { all: 11, mentions: 4, live: 1, alerts: 1, system: 2, agents: 2 });
 
     await notifications.markReadMany([made.mention.id, made.agent.id], 41);
-    assert.deepStrictEqual(titles(await get('/api/notifications?tab=mentions&unread_only=1')), ['dm', 'reply'], 'tab and unread_only combine');
+    assert.deepStrictEqual(titles(await get('/api/notifications?tab=mentions&unread_only=1')), ['dm', 'follow', 'reply'], 'tab and unread_only combine');
+    // The menu's earlier ones (11-15: the alerts opened on 11 unread and the other 710 never came): read_only lists only
+    // what is read, with its own total, and combines with a tab.
+    const earlier = await get('/api/notifications?read_only=1');
+    assert.deepStrictEqual([titles(earlier).sort(), Number(earlier.body.total)], [['agent', 'mention'], 2], 'read_only: the read ones and their total');
+    assert.deepStrictEqual(titles(await get('/api/notifications?tab=mentions&read_only=1')), ['mention'], 'read_only combines with a tab');
+    assert.strictEqual(titles(await get('/api/notifications?unread_only=1&read_only=1')).length, 9, 'unread_only wins over read_only');
     counts = await get('/api/notifications/unread-by-tab');
-    assert.deepStrictEqual(counts.body.tabs, { all: 9, mentions: 2, live: 1, alerts: 1, system: 3, agents: 1 }, 'read notices leave the counts');
+    assert.deepStrictEqual(counts.body.tabs, { all: 9, mentions: 3, live: 1, alerts: 1, system: 2, agents: 1 }, 'read notices leave the counts');
 
     assert.strictEqual((await fetch(base + '/api/notifications/unread-by-tab')).status, 401, 'counts need a session');
 } finally {

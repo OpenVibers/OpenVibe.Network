@@ -129,10 +129,13 @@ async function setGrant(db, callerId, app, level, subject) {
         return {};
     }
     if (!LEVELS.includes(level)) fail(422, 'connect.invalid_grant', 'a grant is read or write');
-    // A grant is only for an app this person has connected.
-    const has = await db.prepare('SELECT 1 AS ok FROM connect_credentials WHERE subject = ? AND app = ? AND revoked_at IS NULL LIMIT 1')
-        .get(String(subject), appKey);
-    if (!has) fail(409, 'connect.not_connected', 'connect that app first');
+    // A grant is only for an app this person has connected; OpenVibe's own apps (./first-party.js: Design, Vision) are
+    // their own account, always connected.
+    if (!require('./first-party').isFirstParty(appKey)) {
+        const has = await db.prepare('SELECT 1 AS ok FROM connect_credentials WHERE subject = ? AND app = ? AND revoked_at IS NULL LIMIT 1')
+            .get(String(subject), appKey);
+        if (!has) fail(409, 'connect.not_connected', 'connect that app first');
+    }
     const at = nowIso();
     await db.prepare(`INSERT INTO connect_grants (caller_id, app, level, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
                       ON CONFLICT (caller_id, app) DO UPDATE SET level = excluded.level, updated_at = excluded.updated_at`)

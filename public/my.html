@@ -190,12 +190,16 @@
         </div>
         <div class="card" id="avatar-card">
             <h3><span class="icon"><i class="fa-solid fa-user-circle"></i></span> Avatar</h3>
-            <p class="muted" style="margin-top:0">One picture for every OpenVibe site. It always lives on <b>openvibe.media</b>. Paste the link to one of your image pastes (from <a href="https://openvibe.community/my" target="_blank" rel="noopener">your pastes</a>), or any picture link: we fetch it once, clean it, and keep our own copy.</p>
+            <p class="muted" style="margin-top:0">One picture for every OpenVibe site. Choose a photo from your phone or computer, or paste a link to one (one of <a href="https://openvibe.community/my" target="_blank" rel="noopener">your pastes</a>, or any picture): we clean it and keep it on <b>openvibe.media</b>.</p>
             <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-                <img id="avatar-preview" alt="" width="64" height="64" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)">
-                <input type="url" id="avatar-source" placeholder="A paste link, or any https picture link" style="flex:1;min-width:220px" autocomplete="off" spellcheck="false">
-                <button type="button" class="btn btn-primary" id="avatar-save">Use this picture</button>
+                <button type="button" id="avatar-face" aria-label="Choose a photo" title="Choose a photo" style="padding:0;border:0;background:none;border-radius:50%;cursor:pointer;line-height:0"><img id="avatar-preview" alt="" width="64" height="64" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--accent)"></button>
+                <button type="button" class="btn btn-primary" id="avatar-pick">Choose a photo</button>
+                <input type="file" id="avatar-file" accept="image/*" hidden data-ov-native>
                 <button type="button" class="btn" id="avatar-clear">Remove</button>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+                <input type="url" id="avatar-source" placeholder="Or paste a picture link" aria-label="A picture link" style="flex:1;min-width:200px" autocomplete="off" spellcheck="false">
+                <button type="button" class="btn" id="avatar-save">Use this link</button>
             </div>
             <div id="avatar-msg" class="muted" role="status" style="margin-top:8px;min-height:1.2em"></div>
         </div>

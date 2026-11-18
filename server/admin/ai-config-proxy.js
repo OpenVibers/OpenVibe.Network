@@ -48,14 +48,16 @@ const { isFreshSignIn } = require('../identity/reauth');
 // `network` is Network's own settings (network.signin, plan §AB.20): the same handlers answer in process, because
 // Contracts gives Network no network.config.manage (openvibe-contracts/test/run.js). It is last on purpose: the
 // owner's usual tabs stay first, and the Setup tab groups by its own order anyway.
-const SERVICES = ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor',
+// 2026-11-15: Bench is out: it runs inside OpenVibe.Compare now (its retired unit never answers, and the guided setup's
+// "Every service answers" waited on it for ever, the owner: "broke").
+const SERVICES = ['ai', 'billing', 'services', 'watch', 'report', 'host', 'codes', 'actor',
     'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run', 'mail', 'network'];
 const LABELS = {
     ai: 'OpenVibe.AI', billing: 'OpenVibe.Billing', services: 'OpenVibe.Services', watch: 'OpenVibe.Watch',
     bench: 'OpenVibe.Bench', report: 'OpenVibe.Report', host: 'OpenVibe.Host', codes: 'OpenVibe.Codes',
     actor: 'OpenVibe.Actor', chat: 'OpenVibe.Chat', connect: 'OpenVibe Connect', deals: 'OpenVibe.Deals',
     work: 'OpenVibe.Work', sources: 'OpenVibe.Sources', design: 'OpenVibe.Design', domains: 'OpenVibe.Domains',
-    media: 'OpenVibe.Media', run: 'OpenVibe.Run', mail: 'OpenVibe.Mail', network: 'OpenVibe.Network',
+    media: 'OpenVibe.Media', run: 'OpenVibe.Run', mail: 'OpenVibe.Email', network: 'OpenVibe.Network',
 };
 const TEST_TIMEOUT_MS = 20000;   // the service gives its tester 15 s; this leaves it time to answer
 const TEST_MESSAGE_MAX = 300;

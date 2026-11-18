@@ -38,6 +38,9 @@ const idOf = (event, payload, ...keys) => {
     }
     return String((event.subject && event.subject.id) || event.event_id);
 };
+// Space's tenant sites (OpenVibe.Space hosting-config.js SPACE_SITES_DOMAIN) and its site-name rule (space.deploy.activated@1).
+const SPACE_SITES_DOMAIN = String(process.env.SPACE_SITES_DOMAIN || 'openvibe.website').toLowerCase();
+const SPACE_SITE = /^[a-z0-9](?:[a-z0-9]|-(?=[a-z0-9])){2,39}$/;
 const urlOf = (payload) => https(payload && (payload.canonical_url || payload.url || payload.href || (payload.media && payload.media.page)));
 const mediaOf = (payload) => {
     const p = payload || {};
@@ -164,10 +167,15 @@ function eventToItems(event) {
     }
     if (type === 'deals.offer.expired') return { items: [], remove: [{ service: 'deals', type: 'offer', id: idOf(event, p, 'offer_id') }] };
     if (type === 'space.deploy.activated') {
-        const url = urlOf(p);
+        // A site going live (plan §AD.10 step 6): Space's payload names the site and the site is served at
+        // https://<site>.openvibe.website/, so the card carries that address. One card a site: a later deploy refreshes
+        // it; a rollback is not news.
+        if (p.rollback === true) return { items: [], remove: [] };
+        const site = typeof p.site === 'string' && SPACE_SITE.test(p.site) ? p.site : null;
+        const url = urlOf(p) || (site ? `https://${site}.${SPACE_SITES_DOMAIN}/` : null);
         if (!url) return { items: [], remove: [] };
-        return { items: [item({ service: 'space', type: 'space', id: idOf(event, p, 'deploy_id'), kind: 'space',
-            title: clean(p.name || p.title, 160) || 'A new space', text: p.description, url })], remove: [] };
+        return { items: [item({ service: 'space', type: 'space', id: p.site_id || idOf(event, p, 'deploy_id'), kind: 'space',
+            title: clean(p.name || p.title, 160) || (site ? `${site}.${SPACE_SITES_DOMAIN}` : 'A new site'), text: p.description, url })], remove: [] };
     }
     return { items: [], remove: [] };
 }

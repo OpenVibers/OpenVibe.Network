@@ -167,3 +167,98 @@
 .setup-done-out.bad { color: var(--danger-text, var(--danger, #dc2626)); }
 .setup-card-foot { display: flex; flex-wrap: wrap; gap: 8px; }
 @media (max-width: 560px) { .setup-done-row { grid-template-columns: auto minmax(0, 1fr); } .setup-done-out, .setup-done-row .btn { grid-column: 2; justify-self: start; } }
+
+/* The AI control room's own parts (2026-11-15, plan §AD.9): providers and keys, every model for a job, coding agents. */
+.setup-prov-tools{display:flex;flex-direction:column;gap:10px;margin:14px 0 6px}
+.setup-search{width:100%;min-height:42px;padding:0 14px;border-radius:12px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font:inherit;font-size:14px}
+.setup-search:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.setup-chips{display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;padding-bottom:2px}
+.setup-chips::-webkit-scrollbar{display:none}
+.setup-chip{flex:none;min-height:34px;padding:0 13px;border-radius:999px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-secondary);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.setup-chip.is-on{background:var(--accent);border-color:var(--accent);color:#fff}
+.setup-prov-group{margin:18px 0 0}
+.setup-prov-group h4{margin:0;font-size:13px;letter-spacing:.02em}
+.setup-prov-gline{margin:2px 0 8px;font-size:12px}
+/* A grid, not a column flex box: under the list's height cap a flex column shrank its rows into each other. */
+.setup-prov-list,.setup-model-list{list-style:none;margin:0;padding:0;display:grid;gap:6px;align-content:start}
+.setup-prov{border:1px solid var(--border);border-radius:14px;background:var(--bg-secondary);overflow:hidden}
+.setup-prov.is-on{border-color:color-mix(in srgb,var(--success) 35%,var(--border))}
+.setup-prov-head{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;padding:9px 12px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.setup-prov-mark{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:11px;background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);font-weight:900}
+.setup-prov.is-on .setup-prov-mark{background:color-mix(in srgb,var(--success) 18%,transparent);color:var(--success)}
+.setup-prov-text{display:flex;flex-direction:column;min-width:0;flex:1}
+.setup-prov-text strong{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.setup-prov-can{font-size:12px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.setup-prov-state{flex:none}
+.setup-prov-body{padding:4px 14px 14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
+.setup-prov-method{margin:8px 0 0;font-size:12.5px;color:var(--text-secondary);display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.setup-prov-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.setup-prov-host{font-size:11px;color:var(--text-secondary)}
+.setup-switch{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;cursor:pointer;min-height:36px}
+.setup-switch input{width:38px;height:22px;accent-color:var(--success)}
+.setup-model-row{display:flex;align-items:center;gap:10px;min-height:52px;padding:8px 10px;border:1px solid var(--border);border-radius:12px;background:var(--bg-primary)}
+.setup-model-row.is-chosen{border-color:var(--accent)}
+.setup-model-text{display:flex;flex-direction:column;min-width:0;flex:1}
+.setup-model-text strong{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.setup-model-text .muted{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.setup-every .setup-search{margin:0 0 10px}
+.setup-every .setup-model-list{margin:0 0 10px;max-height:min(60vh,620px);overflow-y:auto;overflow-x:hidden}
+.setup-agents{margin:18px 0 0;display:flex;flex-direction:column;gap:8px}
+.setup-agents h4{margin:10px 0 0;font-size:14px}
+.setup-agents .muted{margin:0}
+@media (max-width:600px){.setup-model-row{flex-wrap:wrap}.setup-model-text{flex-basis:100%}}
+/* Touch sizes (2026-11-15, the GUI audit): chips, the search and the progress button reach 44 px; the step labels 12 px. */
+.setup-chip{min-height:44px;padding:0 16px;font-size:13px}
+.setup-search{min-height:44px;font-size:16px}
+.setup-step-state{font-size:12px}
+.setup-progress-top .btn{min-height:44px;padding:0 16px}
+.setup-model-row .btn,.setup-prov-acts .btn{min-height:40px}
+
+/* 2026-11-15 (§AD.9 step 3): a coding agent's switch and its model chips. */
+.setup-agents .setup-model-row { gap: 12px; }
+.setup-agents .setup-model-row.is-off .setup-model-text strong { color: var(--text-secondary, #a8b3c4); }
+.setup-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.setup-chip { all: unset; box-sizing: border-box; min-height: 34px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 650; cursor: pointer; color: var(--text-secondary, #a8b3c4); background: color-mix(in srgb, var(--text-primary, #e8ecf3) 7%, transparent); transition: background-color .15s ease, color .15s ease; }
+.setup-chip[aria-checked="true"] { color: #fff; background: var(--accent, #3b82f6); }
+.setup-chip:focus-visible { outline: 2px solid var(--accent, #3b82f6); outline-offset: 2px; }
+
+/* 2026-11-15 (§AD.9 step 4): Free use and budgets. */
+.setup-free-sec { padding: 14px 0; border-top: 1px solid var(--border, rgba(148,163,184,.16)); }
+.setup-free-sec h4 { margin: 0 0 8px; }
+.setup-free label { display: grid; gap: 4px; margin-bottom: 10px; }
+.setup-free-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.setup-free-row input { width: 160px; min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--border, rgba(148,163,184,.25)); background: var(--bg-primary, rgba(0,0,0,.2)); color: inherit; font: inherit; font-size: 16px; }
+
+/* 2026-11-15: a coding agent's models, a searchable list (hundreds for the open agents). */
+.setup-agent-model { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 4px; min-height: 36px; margin-top: 6px; padding: 0 12px; border-radius: 999px; font-size: 13px; cursor: pointer; color: var(--text-secondary, #a8b3c4); background: color-mix(in srgb, var(--text-primary, #e8ecf3) 7%, transparent); }
+.setup-agent-model strong { color: var(--text-primary, #e8ecf3); }
+.setup-agent-model:focus-visible, .setup-agent-pick:focus-visible { outline: 2px solid var(--accent, #3b82f6); outline-offset: 2px; }
+.setup-agent-models { margin-top: 8px; padding: 8px; border-radius: 14px; background: var(--bg-primary, rgba(0,0,0,.2)); box-shadow: inset 0 0 0 1px var(--border, rgba(148,163,184,.18)); }
+.setup-agent-find { box-sizing: border-box; width: 100%; min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border, rgba(148,163,184,.25)); background: transparent; color: inherit; font: inherit; font-size: 16px; }
+.setup-agent-list { list-style: none; margin: 6px 0 0; padding: 0; max-height: 320px; overflow-y: auto; display: grid; gap: 2px; }
+.setup-agent-pick { all: unset; box-sizing: border-box; display: grid; gap: 1px; width: 100%; min-height: 44px; padding: 6px 10px; border-radius: 10px; cursor: pointer; }
+.setup-agent-pick:hover { background: color-mix(in srgb, var(--text-primary, #e8ecf3) 6%, transparent); }
+.setup-agent-pick[aria-checked="true"] { background: color-mix(in srgb, var(--accent, #3b82f6) 16%, transparent); box-shadow: inset 3px 0 0 var(--accent, #3b82f6); }
+.setup-agent-pick .muted { font-size: 12px; }
+
+/* Free AI by rank (2026-11-16): one row per rank; the factor hides while the rank is unlimited. */
+.setup-ranks { display: grid; gap: 10px; }
+.setup-rank-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px 14px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; }
+.setup-rank-name { display: grid; gap: 2px; min-width: 0; }
+.setup-rank-name .muted { font-size: 12.5px; }
+.setup-rank-factor { display: inline-flex; align-items: center; gap: 8px; }
+.setup-rank-factor[hidden] { display: none; }
+.setup-rank-factor input { width: 84px; min-height: 40px; }
+@media (max-width: 560px) { .setup-rank-row { grid-template-columns: minmax(0, 1fr) auto; } .setup-rank-factor { grid-column: 1 / -1; } }
+/* Machines and GPUs (2026-11-16): the pools and the keys as rows. */
+.setup-machines { display: grid; gap: 8px; margin: 10px 0 12px; }
+.setup-machine { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; min-width: 0; }
+.setup-machine-name { display: grid; gap: 2px; min-width: 0; }
+.setup-machine-name .muted, .setup-machine-from { font-size: 12.5px; color: var(--text-secondary); overflow-wrap: anywhere; }
+/* 2026-11-16 (plan §AD.15): "Set this up for me", the proposal before anything is saved. */
+.setup-plan .setup-table{min-width:0}
+.setup-plan-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:650;color:var(--accent-light,var(--accent));background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.setup-plan-state{display:inline-block;margin-top:4px;font-size:11.5px;color:var(--text-muted)}
+.setup-plan-state.ok{color:var(--success-text,var(--success,#16a34a))}
+.setup-plan-state.todo{color:var(--warning)}
+.setup-start-card .btn [data-ov-icon],.setup-card-head .btn [data-ov-icon]{width:16px;height:16px;vertical-align:-3px}

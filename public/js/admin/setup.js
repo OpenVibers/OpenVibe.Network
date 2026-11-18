@@ -320,10 +320,30 @@ function setupAgentNotice(li, row, grant) {
     let timer = 0;
     const until = Date.now() + 30 * 60 * 1000;
     const end = (words, tone) => { clearInterval(timer); note.remove(); setupDeskClose(); setupShowResult(li, words, tone); };
+    // Stop says what really happened (11-14 review): it used to say "Stopped" even when the request failed.
     stop.addEventListener('click', async () => {
         stop.disabled = true;
-        try { await api('/api/admin/setup/grants/' + encodeURIComponent(grant.ref), { method: 'DELETE' }); } catch { /* spent or gone already */ }
-        end('Stopped: your agent can no longer save this key.', 'muted');
+        const task = grant.task && grant.task.id ? '?task=' + encodeURIComponent(grant.task.id) : '';
+        let out;
+        try { out = await api('/api/admin/setup/grants/' + encodeURIComponent(grant.ref) + task, { method: 'DELETE' }); } catch (err) {
+            stop.disabled = false;
+            setupShowResult(li, 'It could not be stopped' + (err && err.message ? ': ' + err.message : '') + '. Try again.', 'bad');
+            return;
+        }
+        // 11-15: "saved" only once the key is written, and "stopped" only once Actor says the task ended.
+        const taskWords = !task ? '' : out && out.task_state === 'stopping' ? ' Its task is stopping: it finishes the step it is on.'
+            : out && out.task_stopped === false ? ' Its task did not stop from here: open it and stop it there.' : ' Its task is stopped.';
+        if (out && (out.state === 'spent' || out.state === 'saving')) {
+            end((out.state === 'spent' ? 'Your agent had already saved the key. It stays in Setup: remove it there if you do not want it.'
+                : 'Your agent is saving the key right now. Look at Setup in a moment: remove it there if you do not want it.') + taskWords, 'muted');
+            try { SETUP.data = await api('/api/admin/setup'); setupRender(document.getElementById('setup-content')); } catch { /* the next load shows it */ }
+            return;
+        }
+        if (out && out.state === 'save_failed') {
+            end('Your agent tried to save the key and the save failed, so nothing new is in Setup.' + taskWords, 'muted');
+            return;
+        }
+        end('Stopped: your agent can no longer save this key.' + taskWords, 'muted');
     });
     const actions = document.createElement('p');
     actions.className = 'setup-agent-actions';

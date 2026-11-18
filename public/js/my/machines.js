@@ -55,6 +55,11 @@ function mcCard(m) {
     const os = String(m.os || '').toLowerCase();
     const meta = mcEl('p', 'mc-meta', [mcOsIcon(os), ' ', [MC_KIND[m.kind], m.os, m.node_version ? `Node ${m.node_version}` : ''].filter(Boolean).join(' · ')]);
     const head = mcEl('div', 'mc-head', [dot, mcEl('div', 'mc-title', [name, state]), meta]);
+    // What it is (Link v0.66): CPU, threads, memory, GPU and OS in one line, and the free disk when it runs low.
+    if (m.specs_words) {
+        const low = m.specs && Number.isFinite(m.specs.disk_free_gb) && m.specs.disk_free_gb < 20 ? ` · ${m.specs.disk_free_gb} GB free` : '';
+        head.append(mcEl('p', 'mc-specs', [mcIcon('fa-microchip'), ' ', m.specs_words + low]));
+    }
     card.append(head);
     const on = mcOnNow(m);
     card.append(mcEl('div', 'mc-role-chips', on.length ? on.map((t) => mcEl('span', 'mc-role-chip', [t])) : [mcEl('span', 'mc-role-chip is-empty', ['Nothing turned on yet'])]));
@@ -210,11 +215,13 @@ function mcOnNow(m) {
     const out = (m.roles || []).filter((id) => id !== 'ai.host' || c.ai_models).map((id) => MC_SHORT[id]).filter(Boolean);
     if (c.agent_computer) out.push('My agents may use it');
     if (c.shared_desks) out.push('Lends browsers to others');
+    if (c.shared_desktops) out.push('Lends desktops to others');
+    if (c.shared_jobs) out.push('Runs other people\u2019s tasks and tools');
     if (c.computer && c.ai && c.ai.offered) out.push('Shares its AI models');
     return out;
 }
 const mcCountYou = (m) => (m.roles || []).length + ((m.controls || {}).agent_computer ? 1 : 0) + ((m.controls || {}).watch_probe ? 1 : 0);
-const mcCountOthers = (m) => ((m.controls || {}).shared_desks ? 1 : 0) + (((m.controls || {}).ai || {}).offered ? 1 : 0);
+const mcCountOthers = (m) => { const c = m.controls || {}; return [c.shared_desks, c.shared_desktops, c.shared_jobs, (c.ai || {}).offered].filter(Boolean).length; };
 
 /** One switch row: a switch, its mark, what it does in a few words, and one plain sentence. */
 function mcRow(id, icon, label, note, checked, onChange, opts) {
@@ -288,11 +295,27 @@ function mcForOthers(m) {
             'Agents that other people run may borrow a browser here, each one locked in its own box that reaches only the public internet.',
             c.shared_desks, (box) => mcSaveSwitch(m, box, 'shared-desks', `Saved. ${m.name || 'This computer'} ${box.checked ? 'lends browsers to other people’s agents.' : 'no longer lends browsers.'}`),
             { disabled: !can && !c.shared_desks, hint: can ? (desk.max ? `Up to ${desk.max} browsers at once, yours and theirs together.` : '') : 'This computer keeps no locked box for each browser, so it cannot lend them. Set it up again with: openvibe-link install --desk-host --shared' }));
+        // A whole desktop (2026-11-14, Link v0.65.0): a screen, a browser and a terminal, for agents that work a computer.
+        const canDesktop = can && Array.isArray(desk.kinds) && desk.kinds.includes('desktop');
+        field.append(mcRow(`mc-${m.id}-lend-desktops`, 'fa-tv', 'Lend desktops to other people\u2019s agents',
+            'Agents that other people run may borrow a whole desktop here (a screen, a browser and a terminal), each locked in its own box that reaches only the public internet.',
+            c.shared_desktops, (box) => mcSaveSwitch(m, box, 'shared-desktops', `Saved. ${m.name || 'This computer'} ${box.checked ? 'lends desktops to other people\u2019s agents.' : 'no longer lends desktops.'}`),
+            { disabled: !canDesktop && !c.shared_desktops, hint: canDesktop ? (desk.max ? `A desktop counts as a whole desk: up to ${desk.max} at once.` : '') : 'This computer lends no desktops yet. Set it up again with: openvibe-link install --desk-host --shared --desktops' }));
         const ai = c.ai || {};
         if (ai.available) {
             field.append(mcEl('p', `mc-status-line${ai.offered ? ' is-on' : ''}`, [mcIcon(ai.offered ? 'fa-circle-check' : 'fa-circle'), ' ',
                 ai.offered ? 'Its AI models answer other people too (set on the computer itself; each answer is marked Community).' : 'Its AI models answer only you. Offering them to others is set on the computer itself.']));
         }
+    }
+    // Other people's coding tasks and agents (2026-11-14, Link v0.65.0): jobs OpenVibe places here for anyone, in the
+    // same sandbox as yours, never with your sign-ins. Shown wherever the machine has a job worker or could have one.
+    const w = c.worker || null;
+    if (w || (m.roles || []).includes('codes.worker')) {
+        const canJobs = !!(w && w.serve_others && w.classes && w.classes.length);
+        field.append(mcRow(`mc-${m.id}-jobs`, 'fa-people-group', 'Run other people\u2019s coding tasks, agents and tools',
+            'Coding tasks, agents and the tools people make on openvibe.tools may run here, each in its own locked box: tasks and agents with only the public internet, tools with no network at all. They never get your sign-ins or your keys.',
+            c.shared_jobs, (box) => mcSaveSwitch(m, box, 'shared-jobs', `Saved. ${m.name || 'This computer'} ${box.checked ? 'runs other people\u2019s coding tasks, agents and tools.' : 'runs only yours.'}`),
+            { disabled: !canJobs && !c.shared_jobs, hint: canJobs ? '' : 'This computer runs only your own tasks. Set it up again with: openvibe-link install --worker --serve-others' }));
     }
     if (typeof mcAccessSwitches === 'function') field.append(...[mcAccessSwitches(m, 'others')].filter(Boolean));
     return field;

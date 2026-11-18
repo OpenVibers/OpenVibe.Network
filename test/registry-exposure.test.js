@@ -139,14 +139,15 @@ const ready = [200, { ready: true, status: 'ready', failed: [], degraded: [], ch
     // The page: no row for a service whose domain serves a placeholder shows a bare "Up".
     const html = await fetch(base + '/status').then(x => x.text());
     for (const id of PLACEHOLDER_DOMAINS) {
-        const row = html.match(new RegExp(`<tr id="svc-${id}">[\\s\\S]*?</tr>`))[0];
+        // A card per service since 2026-11-15 (the table ran off a phone).
+        const row = html.match(new RegExp(`<li class="st-card[^"]*" id="svc-${id}"[\\s\\S]*?</li>`))[0];
         assert.ok(!/>Up<\/span>/.test(row), `${id} row must not read a bare Up`);
         assert.ok(row.includes('Up · loopback only'), `${id} row says loopback only`);
         assert.ok(row.includes('internal (loopback only)'), `${id} row names its exposure`);
     }
-    assert.ok(/<tr id="svc-tips">[\s\S]*?>Up<\/span>/.test(html), 'Tips serves openvibe.tips since contracts 0.200.0');
-    assert.ok(/<tr id="svc-live">[\s\S]*?>Up<\/span>/.test(html), 'a public service still reads Up');
-    assert.ok(/<tr id="svc-ai">[\s\S]*?>Up<\/span>/.test(html), 'AI serves its own public origin since contracts 0.110.0');
+    assert.ok(/<li class="st-card[^"]*" id="svc-tips"[^>]*>[^]*?>Up<\/span>/.test(html), 'Tips serves openvibe.tips since contracts 0.200.0');
+    assert.ok(/<li class="st-card[^"]*" id="svc-live"[^>]*>[^]*?>Up<\/span>/.test(html), 'a public service still reads Up');
+    assert.ok(/<li class="st-card[^"]*" id="svc-ai"[^>]*>[^]*?>Up<\/span>/.test(html), 'AI serves its own public origin since contracts 0.110.0');
 
     // 3. The Frame: the nav lists only sites whose domain serves the service; the rest are soon with a reason.
     // Play stays live in the exposure overlay (the API serves) but is part of Games now, so it is not a nav site.

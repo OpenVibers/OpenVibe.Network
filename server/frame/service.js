@@ -32,10 +32,12 @@ const express = require('express');
 const crypto = require('crypto');
 const { SITES, LISTED, LISTED_SITES, siteForHost, GROUPS, groupOf, PRODUCTS, MERGED_PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME, fullName } = require('./sites');
 const { createMenuCards } = require('./menu-cards');
+const { createVisitors, declined } = require('./visitors');
 const { createFrameChoices } = require('./choices');
 const { createFrameAsk } = require('./ask');
 const { createFrameCaption } = require('./caption');
 const { createFrameCodeSearch } = require('./code-search');
+const { createFrameTools } = require('./tools');
 const { read: readCommands } = require('./commands');
 const { createFrameMentions } = require('./mentions');
 const { createFrameRuns } = require('./runs');
@@ -195,6 +197,8 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     const load = async (k) => { try { const r = await db.prepare('SELECT value, updated_at FROM frame_cache WHERE key = ?').get(k); return r ? { value: JSON.parse(r.value), at: Date.parse(r.updated_at + 'Z') || 0 } : null; } catch { return null; } };
     const save = async (k, v) => await db.prepare('INSERT INTO frame_cache (key, value, updated_at) VALUES (?, ?, ov_now()) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = ov_now()').run(k, JSON.stringify(v));
 
+    // Distinct visitors per site and day for the open stats and Report (11-16): a daily-salted hash, rolled into counts.
+    const visitors = createVisitors({ db, now, load, save });
     const savedRank = await load('rank') || {};
     let rank = savedRank.value || { scores: {}, tools: [] };
     let rankedAt = savedRank.value ? savedRank.at || null : null;
@@ -980,7 +984,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     const dockAuth = (req) => (/^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '');
     const DOCK_ID = /^[A-Za-z0-9._~:-]{1,160}$/;
     const dockId = (v) => (DOCK_ID.test(String(v || '')) ? String(v) : '');
-    function dockRelay(service, method, upstream, { image = false, maxBytes = 64 * 1024 } = {}) {
+    function dockRelay(service, method, upstream, { image = false, maxBytes = 64 * 1024, timeoutMs = 15000 } = {}) {
         const upstreamPath = typeof upstream === 'function' ? upstream : () => upstream;
         const fallback = service === 'codes' ? 'http://127.0.0.1:4900' : 'http://127.0.0.1:4950';
         return async (req, res) => {
@@ -990,7 +994,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             const path = upstreamPath(req);
             if (!path) return res.status(404).json({ error: 'not found' });
             const headers = { Accept: image ? 'image/jpeg, image/webp' : 'application/json', Authorization: auth };
-            const init = { method, headers, redirect: 'manual', signal: AbortSignal.timeout(15000) };
+            const init = { method, headers, redirect: 'manual', signal: AbortSignal.timeout(timeoutMs) };
             if (method !== 'GET') { headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(req.body || {}); }
             try {
                 const r = await fetch(new URL(path, svcUrl(service, fallback)).href, init);
@@ -1035,9 +1039,20 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     for (const what of ['takeover', 'giveback']) router.post(`/tasks/:id/${what}`, dockJson, dockRelay('actor', 'POST', (req) => (dockId(req.params.id) ? `/api/v1/tasks/${encodeURIComponent(req.params.id)}/${what}` : null)));
     // OpenVibe.Actor's block at the top of the tab: your Actor, its first ask, and one line to tell it something.
     router.get('/actor', dockRelay('actor', 'GET', '/api/v1/me/actor'));
+    // Your Actor's name and face, changed in the menu itself (the owner, 11-15: editing your Actor "should be integrated
+    // in the menu itself"): Actor checks what may change ({ name }, { avatar: { blob: { hue, shape } } | { media_id } }).
+    router.patch('/actor', dockJson, dockRelay('actor', 'PATCH', '/api/v1/me/actor'));
     // 2026-11-13: your agents' faces for the menu's stack behind your picture (Actor #475: face, state, step, asks),
     // through the Frame because every site's connect-src allows openvibe.network and refuses openvibe.actor.
     router.get('/actor/faces', dockRelay('actor', 'GET', '/api/v1/me/agents/faces'));
+    // Your Actor's pictures (2026-11-16, the owner: "an avatar generator … on the image models configured in the admin"):
+    // the ones you have and the styles, three new ones drawn by OpenVibe.AI as you (on your allowance; a minute at
+    // most), and wearing one (Actor checks it is yours; POST here so the preflight stays GET, POST, PATCH, DELETE).
+    router.get('/actor/pictures', dockRelay('actor', 'GET', '/api/v1/me/faces'));
+    router.post('/actor/pictures/generate', dockJson, dockRelay('actor', 'POST', '/api/v1/me/faces/generate', { timeoutMs: 90000 }));
+    router.post('/actor/face', dockJson, dockRelay('actor', 'PUT', '/api/v1/agents/actor/face'));
+    // A new agent from the menu's strip (2026-11-16, the owner: "add new actors in the UI"): a name and what it does.
+    router.post('/actor/agents', dockJson, dockRelay('actor', 'POST', '/api/v1/me/agents'));
     for (const what of ['pause', 'resume', 'tell']) router.post(`/actor/${what}`, dockJson, dockRelay('actor', 'POST', `/api/v1/me/actor/${what}`));
     for (const what of ['answer', 'decline']) router.post(`/actor/asks/:id/${what}`, dockJson, dockRelay('actor', 'POST', (req) => (dockId(req.params.id) ? `/api/v1/me/actor/asks/${encodeURIComponent(req.params.id)}/${what}` : null)));
     // One owner's agent sheet on any site. Actor checks ownership and capabilities; the relay accepts only its
@@ -1107,8 +1122,16 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // Frame Runs (agent-engine.md §3): every run on OpenVibe (Vibe's chats, Codes' tasks, Actor's tasks) in one shape
     // under one address, /api/frame/runs/<product>:<id>. The product-specific relays above stay until the menu has
     // moved to these routes, then go in one cut.
-    const frameRuns = createFrameRuns({ svcUrl, personOf, now });
+    // Group conversations (plan §AD.19): people and agents in one thread; each agent's turn runs through the runs below on
+    // the account of the person whose message started the round (server/frame/groups.js). A group is a run too.
+    // The check before a room's reviewers: OpenVibe.Design's page audit of the hand-over's links (server/frame/room-check.js).
+    const roomCheck = require('./room-check').createRoomCheck({ designUrl: config && config.designUrl });
+    const frameGroups = require('./groups').createFrameGroups({ db, personOf, frameUrl: `http://127.0.0.1:${(config && config.port) || 4000}/api/frame`, log: console, check: roomCheck });
+    const frameRuns = createFrameRuns({ svcUrl, personOf, now, extra: { group: frameGroups.adapter } });
     router.use('/runs', frameRuns.router);
+    router.use('/groups', frameGroups.router);
+    // The composer's Tools (Shared 4.284.0): openvibe.tools through the Frame, which every site's CSP allows.
+    router.use(createFrameTools({ toolsUrl: svcUrl('tools', 'http://127.0.0.1:4001'), now }));
 
     // GET /api/frame/suggest?q=&owner=&limit= — the navbar's magnifier (openvibe-shared search.js): OpenVibe.Search's
     // suggestions, asked through Network because every site's connect-src already lets the navbar reach
@@ -1136,6 +1159,46 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             suggested.set(key, { at: Date.now(), body });
         }
         res.send(body);
+    });
+
+    // GET /api/frame/trending?site=&limit= and POST /api/frame/searched — trending searches on every search box (plan
+    // 2026-11-13 §AD.13 (1); openvibe-shared ov-trending.js): OpenVibe.Search's GET /api/v1/trending (kept 60 s) and its
+    // beacon, asked through Network for the same connect-src reason as /suggest. The beacon goes on with the browser's own
+    // Origin (Search counts only the network's own sites), its address, user agent, Do Not Track and Global Privacy
+    // Control; it is always 204 and Search not answering loses one count, never an error.
+    const trendingKept = new Map();
+    router.get('/trending', async (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=60', 'Content-Type': 'application/json; charset=utf-8' });
+        const site = /^[a-z0-9.-]{3,120}$/.test(String(req.query.site || '').toLowerCase()) ? String(req.query.site).toLowerCase() : '';
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 8, 1), 20);
+        const key = `${site}|${limit}`;
+        const kept = trendingKept.get(key);
+        if (kept && Date.now() - kept.at < 60_000) return res.send(kept.body);
+        const u = new URL('/api/v1/trending', svcUrl('search', 'http://127.0.0.1:4710'));
+        if (site) u.searchParams.set('site', site);
+        u.searchParams.set('limit', String(limit));
+        const d = await getJson(u.href);
+        const body = JSON.stringify({ site: (d && d.site) || null, trending: d && Array.isArray(d.trending) ? d.trending.slice(0, limit) : [] });
+        if (d) {
+            if (trendingKept.size >= 500) trendingKept.clear();
+            trendingKept.set(key, { at: Date.now(), body });
+        }
+        res.send(body);
+    });
+    router.post('/searched', express.text({ type: ['text/plain', 'application/json'], limit: '2kb' }), (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' });
+        res.status(204).end();
+        let b = req.body;
+        if (typeof b === 'string') { try { b = JSON.parse(b); } catch { b = null; } }
+        if (!b || typeof b !== 'object' || typeof b.q !== 'string') return;
+        const headers = { 'Content-Type': 'application/json', 'User-Agent': String(req.get('user-agent') || '').slice(0, 200) };
+        if (req.ip) headers['X-Forwarded-For'] = req.ip;
+        if (req.get('origin')) headers.Origin = req.get('origin');
+        if (req.get('dnt')) headers.DNT = req.get('dnt');
+        if (req.get('sec-gpc')) headers['Sec-GPC'] = req.get('sec-gpc');
+        fetch(new URL('/api/v1/searched', svcUrl('search', 'http://127.0.0.1:4710')).href, {
+            method: 'POST', headers, body: JSON.stringify({ q: b.q.slice(0, 200), ...(typeof b.site === 'string' ? { site: b.site.slice(0, 120) } : {}) }), redirect: 'error', signal: AbortSignal.timeout(5000),
+        }).catch(() => {});
     });
 
     // GET /api/frame/query?q=&scopes=&freshness=&depth=&limit=&owner=&type= — the navbar's full results (openvibe-shared
@@ -1188,8 +1251,69 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         const auth = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? String(req.headers.authorization) : '';
         const got = await choices.get(task, { token: auth.slice(7), signedIn: Boolean(auth) });
         if (got.error) { res.set('Cache-Control', 'no-store'); return res.status(400).json({ error: got.detail, code: 'frame.task_invalid' }); }
+        // 2026-11-15: an ETag on every answer (a repeat costs a 304), and a person's answer may be used for 30 s and then
+        // shown while the browser asks again (the composer also keeps its own copy, openvibe-shared 4.261.0).
+        const body = JSON.stringify(got.body);
+        const etag = `W/"${require('crypto').createHash('sha256').update(body).digest('base64url').slice(0, 27)}"`;
+        res.set('ETag', etag);
+        res.set('Cache-Control', got.cache ? 'public, max-age=60, stale-while-revalidate=600' : 'private, max-age=30, stale-while-revalidate=600');
+        if (String(req.headers['if-none-match'] || '') === etag) return res.status(304).end();
+        res.send(body);
+    });
+
+    // GET /api/frame/run-options — an agent's box: who does a run (your Actor, Codes, a coding harness) and where it runs
+    // (OpenVibe, your computers through Link). The model is /choices'. The person's token: their own lists, never kept;
+    // signed out: the short lists, kept a minute (server/frame/run-options.js).
+    const runOptions = require('./run-options').createRunOptions({
+        svcUrl, log: console,
+        bot: privateKey && issuer && config.services && config.services.bot && config.services.bot.internalUrl
+            ? require('../registry/machines').createBotClient({ baseUrl: config.services.bot.internalUrl, privateKey, issuer }) : null,
+    });
+    router.get('/run-options', async (req, res) => {
+        res.set({ 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization, Origin' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? String(req.headers.authorization) : '';
+        let subject = null;
+        if (auth) { const user = await personOf(req).catch(() => null); subject = user && (user.subject_id || user.subject || null); }
+        const got = await runOptions.get({ auth, subject });
         res.set('Cache-Control', got.cache ? 'public, max-age=60' : 'private, no-store');
         res.send(JSON.stringify(got.body));
+    });
+
+    // GET /api/frame/resources — everything an answer can run on, for the person (plan §AD.17; server/frame/resources.js):
+    // their free AI left, their keys' names and states, which services may use them, their Balance. As them, never kept.
+    // Its road reads the person's computers the way the run options do (one lookup: run-options.computers).
+    const resources = require('./resources').createResources({ svcUrl, computers: (subject) => runOptions.computers(subject), fleet: (subject) => runOptions.machines(subject), log: console });
+    router.get('/resources', async (req, res) => {
+        res.set({ 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization, Origin', 'Cache-Control': 'private, no-store' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? String(req.headers.authorization) : '';
+        let subject = null;
+        if (auth) { const user = await personOf(req).catch(() => null); subject = user && (user.subject_id || user.subject || null); }
+        const got = await resources.get({ auth, subject });
+        res.status(got.status).send(JSON.stringify(got.body));
+    });
+
+    // GET /api/frame/usage?days= — what the person's answers used (Actor's /api/v1/me/usage, as them; server/frame/usage.js).
+    const usage = require('./usage').createUsage({ svcUrl, log: console });
+    router.get('/usage', async (req, res) => {
+        res.set({ 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization, Origin', 'Cache-Control': 'private, no-store' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? String(req.headers.authorization) : '';
+        const got = await usage.get({ auth, days: req.query.days });
+        res.status(got.status).send(JSON.stringify(got.body));
+    });
+
+    // POST /api/frame/speech — answers read aloud in an OpenVibe voice (Shared 4.308.0 ov-speak.js; server/frame/speech.js):
+    // AI's /v1/audio/speech on behalf of the signed-in person, whose allowance pays.
+    const speech = privateKey && issuer ? require('./speech').createSpeech({ privateKey, issuer, aiUrl: aiUrl || 'http://127.0.0.1:4700', log: console }) : null;
+    router.post('/speech', express.json({ limit: '8kb' }), async (req, res) => {
+        res.set({ 'Cache-Control': 'private, no-store', Vary: 'Authorization, Origin' });
+        const user = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? await personOf(req).catch(() => null) : null;
+        const subject = user && (user.subject_id || user.subject || null);
+        if (!subject) return res.status(401).json({ error: 'Sign in to hear OpenVibe voices' });
+        if (!speech) return res.status(503).json({ error: 'OpenVibe voices are not set up here' });
+        const b = req.body && typeof req.body === 'object' ? req.body : {};
+        const out = await speech.speak({ subject, text: b.text, voice: b.voice, speed: b.speed });
+        if (out.audio) { res.set('Content-Type', out.type); return res.status(200).send(out.audio); }
+        return res.status(out.status).json({ error: out.error });
     });
 
     // GET /api/frame/commands?site=<host>&q= — the composer's slash commands (composer-post-ask-do.md, R3):
@@ -1292,6 +1416,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
                 if (/^(1|true)$/.test(String(req.query.in || ''))) seen.forgetGuest(req.ip, ua, now());
                 else seen.seenGuest(req.ip, ua, now(), (siteForHost(host) || {}).id || (known ? 'tools' : null));
                 await bump.run(host);
+                await visitors.seen({ ip: req.ip, ua, host, dnt: declined(req) }).catch(() => {});
             }
         } catch { /* counting must never fail a page */ }
         res.status(204).end();

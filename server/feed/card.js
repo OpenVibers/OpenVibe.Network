@@ -102,6 +102,10 @@ function dealFacts(row) {
 /** One group item: what the card says, plus what the offer costs when the source stated it. */
 function groupItem(card) {
     const item = { id: card.id, url: card.url, title: card.title, media: card.media };
+    // feed.item@1 1.3.0 (Contracts 0.435.0; the owner, 11-15: "views … total views"): each item keeps its own views (the
+    // one view store counted every row's card before the fold).
+    const seen = card.counts && Number(card.counts.views);
+    if (Number.isFinite(seen) && seen >= 0) item.views = Math.round(seen);
     const facts = DEAL_FACTS.get(card);
     if (facts) {
         if (facts.price) item.price = facts.price;
@@ -112,6 +116,14 @@ function groupItem(card) {
 }
 
 /** One row as a card. `actor` is the resolved person { name, avatar, handle, level, fx } when the row names one. */
+const withViews = (cards) => { const v = groupViews(cards); return v == null ? {} : { views: v }; };
+/** The views of a whole run: every folded card's own views added up (feed.item@1 1.3.0 group.views). */
+function groupViews(cards) {
+    let n = 0, any = false;
+    for (const c of cards || []) { const v = c && c.counts && Number(c.counts.views); if (Number.isFinite(v) && v >= 0) { n += v; any = true; } }
+    return any ? Math.round(n) : null;
+}
+
 function cardOf(row, actor = null) {
     const counts = row.counts && typeof row.counts === 'object' ? row.counts : {};
     const safe = {};
@@ -264,7 +276,7 @@ function foldCards(cards, now = Date.now()) {
                 url: RUN_PAGE.work,
                 title: `${g.cards.length} new jobs this hour`,
                 text: clean(g.cards.map((c) => c.title).slice(0, 3).join(' · '), 280),
-                group: { count: g.cards.length, items: g.cards.slice(0, 20).map(groupItem) },
+                group: { count: g.cards.length, items: g.cards.slice(0, 20).map(groupItem), ...withViews(g.cards) },
                 counts: { ...g.card.counts, people: g.cards.length },
                 site: g.card.site,
                 site_name: sites.size === 1 ? [...sites][0] : g.card.site_name,
@@ -282,7 +294,7 @@ function foldCards(cards, now = Date.now()) {
                 ...(RUN_PAGE[g.site] ? { url: RUN_PAGE[g.site] } : {}),
                 title: `${g.cards.length} new ${many}`,
                 media: null,   // each row shows its own picture
-                group: { count: g.cards.length, items: (g.card.kind === 'deal' ? withPicturesFirst(g.cards) : g.cards).slice(0, 20).map(groupItem) },
+                group: { count: g.cards.length, items: (g.card.kind === 'deal' ? withPicturesFirst(g.cards) : g.cards).slice(0, 20).map(groupItem), ...withViews(g.cards) },
                 counts: { ...g.card.counts, people: g.cards.length },
             };
         }
@@ -293,7 +305,7 @@ function foldCards(cards, now = Date.now()) {
             ...g.card,
             title: `${name} ${BURST_SAY[g.card.kind] ? BURST_SAY[g.card.kind](g.cards.length) : `added ${g.cards.length} ${many}`}`,
             text: '',
-            group: { count: g.cards.length, items: g.cards.slice(0, 20).map(groupItem) },
+            group: { count: g.cards.length, items: g.cards.slice(0, 20).map(groupItem), ...withViews(g.cards) },
             counts: { ...g.card.counts, people: g.cards.length },
             ...(one ? {} : {}),
         };
@@ -369,6 +381,29 @@ function rankCards(cards, options) {
     return cards.slice().sort((a, b) => compareRankedCards(a, b, options));
 }
 
+/**
+ * One site at a time (the owner, 11-16, the menu's feed: "a lot of these aren't organized right … wrong order"; three
+ * Report cards, then three Deals cards from three hours): over the ranked list, a card from the same site as the one
+ * before it waits for the next card from another site among the next six, and goes after it. A live stream keeps its
+ * place; a list of one site (its own page, a site chip) is left as it is.
+ */
+function spreadCards(cards, { window = 6 } = {}) {
+    if (new Set(cards.map((c) => c.site || '')).size < 2) return cards.slice();
+    const rest = cards.slice();
+    const out = [];
+    while (rest.length) {
+        const last = out[out.length - 1];
+        let at = 0;
+        const head = rest[0];
+        if (last && head.site && head.site === last.site && !(head.kind === 'live' && head.live_now === true)) {
+            const j = rest.slice(1, window + 1).findIndex((c) => (c.site || '') !== last.site);
+            if (j >= 0) at = j + 1;
+        }
+        out.push(rest.splice(at, 1)[0]);
+    }
+    return out;
+}
+
 const ALIASES = {
     clip: 'clip', clips: 'clip', video: 'video', videos: 'video', recording: 'video', recordings: 'video',
     photo: 'pic', photos: 'pic', pic: 'pic', pics: 'pic', picture: 'pic', pictures: 'pic', post: 'post', posts: 'post',
@@ -423,4 +458,4 @@ function wallItem(card) {
     };
 }
 
-module.exports = { bulkId, BULK_WORD, RUN_PAGE, SITE_NAMES, kindOf, cardOf, oneCardPerThing, foldCards, compareRankedCards, rankCards, searchMatches, searchExamples, wallItem, titleKey, clean, https };
+module.exports = { bulkId, BULK_WORD, RUN_PAGE, SITE_NAMES, kindOf, cardOf, oneCardPerThing, foldCards, compareRankedCards, rankCards, spreadCards, searchMatches, searchExamples, wallItem, titleKey, clean, https };

@@ -17,7 +17,14 @@ const { createSetupGrants, TTL_MS, hashOf } = require('../server/admin/setup-gra
     const saved = [];
     const logs = [];
     const log = { info: (m) => logs.push(m), warn: (m) => logs.push(m) };
-    const proxy = { saveSecretAsOwner: async (req, row) => { saved.push({ owner: req.user.subject_id, ...row }); return row; } };
+    // A save can be held open (gate) or made to fail (failSave), to see what Stop says meanwhile (the 11-15 review).
+    let gate = null;
+    let failSave = false;
+    const proxy = { saveSecretAsOwner: async (req, row) => {
+        if (gate) await gate;
+        if (failSave) throw Object.assign(new Error('the owning service refused'), { code: 'settings.unavailable' });
+        saved.push({ owner: req.user.subject_id, ...row }); return row;
+    } };
     const grants = createSetupGrants({ db, proxy, isFresh: () => fresh, now: () => clock, log });
 
     const app = express();
@@ -72,7 +79,33 @@ const { createSetupGrants, TTL_MS, hashOf } = require('../server/admin/setup-gra
         assert.strictEqual((await call('POST', `/internal/setup/grants/${late.id}/save`, { values: { 'groq.api_key': VALUE } })).status, 410, 'an expired grant');
         r = await call('POST', '/api/admin/setup/grants', { service: 'ai', namespace: 'ai.providers', keys: ['groq.api_key'] });
         const gone = r.body.grant;
-        assert.strictEqual((await call('DELETE', `/api/admin/setup/grants/${gone.ref}`)).status, 200, 'revoked');
+        const took = await call('DELETE', `/api/admin/setup/grants/${gone.ref}`);
+        assert.deepStrictEqual([took.status, took.body.state, took.body.task_stopped], [200, 'revoked', null], 'revoked');
+        assert.strictEqual((await call('DELETE', `/api/admin/setup/grants/${g.ref}`)).body.state, 'spent', 'a grant the agent spent says so (11-14 review)');
+
+        // 11-15: "spent" only once the key is written. While the write runs Stop says "saving"; a failed write says
+        // "save_failed", is recorded, and is never called saved.
+        r = await call('POST', '/api/admin/setup/grants', { service: 'ai', namespace: 'ai.providers', keys: ['openai.api_key'] });
+        const slow = r.body.grant;
+        let release;
+        gate = new Promise((ok) => { release = ok; });
+        const pending = call('POST', `/internal/setup/grants/${slow.id}/save`, { values: { 'openai.api_key': VALUE } });
+        await new Promise((ok) => setTimeout(ok, 50));
+        assert.strictEqual((await call('DELETE', `/api/admin/setup/grants/${slow.ref}`)).body.state, 'saving', 'a save still being written is not "saved"');
+        release(); gate = null;
+        assert.strictEqual((await pending).status, 200);
+        assert.strictEqual((await call('DELETE', `/api/admin/setup/grants/${slow.ref}`)).body.state, 'spent', 'and once written, it is');
+        r = await call('POST', '/api/admin/setup/grants', { service: 'ai', namespace: 'ai.providers', keys: ['openai.api_key'] });
+        const broken = r.body.grant;
+        failSave = true;
+        const failedSave = await call('POST', `/internal/setup/grants/${broken.id}/save`, { values: { 'openai.api_key': VALUE } });
+        failSave = false;
+        assert.ok(failedSave.status >= 400, `a failed write is an error (${failedSave.status})`);
+        assert.strictEqual((await call('DELETE', `/api/admin/setup/grants/${broken.ref}`)).body.state, 'save_failed', 'a failed save says so');
+        const rec = await db.prepare('SELECT saved_at, save_failed_at, save_error FROM setup_grants WHERE id_hash = ?').get(hashOf(broken.id));
+        assert.ok(!rec.saved_at && rec.save_failed_at && rec.save_error === 'settings.unavailable', JSON.stringify(rec));
+        assert.ok(!JSON.stringify(rec).includes(VALUE), 'no value recorded');
+        assert.strictEqual((await call('DELETE', '/api/admin/setup/grants/000000000000')).status, 404, 'no such grant');
         assert.strictEqual((await call('POST', `/internal/setup/grants/${gone.id}/save`, { values: { 'groq.api_key': VALUE } })).status, 410, 'a revoked grant');
         assert.strictEqual((await call('POST', '/internal/setup/grants/sgr_nope/save', { values: { a: 'b' } })).status, 404, 'a made-up id');
 
@@ -81,8 +114,17 @@ const { createSetupGrants, TTL_MS, hashOf } = require('../server/admin/setup-gra
         const toActor = [];
         let actorUp = true;
         const startApp = express();
-        const starting = createSetupGrants({ db, proxy, isFresh: () => true, now: () => clock, log, actorUrl: 'http://actor.test',
-            fetchImpl: async (url, init) => { toActor.push({ url, init }); return actorUp ? new Response(JSON.stringify({ id: 'tsk_01JABCDEFGHJKMNPQRSTVWXYZ0' }), { status: 201 }) : new Response(JSON.stringify({ detail: 'no' }), { status: 503 }); } });
+        // Actor's cancel answers 200 with the ended task, or 202 while the task winds down (then GET reads it again).
+        let cancelAnswer = { status: 200, body: { id: 'tsk_01JABCDEFGHJKMNPQRSTVWXYZ0', state: 'cancelled', finished_at: '2026-11-15T00:00:00Z' } };
+        let taskAnswer = { state: 'running' };
+        const starting = createSetupGrants({ db, proxy, isFresh: () => true, now: () => clock, log, actorUrl: 'http://actor.test', stopPollMs: 5,
+            fetchImpl: async (url, init) => {
+                toActor.push({ url, init });
+                if (!actorUp) return new Response(JSON.stringify({ detail: 'no' }), { status: 503 });
+                if (url.endsWith('/cancel')) return new Response(JSON.stringify(cancelAnswer.body), { status: cancelAnswer.status });
+                if (init && init.method === 'GET') return new Response(JSON.stringify(taskAnswer), { status: 200 });
+                return new Response(JSON.stringify({ id: 'tsk_01JABCDEFGHJKMNPQRSTVWXYZ0' }), { status: 201 });
+            } });
         startApp.use('/g', (req, res, next) => { req.user = { id: owner.id, subject_id: subject }; next(); }, starting.ownerRouter());
         const s2 = await new Promise((ok) => { const x = startApp.listen(0, '127.0.0.1', () => ok(x)); });
         const b2 = `http://127.0.0.1:${s2.address().port}`;
@@ -102,6 +144,36 @@ const { createSetupGrants, TTL_MS, hashOf } = require('../server/admin/setup-gra
             assert.strictEqual(st.status, 502, 'Actor down');
             const last = JSON.parse(toActor[toActor.length - 1].init.body).setup.grant;
             assert.ok((await db.prepare('SELECT revoked_at FROM setup_grants WHERE id_hash = ?').get(hashOf(last))).revoked_at, 'a failed start revokes its grant');
+            // Stop takes the grant back and stops the agent's task with the owner's Bearer (11-14 review).
+            actorUp = true;
+            st = await start(row);
+            const del = async (path) => { const x = await fetch(b2 + '/g' + path, { method: 'DELETE', headers: { authorization: 'Bearer owner-token' } }); return { status: x.status, body: await x.json() }; };
+            const stopped = await del(`/${st.body.grant.ref}?task=${st.body.grant.task.id}`);
+            assert.deepStrictEqual([stopped.status, stopped.body.state, stopped.body.task_stopped, stopped.body.task_state], [200, 'revoked', true, 'stopped'], JSON.stringify(stopped.body));
+            const cancel = toActor[toActor.length - 1];
+            assert.deepStrictEqual([cancel.url, cancel.init.method, cancel.init.headers.Authorization], [`http://actor.test/api/v1/tasks/${st.body.grant.task.id}/cancel`, 'POST', 'Bearer owner-token']);
+            // 11-15: a cancel Actor took (202) while the task still runs is "stopping", never "stopped"; read again
+            // until it ended, it is.
+            const cancelUrl = cancel.url;
+            cancelAnswer = { status: 202, body: { id: 'tsk_01JABCDEFGHJKMNPQRSTVWXYZ0', state: 'running' } };
+            st = await start(row);
+            let pendingStop = await del(`/${st.body.grant.ref}?task=${st.body.grant.task.id}`);
+            assert.deepStrictEqual([pendingStop.body.task_stopped, pendingStop.body.task_state], [false, 'stopping'], JSON.stringify(pendingStop.body));
+            assert.ok(toActor.filter((x) => x.init && x.init.method === 'GET' && x.url === cancelUrl.replace(/\/cancel$/, '')).length >= 3, 'read again before answering');
+            taskAnswer = { state: 'cancelled', finished_at: '2026-11-15T00:00:01Z' };
+            st = await start(row);
+            pendingStop = await del(`/${st.body.grant.ref}?task=${st.body.grant.task.id}`);
+            assert.deepStrictEqual([pendingStop.body.task_stopped, pendingStop.body.task_state], [true, 'stopped'], 'ended while read again');
+            cancelAnswer = { status: 409, body: { code: 'actor.task.ended' } };
+            st = await start(row);
+            assert.strictEqual((await del(`/${st.body.grant.ref}?task=${st.body.grant.task.id}`)).body.task_state, 'stopped', 'a task that had ended');
+            st = await start(row);
+            actorUp = false;
+            const failed = await del(`/${st.body.grant.ref}?task=${st.body.grant.task.id}`);
+            assert.deepStrictEqual([failed.body.state, failed.body.task_stopped, failed.body.task_state], ['revoked', false, 'not_stopped'], 'a task Actor did not stop is said so');
+            const before = toActor.length;
+            assert.strictEqual((await del(`/${st.body.grant.ref}?task=not-a-task`)).body.task_stopped, false, 'a bad task id never reaches Actor');
+            assert.strictEqual(toActor.length, before);
         } finally { s2.close(); }
 
         // The agent's screen beside the step (AB.44): its task and desk picture, read from Actor with the owner's

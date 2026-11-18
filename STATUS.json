@@ -6,9 +6,9 @@
   "runtime": "node 22, express, PostgreSQL 18 (openvibe-sdk/db, async) + Valkey 9",
   "port": 4000,
   "domain": "openvibe.network (with auth., api., admin., my. and themes.openvibe.network in its manifest)",
-  "contracts": "openvibe-contracts v0.432.0",
-  "sdk": "openvibe-sdk v0.172.0",
-  "shared": "openvibe-shared v4.256.0",
+  "contracts": "openvibe-contracts v0.445.0",
+  "sdk": "openvibe-sdk v0.187.0",
+  "shared": "openvibe-shared v4.313.0",
   "capabilities": [
     "identity.subject.resolve",
     "mods.grant.manage",
@@ -57,5 +57,5 @@
     "AI listed under Report",
     "Bench host redirects to Report AI"
   ],
-  "updated": "2026-11-14"
+  "updated": "2026-11-18"
 }

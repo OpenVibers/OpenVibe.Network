@@ -107,6 +107,10 @@ module.exports = {
         inventoryUrl: process.env.OV_INVENTORY_URL || 'https://inventory.openvibe.network',
     },
 
+    // OpenVibe.Design for the check before a room's reviewers (its MCP page audit, server/frame/room-check.js). Production:
+    // the loopback port; empty turns the check off.
+    designUrl: process.env.OV_DESIGN_URL != null ? process.env.OV_DESIGN_URL : (process.env.NODE_ENV === 'production' ? 'http://127.0.0.1:5090' : ''),
+
     // OpenVibe.Events base URL for Network's own events (developer projects). Unset = no relay:
     // events stay in dev_audit and are backfilled when it is set. Production: http://127.0.0.1:4300
     eventsInternalUrl: process.env.OV_EVENTS_INTERNAL_URL || '',

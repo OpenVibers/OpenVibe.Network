@@ -139,6 +139,59 @@ const { startApp } = require('./helpers/connect-app');
             assert.ok(body.result.capabilities.tools, 'the server offers tools');
             assert.ok(body.result.serverInfo.name, 'the server says its name');
         });
+
+        // MCP 2026-07-28 (the stateless revision; 2026-11-16): no handshake, the version and the method on every
+        // request, in the body's _meta and in the headers, and server/discover.
+        await check('the server speaks MCP 2026-07-28 beside the handshake', async () => {
+            const V = '2026-07-28';
+            const rpc = (method, params = {}, headers = {}) => fetch(url, {
+                method: 'POST',
+                headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', authorization: 'Bearer ' + key, 'mcp-protocol-version': V, 'mcp-method': method, ...headers },
+                body: JSON.stringify({ jsonrpc: '2.0', id: 7, method, params: { ...params, _meta: { 'io.modelcontextprotocol/protocolVersion': V, 'io.modelcontextprotocol/clientCapabilities': {}, ...(params._meta || {}) } } }),
+            });
+            let r = await rpc('server/discover');
+            let b = await r.json();
+            assert.strictEqual(r.status, 200);
+            assert.strictEqual(b.result.resultType, 'complete');
+            assert.ok(b.result.supportedVersions.includes(V) && b.result.supportedVersions.includes('2025-06-18'), 'both eras are named');
+            assert.ok(b.result.capabilities.tools, 'tools are offered');
+            assert.strictEqual(b.result._meta['io.modelcontextprotocol/serverInfo'].name, 'openvibe-connect');
+            assert.deepStrictEqual([typeof b.result.ttlMs, b.result.cacheScope], ['number', 'public']);
+            assert.strictEqual(r.headers.get('mcp-session-id'), null, 'no session is minted');
+
+            r = await rpc('tools/list');
+            b = await r.json();
+            assert.strictEqual(r.status, 200);
+            assert.strictEqual(b.result.resultType, 'complete');
+            assert.deepStrictEqual([typeof b.result.ttlMs, b.result.cacheScope], ['number', 'private'], 'the list is this caller\'s');
+            const names = b.result.tools.map((t) => t.name);
+            const again = (await (await rpc('tools/list')).json()).result.tools.map((t) => t.name);
+            assert.deepStrictEqual(again, names, 'the same order every time');
+            assert.ok(names.includes('network.person_page.read'));
+
+            r = await rpc('tools/call', { name: 'network.person_page.read', arguments: { handle: 'ada_l' } }, { 'mcp-name': 'network.person_page.read' });
+            b = await r.json();
+            assert.strictEqual(r.status, 200);
+            assert.strictEqual(b.result.resultType, 'complete');
+            assert.strictEqual(b.result.structuredContent.username, 'ada_l');
+
+            // The headers must agree with the body.
+            r = await rpc('tools/list', {}, { 'mcp-method': 'tools/call' });
+            b = await r.json();
+            assert.deepStrictEqual([r.status, b.error.code], [400, -32020], 'Mcp-Method disagrees: HeaderMismatch');
+            r = await rpc('tools/call', { name: 'network.person_page.read', arguments: { handle: 'ada_l' } }, { 'mcp-name': 'network.my_trust.read' });
+            assert.deepStrictEqual([r.status, (await r.json()).error.code], [400, -32020], 'Mcp-Name disagrees');
+            r = await rpc('tools/list', {}, { 'mcp-protocol-version': '2025-06-18' });
+            assert.deepStrictEqual([r.status, (await r.json()).error.code], [400, -32020], 'the version header disagrees');
+            // A version this server does not speak names the ones it does.
+            r = await rpc('tools/list', { _meta: { 'io.modelcontextprotocol/protocolVersion': '1900-01-01' } }, { 'mcp-protocol-version': '1900-01-01' });
+            b = await r.json();
+            assert.deepStrictEqual([r.status, b.error.code, b.error.data.requested], [400, -32022, '1900-01-01']);
+            assert.ok(b.error.data.supported.includes(V));
+            // An unknown method is a 404.
+            r = await rpc('resources/list');
+            assert.deepStrictEqual([r.status, (await r.json()).error.code], [404, -32601]);
+        });
     } finally {
         await app.stop();
         server.close();

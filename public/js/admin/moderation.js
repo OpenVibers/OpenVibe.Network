@@ -445,3 +445,72 @@ async function loadAudit() {
         `;
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; pager.innerHTML = ''; }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// Flagged speech (Live GET /api/mod/transcript-flags through the /api/admin/streamer-mod proxy)
+// A transcribed window whose words read as one of OpenVibe.AI's hard-floor lines: the recording and the moment, never
+// the words. Staff open it there, act with the usual tools, and mark it cleared (nothing wrong) or handled.
+// ═══════════════════════════════════════════════════════════════
+const FLAG_LINES = { minors: 'Minor, sexual', non_consensual: 'Non-consensual', mass_harm: 'Mass harm' };
+const FLAG_FILTERS = [['open', 'Open'], ['handled', 'Handled'], ['cleared', 'Nothing wrong'], ['all', 'All']];
+let flaggedSpeechStatus = 'open';
+
+function flagMoment(sec) {
+    const s = Math.max(0, Number(sec) || 0);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+    return (h ? `${h}:${String(m).padStart(2, '0')}` : String(m)) + ':' + String(r).padStart(2, '0');
+}
+
+async function loadFlaggedSpeech(status) {
+    if (status) flaggedSpeechStatus = status;
+    const c = document.getElementById('flagged-speech-content');
+    const bar = document.getElementById('flagged-speech-filter');
+    if (!c) return;
+    c.innerHTML = '<div class="loading">Loading...</div>';
+    try {
+        const data = await api(`/api/admin/streamer-mod/transcript-flags?status=${encodeURIComponent(flaggedSpeechStatus)}&limit=100`);
+        const flags = data.flags || [];
+        const open = Number(data.open) || 0;
+        if (bar) {
+            bar.innerHTML = FLAG_FILTERS.map(([s, label]) => `<button type="button" role="tab" aria-selected="${s === flaggedSpeechStatus}" class="${s === flaggedSpeechStatus ? 'active' : ''}" onclick="loadFlaggedSpeech('${s}')">${esc(label)}${s === 'open' ? ` (${open})` : ''}</button>`).join('');
+        }
+        if (!flags.length) {
+            c.innerHTML = `<p class="muted">${flaggedSpeechStatus === 'open' ? 'Nothing is waiting. A flagged moment appears here as soon as a recording is transcribed.' : 'None here.'}</p>`;
+            return;
+        }
+        const liveBase = 'https://openvibe.live';
+        const who = (ch) => (ch && ch.username
+            ? `<a class="ban-who" href="https://openvibe.network/@${encodeURIComponent(ch.username)}" data-ov-user="${esc(ch.username)}">@${esc(ch.username)}</a>`
+            : '<span class="ban-who muted">A channel</span>');
+        const where = (f) => {
+            const what = f.kind === 'clip' ? 'Clip' : f.kind === 'vod' ? 'Recording' : 'A recording';
+            const label = `${what} at ${flagMoment(f.start_sec)}`;
+            return f.url && /^\/[^/]/.test(f.url)
+                ? `<a class="flag-at" href="${esc(liveBase + f.url)}" target="_blank" rel="noopener"><i class="fa-solid fa-play"></i> ${esc(label)}</a>`
+                : `<span class="flag-at muted">${esc(label)}${f.path ? ` <code>${esc(f.path)}</code>` : ''}</span>`;
+        };
+        const settled = (f) => (f.status === 'open' ? '' : ` · ${f.status === 'handled' ? 'Handled' : 'Nothing wrong'}${f.reviewed_by ? ` by @${esc(f.reviewed_by)}` : ''}${f.reviewed_at ? ` ${esc(timeAgo(f.reviewed_at.replace(' ', 'T') + (/Z$/.test(f.reviewed_at) ? '' : 'Z')))}` : ''}`);
+        const acts = (f) => (f.status === 'open'
+            ? `<button type="button" class="btn btn-sm btn-outline" onclick="markFlaggedSpeech(${Number(f.id)},'cleared')"><i class="fa-solid fa-check"></i> Nothing wrong</button>
+               <button type="button" class="btn btn-sm btn-primary" onclick="markFlaggedSpeech(${Number(f.id)},'handled')"><i class="fa-solid fa-gavel"></i> Handled</button>`
+            : `<button type="button" class="btn btn-sm btn-outline" onclick="markFlaggedSpeech(${Number(f.id)},'open')"><i class="fa-solid fa-rotate-left"></i> Reopen</button>`);
+        c.innerHTML = `<ul class="ban-list">${flags.map((f) => `
+            <li class="ban-card">
+                <div class="ban-top">${who(f.channel)}<span class="ban-len flag-line ${f.status === 'open' ? '' : 'is-settled'}">${esc(FLAG_LINES[f.rule] || f.rule)}</span></div>
+                ${where(f)}
+                <div class="ban-meta muted">Flagged ${esc(timeAgo(String(f.created_at || '').replace(' ', 'T') + (/Z$/.test(f.created_at || '') ? '' : 'Z')))}${settled(f)}</div>
+                <div class="flag-act">${acts(f)}</div>
+            </li>`).join('')}</ul>`;
+        if (window.OVUser && typeof window.OVUser.bind === 'function') { try { window.OVUser.bind(c); } catch (e) { /* the card is optional */ } }
+    } catch (e) {
+        c.innerHTML = `<p class="muted">${e && e.status === 403 ? 'Moderators and admins only.' : 'Live did not answer: ' + esc(e.message)}</p>`;
+    }
+}
+
+async function markFlaggedSpeech(id, status) {
+    try {
+        await api(`/api/admin/streamer-mod/transcript-flags/${Number(id)}`, { method: 'POST', body: { status } });
+        toast(status === 'open' ? 'Back in the queue' : status === 'handled' ? 'Marked handled' : 'Marked nothing wrong', 'success');
+        loadFlaggedSpeech();
+    } catch (e) { toast(e.message, 'error'); }
+}

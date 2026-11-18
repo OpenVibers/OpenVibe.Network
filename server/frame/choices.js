@@ -8,8 +8,16 @@
  * composer makes one request, with the person's own token forwarded (AI answers as them; signed out it answers as
  * anyone) and the same CORS and caching rules as GET /api/frame/query:
  *
- *   signed in   private, no-store, asked fresh every time
- *   signed out  public, max-age=60, the whole answer held 60 s
+ *   signed in   private: the person's answer is kept a minute (by a hash of their token, never the token) and served
+ *               at once after that while a fresh one is asked for (stale while revalidate, ten minutes at most)
+ *   signed out  public, max-age=60, the whole answer held 60 s and served stale while it is asked again
+ *
+ * Fast every time (2026-11-15, the owner, on "Loading the models…": "massively optimized, cached … local cache and
+ * server cache"): Exchange's directory answers in about 30 s (960 models), so it is never waited for after the first
+ * read: it is kept ten minutes and refreshed in the background, a stale copy served meanwhile (a day at most); the
+ * same for Report's ratings. A task lists only its kind of model: a chat sheet never offers a voice or a picture model
+ * (Exchange's type: chat, speech, image, embedding, stt), and each row says what it can do (vision, tools, its
+ * context) so the sheet can sort and filter.
  *
  * The shape is the one the composer's chip renders:
  *
@@ -35,7 +43,15 @@ const GROUPS = [
 const TOKEN_RE = /^[A-Za-z0-9._~+/=-]{20,4096}$/;
 const MODEL_RE = /^[A-Za-z0-9._:/@+-]{1,200}$/;
 const SOURCE = new Set(['openvibe', 'keys', 'machines']);
-const DAY = 60_000;
+const DAY = 60_000;   // (a minute: the name is historical)
+const FRESH_MS = 10 * 60_000;        // Exchange's directory and Report's ratings: fresh for ten minutes …
+const STALE_MS = 24 * 60 * 60_000;   // … then served stale (while one background read refreshes them) for a day at most
+const PERSON_FRESH_MS = 60_000;      // a person's answer: a minute fresh …
+const PERSON_STALE_MS = 10 * 60_000; // … then served at once while a new one is asked, ten minutes at most
+// What kind of model a task wants (Exchange's type; null is a chat model Exchange has not typed).
+const TASK_TYPES = { chat: ['chat', null], agent: ['chat', null], research: ['chat', null], code: ['chat', null], image: ['image'] };
+// Providers whose models are voices or transcription whatever the directory says.
+const NOT_CHAT = /^(elevenlabs|google-tts|polly|whisper|deepgram|stt|tts)\//i;
 
 const titleOf = (id) => String(id || '').split('/').filter(Boolean).pop() || String(id || '');
 const makerOf = (id, ex) => (ex && (ex.provider_name || ex.provider)) || String(id || '').split('/')[0] || null;
@@ -57,6 +73,7 @@ function createFrameChoices({ aiUrl = 'http://127.0.0.1:4700', exchangeUrl = 'ht
     let exchangeCache = null, exchangeAt = 0, exchangeInflight = null;
     let reportCache = null, reportAt = 0, reportInflight = null;
     const held = new Map();   // signed-out answer, by task
+    const people = new Map(); // a person's answer, by task and a hash of their token: { at, body, ai, job }
 
     async function getJson(url, { token = '', timeoutMs = 6000 } = {}) {
         if (typeof fetchImpl !== 'function') return null;
@@ -72,19 +89,34 @@ function createFrameChoices({ aiUrl = 'http://127.0.0.1:4700', exchangeUrl = 'ht
         }
     }
 
-    /** Exchange's directory, held a minute: the same model prices every composer on the network. */
+    /** Exchange's directory: the same model prices every composer on the network. Fresh ten minutes; after that the copy
+     *  is served at once while one background read refreshes it (Exchange takes about 30 s), a day at most. */
+    function refreshExchange() {
+        exchangeInflight = exchangeInflight || getJson(`${exchangeBase}/api/v1/models`, { timeoutMs: 60_000 })
+            .then((d) => { const models = d && Array.isArray(d.models) ? d.models : []; if (models.length) { exchangeCache = models; exchangeAt = now(); } return models; })
+            .finally(() => { exchangeInflight = null; });
+        return exchangeInflight;
+    }
     async function exchangeModels() {
-        if (exchangeCache && now() - exchangeAt < DAY) return exchangeCache;
-        exchangeInflight = exchangeInflight || getJson(`${exchangeBase}/api/v1/models`).then((d) => (d && Array.isArray(d.models) ? d.models : [])).finally(() => { exchangeInflight = null; });
-        const models = await exchangeInflight;
-        if (models.length) { exchangeCache = models; exchangeAt = now(); }
-        return models;
+        const age = now() - exchangeAt;
+        if (exchangeCache && age < FRESH_MS) return exchangeCache;
+        if (exchangeCache && age < STALE_MS) { refreshExchange().catch(() => {}); return exchangeCache; }
+        // Nothing kept yet: wait a little for the first read, then answer without prices rather than keep a person waiting.
+        const first = refreshExchange();
+        const quick = await Promise.race([first, new Promise((r) => setTimeout(() => r(null), 6000))]);
+        return quick || exchangeCache || [];
     }
 
     /** Report's public leaderboard: a rating (or Bench's benchmark) where one exists, never invented. */
     async function reportRatings() {
-        if (reportCache && now() - reportAt < 2 * DAY) return reportCache;
-        reportInflight = reportInflight || getJson(`${reportBase}/api/v1/ai/leaderboard?limit=1000`).then((d) => (d && Array.isArray(d.rows) ? d.rows : [])).finally(() => { reportInflight = null; });
+        const age = now() - reportAt;
+        if (reportCache && age < FRESH_MS) return reportCache;
+        if (reportCache && age < STALE_MS) { readRatings().catch(() => {}); return reportCache; }
+        const quick = await Promise.race([readRatings(), new Promise((r) => setTimeout(() => r(null), 4000))]);
+        return quick || reportCache || new Map();
+    }
+    async function readRatings() {
+        reportInflight = reportInflight || getJson(`${reportBase}/api/v1/ai/leaderboard?limit=1000`, { timeoutMs: 30_000 }).then((d) => (d && Array.isArray(d.rows) ? d.rows : [])).finally(() => { reportInflight = null; });
         const rows = await reportInflight;
         const map = new Map();
         for (const row of rows) {
@@ -121,11 +153,17 @@ function createFrameChoices({ aiUrl = 'http://127.0.0.1:4700', exchangeUrl = 'ht
         const outPrice = num(price.output_per_million) ?? num(offers.map((o) => o && o.price && o.price.out).find((v) => v != null));
         const speeds = offers.map((o) => o && o.speed && o.speed.p50_ms).filter((v) => Number.isFinite(Number(v))).map(Number).sort((a, b) => a - b);
         const rated = ratings && ex && ratings.get(String(ex.id || '').toLowerCase());
+        const supports = ex && ex.supports && typeof ex.supports === 'object' ? ex.supports : {};
+        const mods = ex && Array.isArray(ex.modalities) ? ex.modalities.map(String) : [];
         return {
             in: inPrice, out: outPrice,
             speed: speeds.length ? speeds[0] : null,
             score: rated && rated.score != null ? rated.score : null,
             adult: Boolean(rated && rated.adult),
+            type: ex && typeof ex.type === 'string' ? ex.type : null,
+            vision: supports.vision === true || mods.includes('image'),
+            tools: supports.tools === true,
+            context: ex && Number.isFinite(Number(ex.context_window)) && Number(ex.context_window) > 0 ? Number(ex.context_window) : null,
         };
     }
 
@@ -154,8 +192,18 @@ function createFrameChoices({ aiUrl = 'http://127.0.0.1:4700', exchangeUrl = 'ht
             ...(score != null ? { score } : {}),
             ...(ex && ex.id ? { url: pageUrl(exchangePageBase, ex.id) } : {}),
             ...(x.adult || option.adult === true ? { adult: true } : {}),
+            ...(x.type ? { type: x.type } : {}),
+            ...(x.vision ? { vision: true } : {}),
+            ...(x.tools ? { tools: true } : {}),
+            ...(x.context ? { context: x.context } : {}),
         };
     }
+    /** Whether a row is the task's kind of model (a chat sheet never offers a voice or a picture model). */
+    const fits = (task, row) => {
+        const want = TASK_TYPES[task] || ['chat', null];
+        if (task !== 'image' && NOT_CHAT.test(String(row.model || ''))) return false;
+        return want.includes(row.type || null);
+    };
 
     /** AI unreachable: Exchange's own directory, the same row shape, enough for a signed-out sheet to work. */
     function fromExchange(task, models, ratings) {
@@ -163,7 +211,7 @@ function createFrameChoices({ aiUrl = 'http://127.0.0.1:4700', exchangeUrl = 'ht
         const rows = [];
         for (const m of models) {
             if (!m || typeof m.id !== 'string') continue;
-            if (image ? m.type !== 'image' : m.type === 'image') continue;
+            if (image ? m.type !== 'image' : (m.type != null && m.type !== 'chat') || NOT_CHAT.test(String(m.id))) continue;
             if (!['available', 'preview'].includes(String(m.status || 'available'))) continue;
             const x = exchangeRow(m, ratings);
             if (x.adult) continue;
@@ -199,7 +247,7 @@ function createFrameChoices({ aiUrl = 'http://127.0.0.1:4700', exchangeUrl = 'ht
         const openvibe = (Array.isArray(options.openvibe) ? options.openvibe : [])
             .filter((o) => o && typeof o.model === 'string' && MODEL_RE.test(o.model))
             .map((o) => rowFor(o, { source: 'openvibe', exMap, ratings }))
-            .filter((r) => !r.adult || adultAllowed);
+            .filter((r) => (!r.adult || adultAllowed) && fits(task, r));
         if (openvibe.length) add('openvibe', openvibe);
         else {
             const fallback = fromExchange(task, exchange, ratings);
@@ -209,7 +257,7 @@ function createFrameChoices({ aiUrl = 'http://127.0.0.1:4700', exchangeUrl = 'ht
             if (note) groups[groups.length - 1].note = note;
         }
         if (signedIn) {
-            const keys = (Array.isArray(options.keys) ? options.keys : []).filter((o) => o && typeof o.model === 'string').map((o) => rowFor(o, { source: 'keys', exMap, ratings }));
+            const keys = (Array.isArray(options.keys) ? options.keys : []).filter((o) => o && typeof o.model === 'string').map((o) => rowFor(o, { source: 'keys', exMap, ratings })).filter((r) => fits(task, r));
             const machines = (Array.isArray(options.machines) ? options.machines : []).filter((o) => o && typeof o.model === 'string').map((o) => rowFor(o, { source: 'machines', exMap, ratings }));
             add('keys', keys);
             if (!ai) groups[groups.length - 1].note = 'Your keys could not be read right now; OpenVibe models still answer.';
@@ -229,16 +277,42 @@ function createFrameChoices({ aiUrl = 'http://127.0.0.1:4700', exchangeUrl = 'ht
         const clean = String(token || '');
         const valid = TOKEN_RE.test(clean);
         const person = Boolean(signedIn && valid);
-        if (person) { const got = await read(task, { token: clean, signedIn: true }); return { ...got, cache: false }; }
+        if (person) {
+            // The person's answer by a hash of their token (never the token itself): a minute fresh, then served at once
+            // while one fresh read replaces it, ten minutes at most.
+            const key = `${task}|${require('crypto').createHash('sha256').update(clean).digest('base64url').slice(0, 32)}`;
+            const hit = people.get(key);
+            const age = hit ? now() - hit.at : Infinity;
+            const ask = () => {
+                if (hit && hit.job) return hit.job;
+                const job = read(task, { token: clean, signedIn: true }).then((got) => {
+                    if (got && got.ai) people.set(key, { at: now(), body: got.body, ai: got.ai });
+                    else if (hit) hit.job = null;
+                    if (people.size > 2000) people.delete(people.keys().next().value);
+                    return got;
+                });
+                if (hit) hit.job = job;
+                return job;
+            };
+            if (hit && age < PERSON_FRESH_MS) return { body: hit.body, ai: hit.ai, cache: false, kept: true };
+            if (hit && age < PERSON_STALE_MS) { ask().catch(() => {}); return { body: hit.body, ai: hit.ai, cache: false, kept: true }; }
+            const got = await ask();
+            return { ...got, cache: false };
+        }
         const hit = held.get(task);
         if (hit && now() - hit.at < DAY) return { body: hit.body, ai: hit.ai, cache: true };
+        if (hit && now() - hit.at < PERSON_STALE_MS && !hit.job) {
+            hit.job = read(task, { signedIn: false }).then((got) => { held.set(task, { at: now(), body: got.body, ai: got.ai }); }).catch(() => { hit.job = null; });
+            return { body: hit.body, ai: hit.ai, cache: true };
+        }
+        if (hit && hit.job) return { body: hit.body, ai: hit.ai, cache: true };
         const got = await read(task, { signedIn: false });
         held.set(task, { at: now(), body: got.body, ai: got.ai });
         if (held.size > 100) held.clear();
         return { ...got, cache: true };
     }
 
-    return { get, read, _state: () => ({ held: held.size }) };
+    return { get, read, _state: () => ({ held: held.size, people: people.size }) };
 }
 
 module.exports = { createFrameChoices, AI_TASK, GROUPS, choiceOf };

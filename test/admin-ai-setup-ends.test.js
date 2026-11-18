@@ -38,7 +38,10 @@ assert.match(start, /Altare Inference/);
 assert.match(start, /ChatGPT Pro<\/strong> includes \$100, \$200 or \$500 of OpenAI API credit a month/);
 assert.match(start, /Monthly credits/);
 assert.match(start, /Use the recommended set/);
-assert.match(start, /Start with Decisions \(routing and checks\)/, 'the first job that is not ready');
+// 2026-11-15 (plan §AD.9): jobs say plain names ("Decisions", never "Decisions (routing and checks)"), and Start leads
+// to Providers and keys, with the first job that is not ready beside it.
+assert.match(start, /Start with Decisions</, 'the first job that is not ready');
+assert.match(start, /Providers and keys/, 'and the providers first');
 assert.match(els['setup-steps'].innerHTML, /Start[\s\S]*Chat and writing[\s\S]*Decisions[\s\S]*Defaults[\s\S]*Finish/, 'the stepper shows both ends');
 
 // Finish: ready and left, a way to what is left, a test of every ready job.

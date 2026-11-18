@@ -137,7 +137,7 @@ function summary(service, namespace, extra = {}) {
         r = await ownerCall('GET', '/api/admin/ai/config/services');
         assert.strictEqual(r.status, 200, r.text);
         // `network` is last: its own settings (network.signin, plan §AB.20) answer in process rather than over a hop.
-        assert.deepStrictEqual(r.body.services.map((s) => s.service), ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor', 'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run', 'mail', 'network']);
+        assert.deepStrictEqual(r.body.services.map((s) => s.service), ['ai', 'billing', 'services', 'watch', 'report', 'host', 'codes', 'actor', 'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run', 'mail', 'network']);
         assert.strictEqual(r.body.services.find((s) => s.service === 'network').name, 'OpenVibe.Network');
         assert.strictEqual(r.body.services.find((s) => s.service === 'deals').name, 'OpenVibe.Deals');
         assert.strictEqual(r.body.services.find((s) => s.service === 'deals').capability, 'deals.config.manage');
@@ -262,7 +262,7 @@ function summary(service, namespace, extra = {}) {
 
         // ── The grants: nine config.manage capabilities for Network, ai.provider.manage, and Host's usage read ──
         const has = (client, cap, aud) => principals.DEFAULT_GRANTS.some((g) => g[0] === client && g[1] === cap && g[2] === aud);
-        for (const svc of ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor']) {
+        for (const svc of ['ai', 'billing', 'services', 'watch', 'report', 'host', 'codes', 'actor']) {
             assert.ok(has('network', `${svc}.config.manage`, `openvibe.${svc}`), `Network holds ${svc}.config.manage`);
         }
         // The eight Setup services: Network holds each grant as soon as the pinned Contracts (0.308.0) knows it.
