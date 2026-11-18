@@ -36,7 +36,10 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
         const product = req.body.kind === 'code' ? 'codes' : 'actor';
         runs.set(id, { id, product, auth: req.headers.authorization, steps: [{ seq: 1, from: 'person', kind: 'message', text: req.body.text }], status: 'running', body: req.body });
         calls.push({ op: 'start', id, auth: req.headers.authorization, body: req.body, at: Date.now() });
-        setTimeout(() => answer(id), 30);
+        // A reviewer's turn takes 400 ms, so reviewers taken in turn would start 400 ms or more apart: the check below
+        // tells "at once" from "in turn" on a slow runner too (with 30 ms and pollMs 20, in turn was ~40-60 ms apart,
+        // and at once measured 34 ms on a busy CI runner, 11-18).
+        setTimeout(() => answer(id), /You are reviewing/.test(String(req.body.text || '')) ? 400 : 30);
         res.status(201).json({ id, ref: `${product}:${id}`, status: 'running' });
     });
     const runOf = (ref) => runs.get(String(ref).split(':')[1]);
@@ -210,7 +213,7 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
             assert.match(done.messages[6].text, /APPROVED$/);
             const starts = calls.slice(was).filter((c) => c.op === 'start');
             const d = starts.find((c) => c.body.engine && c.body.engine.specialist === 'design'), x = starts.find((c) => c.body.engine && c.body.engine.harness === 'codex');
-            assert.ok(d && x && Math.abs(d.at - x.at) < 25, `the reviewers started together (${d && x ? Math.abs(d.at - x.at) : '?'} ms apart)`);
+            assert.ok(d && x && Math.abs(d.at - x.at) < 200, `the reviewers started together (${d && x ? Math.abs(d.at - x.at) : '?'} ms apart)`);
             assert.match(d.body.text, /You are reviewing @codes's work/);
             assert.deepStrictEqual(d.body.engine, { kind: 'agent', specialist: 'design' }, 'Design runs as Actor\'s design specialist');
             const fix = calls.slice(was).filter((c) => c.op === 'say' && /asked for changes above/.test(c.text));
