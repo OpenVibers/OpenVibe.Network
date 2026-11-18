@@ -12,7 +12,8 @@ const principals = require('../server/identity/principals');
 
 const of = (svc, aud) => principals.DEFAULT_GRANTS.filter((g) => g[0] === svc && g[2] === aud).map((g) => g[1]).sort();
 assert.deepStrictEqual(of('run', 'openvibe.bot'), ['bot.desk.session', 'bot.job.dispatch'], 'run dispatches jobs and leases desks on Bot, and holds no computer control there');
-assert.deepStrictEqual(of('actor', 'openvibe.run'), ['run.session.control', 'run.session.create', 'run.session.read'], 'actor uses Run sessions');
+// Sessions, and (11-18) the function jobs of a skill's sandbox tool and script_run, as the person.
+assert.deepStrictEqual(of('actor', 'openvibe.run'), ['run.job.cancel', 'run.job.read', 'run.job.submit', 'run.session.control', 'run.session.create', 'run.session.read'], 'actor uses Run sessions and function jobs');
 const ids = ['bot.desk.session', 'run.session.create', 'run.session.read', 'run.session.control'];
 const missing = ids.filter((id) => { const cap = contracts.capabilities.get(id); return !(cap && cap.status === 'active'); });
 assert.deepStrictEqual(missing, [], 'every one is an active capability in the pinned contracts');
