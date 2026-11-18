@@ -604,6 +604,9 @@ const DEFAULT_GRANTS = [
     // not on production's four cores. Submit and read only, like Host's release check.
     ['live', 'run.job.submit', 'openvibe.run', []],
     ['live', 'run.job.read', 'openvibe.run', []],
+    // AI's VOD and clip transcripts (Parakeet, 10 s pieces) as Run jobs on the shared node, local on any failure.
+    ['ai', 'run.job.submit', 'openvibe.run', []],
+    ['ai', 'run.job.read', 'openvibe.run', []],
     // WS-L task 4: OpenVibe.Host's scheduled Tools job proof (openvibe-toolsjob.timer, OpenVibe.Examples
     // scripts/tools-job-proof.js) submits a converter job as `probe` and finds its tools.job.* events.
     ['probe', 'tools.job.create', 'openvibe.tools', []],
