@@ -16,7 +16,7 @@ function fakeDesign(byUrl) {
     const asked = [];
     const fetchImpl = async (url, init) => {
         const body = JSON.parse(init.body);
-        asked.push({ url, tool: body.params.name, page: body.params.arguments.url });
+        asked.push({ url, tool: body.params.name, page: body.params.arguments.url, ...(body.params.arguments.auth ? { auth: body.params.arguments.auth } : {}) });
         const page = body.params.arguments.url;
         const answer = byUrl[page];
         if (answer === 'down') throw new Error('ECONNREFUSED');
@@ -81,6 +81,24 @@ const SPIN = { id: 'spinners', rule: 'the-wait-is-the-marks', severity: 'medium'
         const off = createRoomCheck({ designUrl: '', fetchImpl: d.fetchImpl });
         assert.strictEqual(off.enabled, false);
         assert.strictEqual(await off.run('https://shop.example/usage DONE'), null);
+    });
+
+    await ok('a builder\'s preview: opened as the round\'s person, with a token only for that preview; other pages without one', async () => {
+        const PREVIEW = 'https://pa1b2c3--01jabcdefghjkmnpqrstvwxyz0.openvibe.link/';
+        const d = fakeDesign({});
+        const minted = [];
+        const check = createRoomCheck({ designUrl: 'http://127.0.0.1:5090', fetchImpl: d.fetchImpl, tokenFor: async (who) => { minted.push(who); return 'delegated-for-preview'; } });
+        await check.run(`Built it: ${PREVIEW} and the docs https://docs.example/a. DONE`, { owner: 'usr_01JABCDEFGHJKMNPQRSTVWXYZ0' });
+        // The two pages are checked at once, so in either order.
+        assert.deepStrictEqual(d.asked.map((x) => [x.page, x.auth || null]).sort(), [['https://docs.example/a', null], [PREVIEW, 'delegated-for-preview']]);
+        assert.deepStrictEqual(minted, ['usr_01JABCDEFGHJKMNPQRSTVWXYZ0'], 'minted once, for the round\'s person, only for the preview');
+        // No person, a share that is not a preview, or a failed mint: Design is asked without a token, as before.
+        const d2 = fakeDesign({});
+        const quiet = createRoomCheck({ designUrl: 'http://127.0.0.1:5090', fetchImpl: d2.fetchImpl, tokenFor: async () => { throw new Error('no key'); } });
+        await quiet.run(`${PREVIEW} DONE`, { owner: 'usr_01JABCDEFGHJKMNPQRSTVWXYZ0' });
+        await quiet.run(`${PREVIEW} DONE`, {});
+        await quiet.run('https://agents--alex.openvibe.link/ DONE', { owner: 'usr_01JABCDEFGHJKMNPQRSTVWXYZ0' });
+        assert.deepStrictEqual(d2.asked.map((x) => x.auth || null), [null, null, null]);
     });
 
     console.log(results.length ? `\n${results.length} failed` : '\nall passed');

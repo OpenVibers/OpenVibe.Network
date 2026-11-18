@@ -1125,7 +1125,21 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // Group conversations (plan §AD.19): people and agents in one thread; each agent's turn runs through the runs below on
     // the account of the person whose message started the round (server/frame/groups.js). A group is a run too.
     // The check before a room's reviewers: OpenVibe.Design's page audit of the hand-over's links (server/frame/room-check.js).
-    const roomCheck = require('./room-check').createRoomCheck({ designUrl: config && config.designUrl });
+    // A builder's preview is owner-only: the check opens it as the person whose message started the round, with a
+    // delegated token that only Connect takes, read only, for two minutes (room-check.js).
+    const previewToken = async (subject) => {
+        if (!privateKey || !String(privateKey).includes('BEGIN') || !issuer) return null;
+        const user = await db.prepare('SELECT id, subject_id, username, display_name, avatar_url, is_banned, merged_into, deleted_at FROM users WHERE subject_id = ?').get(String(subject || ''));
+        if (!user || user.is_banned || user.merged_into || user.deleted_at) return null;
+        const { delegatedClaims } = require('openvibe-sdk/auth/delegated');
+        const claims = delegatedClaims({
+            user: { id: user.id, subject_id: user.subject_id, username: user.username, display_name: user.display_name, avatar_url: user.avatar_url },
+            by: 'svc:network', services: ['connect'], scope: 'read', ttlSec: 120, issuer, audience: ['openvibe.network'],
+        });
+        for (const k of Object.keys(claims)) if (claims[k] === undefined) delete claims[k];
+        return require('jsonwebtoken').sign(claims, privateKey, { algorithm: 'RS256' });
+    };
+    const roomCheck = require('./room-check').createRoomCheck({ designUrl: config && config.designUrl, tokenFor: previewToken });
     const frameGroups = require('./groups').createFrameGroups({ db, personOf, frameUrl: `http://127.0.0.1:${(config && config.port) || 4000}/api/frame`, log: console, check: roomCheck });
     const frameRuns = createFrameRuns({ svcUrl, personOf, now, extra: { group: frameGroups.adapter } });
     router.use('/runs', frameRuns.router);

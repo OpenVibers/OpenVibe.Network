@@ -6,7 +6,7 @@
  * paid. It runs OpenVibe.Design's page audit (openvibe_design_audit_page, Design #409: the markup against Design's
  * checklist and rules, no model, free) on the pages the hand-over links to.
  *
- *   createRoomCheck({ designUrl, fetchImpl?, timeoutMs? }) → { run(doneText, { mayBlock }), linksIn(text) }
+ *   createRoomCheck({ designUrl, fetchImpl?, timeoutMs?, tokenFor? }) → { run(doneText, { mayBlock, owner }), linksIn(text) }
  *   run → { text, blocked } to post as the check's message, or null when there is nothing to check (no page link, or
  *         Design did not answer). With mayBlock, high-severity findings or a page Design could not read become a
  *         CHANGES line and a numbered list, which sends the builder back. Otherwise every finding is for the reviewers
@@ -15,12 +15,20 @@
  * Network calls only the configured Design base (OV_DESIGN_URL, loopback in production). The page addresses come from
  * an agent's words and are handed to Design, whose guarded reader fetches them (https, public addresses, checked
  * redirects, capped); Network never fetches them itself.
+ *
+ * A builder's preview (`openvibe-link preview`, Connect #194: https://p<6>--<computer>.openvibe.link) is owner-only. For
+ * one, tokenFor(owner) mints a delegated token for the person whose message started the round (svc 'connect', read, two
+ * minutes), and Design sends it to that preview alone (Design #417). Connect opens it only for its own owner (#195), so a
+ * room never sees a preview its person could not.
  */
 const MAX_LINKS = 2;
 // Not pages a builder made: code hosts and media files. Auditing GitHub's own markup would judge GitHub.
 const SKIP_HOSTS = /(^|\.)(github\.com|githubusercontent\.com|gitlab\.com|bitbucket\.org|git\.openvibe\.codes|openvibe\.media)$/i;
 const FILE_PATH = /\.(png|jpe?g|gif|webp|svg|avif|ico|pdf|zip|tar|gz|tgz|json|txt|md|csv|mp4|webm|mov|mp3|wav|ogg|js|mjs|css|diff|patch)$/i;
 const flat = (v, n) => String(v == null ? '' : v).replace(/\s+/g, ' ').trim().slice(0, n);
+// A preview's address (Connect's server/shares.js createPreview): p, six hex, two dashes, the computer's id.
+const PREVIEW_HOST = /^p[0-9a-f]{6}--[0-9a-z]{26}\.openvibe\.link$/;
+const isPreview = (url) => { try { return PREVIEW_HOST.test(new URL(url).hostname); } catch { return false; } };
 
 function linksIn(text) {
     const out = [];
@@ -36,17 +44,17 @@ function linksIn(text) {
     return out;
 }
 
-function createRoomCheck({ designUrl, fetchImpl = globalThis.fetch, timeoutMs = 20_000 } = {}) {
+function createRoomCheck({ designUrl, fetchImpl = globalThis.fetch, timeoutMs = 20_000, tokenFor = null } = {}) {
     const base = String(designUrl || '').replace(/\/+$/, '');
 
     /** One page through Design's audit: { ok: true, result }, { ok: false, unreadable }, or null when Design is not there. */
-    async function audit(url) {
+    async function audit(url, auth = null) {
         let r;
         try {
             r = await fetchImpl(`${base}/mcp`, {
                 method: 'POST', redirect: 'error', signal: AbortSignal.timeout(timeoutMs),
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
-                body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'openvibe_design_audit_page', arguments: { url } } }),
+                body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'openvibe_design_audit_page', arguments: { url, ...(auth ? { auth } : {}) } } }),
             });
         } catch { return null; }
         if (!r || !r.ok) return null;
@@ -64,11 +72,15 @@ function createRoomCheck({ designUrl, fetchImpl = globalThis.fetch, timeoutMs = 
 
     const lineOf = (f, url, many) => `${f.severity}: ${flat(f.says, 180)}${f.fix ? ` Fix: ${flat(f.fix, 140)}` : ''}${Number(f.count) > 1 ? ` (${Number(f.count)} places)` : ''}${f.rule && f.rule !== 'checklist' ? ` [${flat(f.rule, 40)}]` : ''}${many ? ` on ${url}` : ''}`;
 
-    async function run(doneText, { mayBlock = true } = {}) {
+    async function run(doneText, { mayBlock = true, owner = null } = {}) {
         if (!base) return null;
         const links = linksIn(doneText);
         if (!links.length) return null;
-        const seen = (await Promise.all(links.map(async (url) => ({ url, a: await audit(url) })))).filter((x) => x.a);
+        const authFor = async (url) => {
+            if (!owner || !tokenFor || !isPreview(url)) return null;
+            try { return await tokenFor(owner); } catch { return null; }
+        };
+        const seen = (await Promise.all(links.map(async (url) => ({ url, a: await audit(url, await authFor(url)) })))).filter((x) => x.a);
         if (!seen.length) return null;
         const many = seen.length > 1;
         const head = [], faults = [], notes = [];
@@ -89,4 +101,4 @@ function createRoomCheck({ designUrl, fetchImpl = globalThis.fetch, timeoutMs = 
     return { run, linksIn, enabled: !!base };
 }
 
-module.exports = { createRoomCheck, linksIn };
+module.exports = { createRoomCheck, linksIn, isPreview };
