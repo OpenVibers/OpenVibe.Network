@@ -88,7 +88,13 @@ function toTools(actions) {
 /**
  * The handler for POST /mcp. → (req, res)
  */
-function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null, requestOptions = {}, publicPage = null, myTrust = null } = {}) {
+// /mcp/all (plan §AD.26): who this server is when it gives all of OpenVibe as search and execute.
+const ALL_INFO = { name: 'openvibe', title: 'OpenVibe (all tools in two)', version: '1.0' };
+const ALL_INSTRUCTIONS = 'Two tools reach all of OpenVibe: search finds a tool and answers its typed signature; execute runs a short JavaScript script that calls them (await tools.<name>(input)) and returns only what you need. A send, a delete or a pay action in your own apps asks you first.';
+
+function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null, requestOptions = {}, publicPage = null, myTrust = null, codeMode = null } = {}) {
+    const info = codeMode ? ALL_INFO : SERVER_INFO;
+    const instructions = codeMode ? ALL_INSTRUCTIONS : INSTRUCTIONS;
     return async function mcpHandler(req, res) {
         if (req.method !== 'POST') {
             // The transport allows a server to refuse the server-to-client stream.
@@ -116,8 +122,8 @@ function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null
                 return ok(res, id, {
                     protocolVersion: SUPPORTED_VERSIONS.includes(asked) ? asked : PROTOCOL_VERSION,
                     capabilities: { tools: { listChanged: false } },
-                    serverInfo: SERVER_INFO,
-                    instructions: INSTRUCTIONS,
+                    serverInfo: info,
+                    instructions,
                 });
             }
             if (method === 'notifications/initialized' || method === 'notifications/cancelled') {
@@ -133,13 +139,21 @@ function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null
     };
 
     async function listTools(who) {
+        if (codeMode) return codeMode.tools();
+        return ownTools(who);
+    }
+    async function callTool(who, params) {
+        if (codeMode) return codeMode.call(who, params, { list: () => ownTools(who), call: (p) => ownCall(who, p) });
+        return ownCall(who, params);
+    }
+    async function ownTools(who) {
         const actions = await gateway.listActions({ subject: who.subject, callerId: who.caller.id });
         // The same order every time (2026-07-28 asks for a deterministic one): the gateway's actions, then the two reads.
         return [...toTools(actions), ...(publicPage ? [PUBLIC_PERSON_TOOL] : []), ...(myTrust ? [MY_TRUST_TOOL] : [])];
     }
 
     /** One tool call → its MCP result (a failure is a result with isError, never a protocol error). */
-    async function callTool(who, params) {
+    async function ownCall(who, params) {
                 const name = String(params.name || '');
                 const args = params.arguments && typeof params.arguments === 'object' ? params.arguments : {};
                 try {
@@ -175,7 +189,7 @@ function createMcpHandler({ db, config, gateway, publicKey = null, issuer = null
         if (refused) return failHttp(res, refused.status, id, refused.error.code, refused.error.message, refused.error.data);
         try {
             if (method === 'server/discover') {
-                return ok(res, id, mcpKit.discoverResult({ serverInfo: SERVER_INFO, capabilities: { tools: {} }, instructions: INSTRUCTIONS, versions, ttlMs: DISCOVER_TTL_MS }));
+                return ok(res, id, mcpKit.discoverResult({ serverInfo: info, capabilities: { tools: {} }, instructions, versions, ttlMs: DISCOVER_TTL_MS }));
             }
             if (method === 'tools/list') return ok(res, id, mcpKit.listResult('tools', await listTools(who), { ttlMs: TOOLS_TTL_MS, cacheScope: 'private' }));
             if (method === 'tools/call') return ok(res, id, mcpKit.complete(await callTool(who, params)));
