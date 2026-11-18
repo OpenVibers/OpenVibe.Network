@@ -27,6 +27,8 @@ const callers = require('./callers');
 const FIRST_PARTY = Object.freeze({
     design: Object.freeze({ name: 'OpenVibe Design', services: ['design'], blurb: 'Make typefaces and vectors and audit pages, as you.' }),
     vision: Object.freeze({ name: 'OpenVibe Vision', services: ['vision'], blurb: 'Search your own media and look at your images and clips, as you.' }),
+    // Finance's tools are all read only (OpenVibe.Finance #8, 11-18): a read grant reaches every one; nothing moves money.
+    finance: Object.freeze({ name: 'OpenVibe Finance', services: ['finance'], blurb: 'Read your accounts, months, bills, goals and what-ifs, as you. It never moves money.' }),
     // Tools checks its own audience (openvibe.tools), not the Network sign-in's (Tools #414, 11-18).
     tools: Object.freeze({ name: 'OpenVibe Tools', services: ['tools'], audience: ['openvibe.tools'], blurb: 'Run the tools that need you, your own made tools and your automations, as you, paid from your allowance.' }),
 });

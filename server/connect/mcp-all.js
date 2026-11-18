@@ -28,7 +28,8 @@ const cm = require('openvibe-sdk/code-mode');
 const SEARCH = {
     name: 'search',
     description: 'Find OpenVibe tools by words: your own connected apps (send, read, create …), OpenVibe.Tools\' catalogue (convert, '
-        + 'measure, generate, look up), Design\'s rules and page audits, Vision\'s image tools. Answers each tool\'s typed signature, to call from execute.',
+        + 'measure, generate, look up), Design\'s rules and page audits, Vision\'s image tools, Finance\'s read-only money tools (accounts, months, bills, '
+        + 'goals, what if). Answers each tool\'s typed signature, to call from execute.',
     inputSchema: { type: 'object', properties: { query: { type: 'string', maxLength: 300 }, limit: { type: 'integer', minimum: 1, maximum: 30 } }, required: ['query'], additionalProperties: false },
     annotations: { title: 'Find OpenVibe tools', readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
 };

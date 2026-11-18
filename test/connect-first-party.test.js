@@ -75,7 +75,7 @@ const { verifyUserToken } = require('openvibe-sdk/auth');
             await callers.setGrant(db, made.caller.id, 'design', 'read', owner);
             assert.strictEqual(await callers.grantOf(db, made.caller.id, 'design'), 'read');
             await assert.rejects(callers.setGrant(db, made.caller.id, 'github', 'read', owner), (e) => e.code === 'connect.not_connected');
-            assert.deepStrictEqual(Object.keys(FIRST_PARTY).sort(), ['design', 'tools', 'vision']);
+            assert.deepStrictEqual(Object.keys(FIRST_PARTY).sort(), ['design', 'finance', 'tools', 'vision']);
         });
 
         await check('a token for OpenVibe Tools names Tools alone and carries its audience (openvibe.tools), not the sign-in\'s', async () => {

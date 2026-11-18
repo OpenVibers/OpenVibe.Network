@@ -525,7 +525,7 @@ app.post('/mcp', rateLimit({ windowMs: 60_000, max: 600 }), require('./connect/m
 // person's own apps and OpenVibe's public MCP servers (CONNECT_MCP_ALL_SERVERS: prefix=url,…).
 app.post('/mcp/all', rateLimit({ windowMs: 60_000, max: 300 }), require('./connect/mcp').createMcpHandler({
     codeMode: require('./connect/mcp-all').createCodeMode({
-        servers: String(process.env.CONNECT_MCP_ALL_SERVERS || 'tools=https://openvibe.tools/mcp,design=https://openvibe.design/mcp,vision=https://openvibe.vision/mcp')
+        servers: String(process.env.CONNECT_MCP_ALL_SERVERS || 'tools=https://openvibe.tools/mcp,design=https://openvibe.design/mcp,vision=https://openvibe.vision/mcp,finance=https://openvibe.finance/mcp')
             .split(',').map((x) => { const [prefix, url] = x.split('='); return { prefix: String(prefix || '').trim(), url: String(url || '').trim() }; }),
         log: console,
         // OpenVibe Design and Vision as the person, for a caller with a grant in them (./connect/first-party.js).
