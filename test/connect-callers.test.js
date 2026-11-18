@@ -1,7 +1,8 @@
 'use strict';
 // Who may act for a person in Connect (server/connect/auth.js, callers.js, gateway.js), from Opus's security review
 // of E7 (2026-11-06):
-//   - a valid service token is not enough: only the services Connect names (codes, actor) may act for a person;
+//   - a valid service token is not enough: only the services Connect names (codes, actor) may act for a person,
+//     and only with a token that carries network.connect.act (the consent Network checked when it named the person);
 //   - a service's caller row is per person, so one person's grant never opens another person's apps;
 //   - a personal key always works (its secret holds no "_" for the parser to split on);
 //   - a path value of "." or ".." is refused before any request.
@@ -19,10 +20,11 @@ const callers = require('../server/connect/callers');
     const config = { jwt: { issuer: 'https://openvibe.network' } };
     const A = 'usr_01JAB2C3D4E5F6G7H8J9K0MNA1';
     const B = 'usr_01JAB2C3D4E5F6G7H8J9K0MNB2';
-    const token = (client, person) => {
+    // A token Network minted to act for a person carries network.connect.act (Contracts 0.446.0; issueToken).
+    const token = (client, person, cap = ['network.connect.act']) => {
         const now = Math.floor(Date.now() / 1000);
         return serviceAuth.signServiceToken({
-            iss: config.jwt.issuer, sub: `svc:${client}`, actor_type: 'service', aud: ['openvibe.network'], cap: [], ns: [],
+            iss: config.jwt.issuer, sub: `svc:${client}`, actor_type: 'service', aud: ['openvibe.network'], cap, ns: [],
             on_behalf_of: person, iat: now, exp: now + 300, jti: `tok_${crypto.randomBytes(12).toString('hex')}`,
         }, keys.privateKey);
     };
@@ -35,6 +37,13 @@ const callers = require('../server/connect/callers');
     assert.strictEqual(meme.status, 403);
     const codesA = await resolve(token('codes', A));
     assert.ok(codesA.ok && codesA.kind === 'service' && codesA.subject === A, 'codes may act for a person');
+    // A service token minted for other work (no network.connect.act) never reaches the person's apps.
+    for (const cap of [[], ['network.project.member.read']]) {
+        const other = await resolve(token('actor', A, cap));
+        assert.deepStrictEqual([other.ok, other.status, other.code], [false, 403, 'connect.not_consented'], `cap ${JSON.stringify(cap)} is not consent`);
+    }
+    const actorA = await resolve(token('actor', A));
+    assert.ok(actorA.ok && actorA.service === 'actor', 'actor with network.connect.act acts for the person');
 
     // Per person: A's grant to codes is not B's.
     const codesB = await resolve(token('codes', B));

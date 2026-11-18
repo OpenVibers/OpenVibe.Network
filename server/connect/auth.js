@@ -36,6 +36,11 @@ async function resolveCaller(db, req, { config, publicKey, issuer } = {}) {
     if (token.split('.').length === 3 && publicKey) {
         const v = serviceAuth.verifyServiceToken(token, { publicKey, issuer: issuer || (config && config.jwt && config.jwt.issuer), audience: 'openvibe.network' });
         if (v.ok && v.claims.on_behalf_of) {
+            // The token must carry network.connect.act (Contracts 0.446.0): the consent Network checked when it named the
+            // person (issueToken), so a service token minted for any other work never reaches the person's apps.
+            if (!(Array.isArray(v.claims.cap) && v.claims.cap.includes('network.connect.act'))) {
+                return { ok: false, status: 403, code: 'connect.not_consented', detail: 'this token may not act for a person in Connect' };
+            }
             const person = String(v.claims.on_behalf_of);
             const service = String(v.claims.sub || '').replace(/^svc:/, '') || 'service';
             // A valid service token is not enough: a person's app credentials are reachable only by the services
