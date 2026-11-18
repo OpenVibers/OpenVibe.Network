@@ -576,7 +576,47 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         res.flushHeaders();
         const write = (event, id, data) => { if (open) res.write(`${id != null ? `id: ${id}\n` : ''}event: ${event}\ndata: ${JSON.stringify({ type: event, ...data })}\n\n`); };
         const until = now() + STREAM_MS;
+        // 11-18 (the owner: "stream response"): while an Actor turn runs, its words as the model writes them. Actor's
+        // own task stream sends `delta` pieces (?deltas=1, tasks/stream.js); they go on as `delta { live: true, text }`,
+        // unstored, until the stored answer comes as a step like any other.
+        let follow = null;
+        const followDeltas = (run) => {
+            if (!run || target.a.product !== 'actor' || !['running', 'planning'].includes(run.status)) return;
+            const m = /\/chat\/(tsk_[0-9A-HJKMNP-TV-Z]{26})(?:[/?#]|$)/.exec(String(run.url || ''));
+            const turn = m && m[1];
+            if (!turn || (follow && follow.turn === turn)) return;
+            if (follow) follow.ac.abort();
+            const ac = new AbortController();
+            follow = { turn, ac };
+            (async () => {
+                try {
+                    const r = await fetchImpl(new URL(`/api/v1/tasks/${encodeURIComponent(turn)}/events?deltas=1&after=9999999`, base.actor).href,
+                        { headers: { Accept: 'text/event-stream', Authorization: ctx.auth }, redirect: 'manual', signal: ac.signal });
+                    if (!r.ok || !r.body || typeof r.body.getReader !== 'function') return;
+                    const reader = r.body.getReader();
+                    const dec = new TextDecoder();
+                    let buf = '';
+                    while (open && !ac.signal.aborted) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        buf += dec.decode(value, { stream: true });
+                        for (let i = buf.indexOf('\n\n'); i >= 0; i = buf.indexOf('\n\n')) {
+                            const block = buf.slice(0, i); buf = buf.slice(i + 2);
+                            const ev = /^event: ?(.+)$/m.exec(block);
+                            const data = /^data: ?(.+)$/m.exec(block);
+                            if (!ev) continue;
+                            if (ev[1].trim() === 'delta' && data) {
+                                let d = null; try { d = JSON.parse(data[1]); } catch { d = null; }
+                                if (d && typeof d.text === 'string' && d.text) write('delta', null, { live: true, text: d.text.slice(0, 4000), n: Number(d.n) || 0 });
+                            } else if (ev[1].trim() === 'end') { ac.abort(); return; }
+                        }
+                        if (buf.length > 65536) buf = buf.slice(-65536);
+                    }
+                } catch { /* the polled steps still carry the answer */ }
+            })();
+        };
         try {
+            followDeltas(await target.a.get(ctx.auth, ctx.owner, target.id).catch(() => null));
             while (open && now() < until) {
                 const { steps } = await target.a.steps(ctx.auth, ctx.owner, target.id, { after, limit: 100 });
                 const fresh = steps.filter((s) => s.seq > after);
@@ -584,6 +624,7 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
                 if (fresh.length) {
                     const run = await target.a.get(ctx.auth, ctx.owner, target.id).catch(() => null);
                     if (run) {
+                        followDeltas(run);
                         write('run', after, { run });
                         if (['done', 'failed', 'stopped'].includes(run.status)) { write('end', after, { run_id: run.ref || req.params.ref, status: run.status }); break; }
                     }
@@ -593,6 +634,7 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         } catch (err) {
             write('error', null, { error: err && err.status ? err.message : 'The run could not be read', code: (err && err.code) || 'runs.error' });
         }
+        if (follow) follow.ac.abort();
         if (open) res.end();
     });
 
