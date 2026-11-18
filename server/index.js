@@ -528,6 +528,10 @@ app.post('/mcp/all', rateLimit({ windowMs: 60_000, max: 300 }), require('./conne
         servers: String(process.env.CONNECT_MCP_ALL_SERVERS || 'tools=https://openvibe.tools/mcp,design=https://openvibe.design/mcp,vision=https://openvibe.vision/mcp')
             .split(',').map((x) => { const [prefix, url] = x.split('='); return { prefix: String(prefix || '').trim(), url: String(url || '').trim() }; }),
         log: console,
+        // OpenVibe Design and Vision as the person, for a caller with a grant in them (./connect/first-party.js).
+        firstParty: require('./connect/first-party').createFirstParty({
+            db, privateKey, issuer: config.jwt.issuer, approvals: require('./connect/approvals'), writeLog: connectGateway.writeLog, log: console,
+        }),
     }),
     db, config, gateway: connectGateway, publicKey, issuer: config.jwt.issuer,
     publicPage: async (handle) => {

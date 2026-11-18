@@ -26,7 +26,11 @@ const calls = js.match(/\bel\('[a-z]+', \{[^{}]*\}, (?!\[)[^)]/g) || [];
 assert.deepStrictEqual(calls, [], `el() with children not in a list: ${calls.join(' | ')}`);
 
 // The names the panel shows come from the catalogue.
-assert.match(page, /data-ovk-app-names="\$\{esc\(JSON\.stringify\(Object\.fromEntries\(registry\.all\(\)\.map\(\(d\) => \[d\.key, d\.name\]\)\)\)\)\}"/);
+assert.match(page, /data-ovk-app-names="\$\{esc\(JSON\.stringify\(\{ \.\.\.Object\.fromEntries\(registry\.all\(\)\.map\(\(d\) => \[d\.key, d\.name\]\)\)/, 'the catalogue\'s names');
+// 11-18: OpenVibe's own apps (Design, Vision) are rows too, always, by name (server/connect/first-party.js).
+assert.match(page, /FIRST_PARTY\)\.map\(\(\[k, v\]\) => \[k, v\.name\]\)/);
+assert.match(page, /data-ovk-first-party="\$\{esc\(JSON\.stringify\(Object\.keys\(require\('\.\/first-party'\)\.FIRST_PARTY\)\)\)\}"/);
+assert.match(js, /data-ovk-first-party/);
 assert.ok(registry.all().every((d) => typeof d.name === 'string' && d.name && /^[a-z][a-z0-9_]*$/.test(d.key)), 'every app has a key and a name');
 // The chips are at least 40 px tall, 44 px on a phone.
 assert.match(page, /\.ovk-seg-b\{min-height:40px/);

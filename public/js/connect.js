@@ -207,6 +207,10 @@
             var callers = (res[0] && res[0].callers) || [];
             var creds = (res[1] && res[1].credentials) || [];
             var apps = [];
+            // OpenVibe's own apps (Design, Vision) are the person's own account: always there to grant (2026-11-18).
+            var own = [];
+            try { own = JSON.parse(panel.getAttribute('data-ovk-first-party') || '[]') || []; } catch (e) { own = []; }
+            own.forEach(function (a) { if (apps.indexOf(a) === -1) apps.push(a); });
             creds.forEach(function (c) { if (apps.indexOf(c.app) === -1) apps.push(c.app); });
             panel.replaceChildren();
             if (!apps.length) { panel.append(el('p', { class: 'ovk-note', text: 'Connect an app first, then give your callers a grant in it.' })); return; }
