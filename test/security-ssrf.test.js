@@ -110,6 +110,7 @@ const PATTERNS = {
 };
 // The reviewed list: where each goes, and why a stranger cannot choose it (or how it is guarded).
 const REVIEWED = {
+    'server/connect/mcp-all.js fetch': [1, 'All of OpenVibe in two tools (plan §AD.26): only the operator-configured MCP servers (CONNECT_MCP_ALL_SERVERS, default openvibe.tools/design/vision /mcp), never an address a caller sends; no redirect is followed (redirect: error), 20 s, and no caller key is forwarded'],
     'server/admin/setup-grants.js fetch': [4, 'Let my agent do it (plan AB.44), Stop cancelling its task (POST /api/v1/tasks/<checked tsk_ id>/cancel, 11-14 review) and reading that task again until it ended (GET /api/v1/tasks/<the same checked tsk_ id>, three times at most, 11-15 review), and its screen beside the step (the task, its desk and its picture on fixed paths built from a checked tsk_ id; a picture address in Actor\'s answer is never followed): Actor\'s operator-configured internal URL (config.services.actor.internalUrl), the fixed /api/v1/tasks path (a setup task), the owner\'s own Bearer, redirects refused, a 15 s timeout; never a request-chosen host (11-14)'],
     'server/admin/storage.js fetch': [1, 'the owner\'s cloud scan: Media\'s internal URL from config, a fixed path, Network\'s service token with the owner as X-OV-Subject, redirects refused (11-14)'],
     'server/feed/views-beacon.js fetch': [1, 'the feed\'s view beacon: Media\'s internal URL from config, the fixed /api/v1/views path, card refs parsed by a strict pattern, redirects refused (11-14)'],
