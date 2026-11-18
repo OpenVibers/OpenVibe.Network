@@ -432,6 +432,10 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         let place = placeFor({ ...b, text });
         if (toActor) place = 'actor';
         else if (toCodes) place = 'code';
+        // Code mode with no repository (plan §AD.28 item 3; the owner, 11-18: Codes "should take it"): Codes' make mode,
+        // which finds one in the words or makes a new one on OpenVibe Git (scratch).
+        const codeMode = !toActor && (b.kind === 'code' || toCodes) && !(b.target && typeof b.target === 'object' && b.target.repo);
+        if (codeMode) place = 'code';
         // A way chosen on the session's chip (Actor's engines, 11-16: an agent, one model, the Decisions API, a harness …)
         // is Actor's to run.
         else if (engineOf(b.engine) && engineOf(b.engine) !== 'auto') place = 'actor';
@@ -461,7 +465,10 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
             }
         };
         if (place === 'actor') run = await viaActor({ ...forActor, kind: b.kind && ['task', 'goal', 'machine'].includes(b.kind) ? b.kind : (where && where.kind === 'machine' ? 'machine' : 'task') });
-        if (!run && place === 'code') run = await codesMake(auth, owner, text, idempotencyKey, codesHow);
+        if (!run && place === 'code') run = await codesMake(auth, owner, text, idempotencyKey, codeMode ? { ...codesHow, scratch: true } : codesHow);
+        // Code mode Codes could not take (no OpenVibe Git, no username for a new repository): the person's Actor answers,
+        // never a refusal for a missing repository.
+        if (!run && codeMode) run = await viaActor({ ...forActor, kind: 'task' });
         if (!run && place === 'machine') run = await actor.start(auth, owner, { ...forActor, kind: 'machine' }, { idempotencyKey });
         if (!run) run = starterFor(b) === actor ? await viaActor(forActor) : await starterFor(b).start(auth, owner, { ...b, text }, { idempotencyKey });
         res.set('X-OV-Placed', place === 'given' ? 'asked' : run.kind === 'code' ? 'codes' : run.kind === 'machine' ? 'machine' : String(run.ref || '').startsWith('chat:') ? 'vibe' : 'actor');
