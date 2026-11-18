@@ -75,7 +75,15 @@ const { verifyUserToken } = require('openvibe-sdk/auth');
             await callers.setGrant(db, made.caller.id, 'design', 'read', owner);
             assert.strictEqual(await callers.grantOf(db, made.caller.id, 'design'), 'read');
             await assert.rejects(callers.setGrant(db, made.caller.id, 'github', 'read', owner), (e) => e.code === 'connect.not_connected');
-            assert.deepStrictEqual(Object.keys(FIRST_PARTY).sort(), ['design', 'vision']);
+            assert.deepStrictEqual(Object.keys(FIRST_PARTY).sort(), ['design', 'tools', 'vision']);
+        });
+
+        await check('a token for OpenVibe Tools names Tools alone and carries its audience (openvibe.tools), not the sign-in\'s', async () => {
+            const t = await firstParty.token({ subject: owner, caller: made.caller }, 'tools', 'write');
+            const c = JSON.parse(Buffer.from(t.split('.')[1], 'base64url').toString());
+            assert.deepStrictEqual([c.typ, c.svc, c.aud, c.scope, c.act], ['delegated', ['tools'], ['openvibe.tools'], 'write', { sub: made.caller.id }]);
+            const d = JSON.parse(Buffer.from((await firstParty.token({ subject: owner, caller: made.caller }, 'design', 'read')).split('.')[1], 'base64url').toString());
+            assert.deepStrictEqual(d.aud, ['openvibe.network'], 'Design keeps the sign-in audience');
         });
 
         await check('read: the person, by a delegated token for Design alone, the key as the actor; a change is refused', async () => {

@@ -27,6 +27,8 @@ const callers = require('./callers');
 const FIRST_PARTY = Object.freeze({
     design: Object.freeze({ name: 'OpenVibe Design', services: ['design'], blurb: 'Make typefaces and vectors and audit pages, as you.' }),
     vision: Object.freeze({ name: 'OpenVibe Vision', services: ['vision'], blurb: 'Search your own media and look at your images and clips, as you.' }),
+    // Tools checks its own audience (openvibe.tools), not the Network sign-in's (Tools #414, 11-18).
+    tools: Object.freeze({ name: 'OpenVibe Tools', services: ['tools'], audience: ['openvibe.tools'], blurb: 'Run the tools that need you, your own made tools and your automations, as you, paid from your allowance.' }),
 });
 const isFirstParty = (app) => Object.prototype.hasOwnProperty.call(FIRST_PARTY, String(app || ''));
 const TTL_SEC = 600;
@@ -53,7 +55,7 @@ function createFirstParty({ db, privateKey, issuer, approvals, writeLog = null, 
         const claims = delegatedClaims({
             user: { id: user.id, subject_id: user.subject_id, username: user.username, display_name: user.display_name, avatar_url: user.avatar_url },
             by: String(who.caller.id), services: FIRST_PARTY[app].services, scope: scope === 'write' ? 'write' : 'read',
-            ttlSec: TTL_SEC, issuer, audience: ['openvibe.network'], now: now(),
+            ttlSec: TTL_SEC, issuer, audience: FIRST_PARTY[app].audience || ['openvibe.network'], now: now(),
         });
         for (const k of Object.keys(claims)) if (claims[k] === undefined) delete claims[k];
         return jwt.sign(claims, privateKey, { algorithm: 'RS256' });
