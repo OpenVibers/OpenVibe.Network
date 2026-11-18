@@ -94,5 +94,19 @@ const AUTH = 'Bearer tok_abcdefghijklmnopqrstuvwxyz';
     // Without a fleet reader (or nothing reported yet): no harnesses, and the rest still answers.
     assert.deepStrictEqual(got.body.harnesses, []);
 
+    // road.code (11-18, plan §AD.28 item 4): Code mode's next task on the coding order. Tower is online with Claude Code
+    // signed in and room; the laptop's Claude Code is signed out; Codex on the desk is out of its week.
+    const coding = async () => [
+        { id: 'dev_desk', name: 'Desk', online: true, fleet: [{ agent: 'codex', name: 'Codex', installed: true, signed_in: true, windows: [{ name: 'week', pct: 100 }] }] },
+        { id: 'dev_tower', name: 'Tower', online: true, fleet: [{ agent: 'claude-code', name: 'Claude Code', installed: true, signed_in: true, windows: [{ name: '5-hour', pct: 40 }] }] },
+        { id: 'dev_lap', name: 'Laptop', online: true, fleet: [{ agent: 'claude-code', name: 'Claude Code', installed: true, signed_in: false }] },
+    ];
+    const code = (await createResources({ svcUrl, fetchImpl, computers, fleet: coding, log: { warn() {} } }).get({ auth: AUTH, subject: 'usr_me' })).body.road.code;
+    assert.deepStrictEqual([code.road, code.harness, code.plan, code.machine], ['plan', 'claude-code', 'Anthropic', { id: 'dev_tower', name: 'Tower' }], JSON.stringify(code));
+    assert.match(code.say, /^(Claude Code|claude-code) runs it on Tower, on your Anthropic plan\.$/);
+    // Nothing of theirs can: the key AI allows for Codes ('*' above) takes it; the agent and chat roads are unchanged.
+    const keyed = (await createResources({ svcUrl, fetchImpl, computers, fleet: async () => [], log: { warn() {} } }).get({ auth: AUTH, subject: 'usr_me' })).body.road;
+    assert.deepStrictEqual([keyed.code.road, keyed.code.provider, keyed.agent.road], ['key', 'anthropic', 'free']);
+
     console.log('frame-resources: one read of your AI (allowance, keys by name, who may use them, Balance), as you, nothing secret');
 })().catch((err) => { console.error(err); process.exit(1); });

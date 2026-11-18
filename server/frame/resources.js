@@ -10,7 +10,7 @@
  *     keys:      [{ provider, status, checked_at }]                               their own keys (names and states only)
  *     key_apps:  [{ service, providers }]                                          which services may use those keys
  *     balance:   { amount, scale, currency, purpose } | null                       Billing's Balance (USD, for AI)
- *     road:      { agent, chat }                                                    what takes the next turn in each mode
+ *     road:      { agent, chat, code }                                              what takes the next turn in each mode
  *     harnesses: [{ agent, name, machines, signed_in, windows: [{ name, pct, resets_at }] }]
  *                                                                                  the coding agents on their computers
  *     partial:   ['ai' | 'billing' | 'computers']                                  what did not answer
@@ -26,6 +26,12 @@
  * composer's chip says what Actor will do instead of keeping its own copy of the order: { road, need, why, say, ladder,
  * provider?, machine?, left?, chat_only?, resets_at? }.
  *
+ * `road.code` (2026-11-18, plan §AD.28 item 4; SDK 0.186's coding order) is what would run Code mode's next task: a coding
+ * agent signed in with the person's own plan on an online computer of theirs with room in its windows (from the same
+ * machines `harnesses` reads), then a key allowed for Codes, then the free AI when a coding turn fits, else why not. It
+ * adds { harness, harness_name, plan } to the fields above. Codes answers the same over its own reading at
+ * GET /api/v1/me/road.
+ *
  * No key material, hint or account name passes: a provider's name, a state and a time. Signed out: 401.
  */
 
@@ -36,6 +42,10 @@ const PROVIDER = /^[a-z][a-z0-9_-]{0,40}$/;
 const KEY_OK = (status) => !status || /^(ok|ready|active|valid)$/i.test(status);
 const SERVICE = /^[a-z][a-z0-9.:-]{0,60}$/;
 const clip = (s, n) => String(s == null ? '' : s).slice(0, n);
+// The account each coding agent signs in to (Codes' engine/logins.js CLIS): what "your plan" is on the plan road.
+const PLAN_OF = { claude: 'Anthropic', 'claude-code': 'Anthropic', codex: 'OpenAI', opencode: 'OpenCode', 'command-code': 'Command Code', 'minimax-code': 'MiniMax' };
+// A window this full has no room for a new task (Codes' FULL_PCT).
+const FULL_PCT = 95;
 
 function createResources({ svcUrl = (n, f) => f, fetchImpl = globalThis.fetch, computers = null, fleet = null, log = console } = {}) {
     async function read(service, fallback, path, auth) {
@@ -99,13 +109,47 @@ function createResources({ svcUrl = (n, f) => f, fetchImpl = globalThis.fetch, c
         };
         const slim = (r) => {
             const out = { road: r.road, need: r.need, why: clip(r.why, 300), say: clip(roads.say(r), 300), ladder: r.ladder.map((s) => ({ road: s.road, open: s.open, why: clip(s.why, 200) })) };
-            for (const k of ['provider', 'machine', 'left', 'known', 'chat_only', 'resets_at']) if (r[k] !== undefined) out[k] = r[k];
+            for (const k of ['provider', 'machine', 'left', 'known', 'chat_only', 'resets_at', 'harness', 'harness_name', 'plan']) if (r[k] !== undefined) out[k] = r[k];
             return out;
         };
-        body.road = { agent: slim(roads.pick({ ...facts, mode: 'agent' })), chat: slim(roads.pick({ ...facts, mode: 'chat' })) };
+        body.road = { agent: slim(roads.pick({ ...facts, mode: 'agent' })), chat: slim(roads.pick({ ...facts, mode: 'chat' })),
+            code: slim(roads.pick({ ...facts, mode: 'code', app: 'codes', fleet: codeFleetOf(machines.status === 'fulfilled' ? machines.value : []) })) };
         return { status: 200, body };
     }
     return { get };
+}
+
+/** A window's percentage used, from pct or used/limit; null when it says neither. */
+function pctOf(w) {
+    if (!w || typeof w !== 'object') return null;
+    let pct = Number(w.pct);
+    const used = Number(w.used ?? w.used_percent), limit = Number(w.limit ?? w.total);
+    if (!Number.isFinite(pct) && Number.isFinite(used) && Number.isFinite(limit) && limit > 0) pct = (used / limit) * 100;
+    return Number.isFinite(pct) ? pct : null;
+}
+
+/**
+ * Bot's machines → roads' coding facts: each coding agent on each machine, with its account as the plan; online only when
+ * the machine is and the agent is installed and signed in there; no room (window_left 0) when a window is full. The one
+ * with the most room comes first.
+ */
+function codeFleetOf(machines) {
+    const out = [];
+    for (const m of Array.isArray(machines) ? machines : []) {
+        if (!m || !Array.isArray(m.fleet)) continue;
+        for (const e of m.fleet.slice(0, 20)) {
+            const agent = String((e && e.agent) || '');
+            if (!/^[a-z][a-z0-9-]{1,40}$/.test(agent)) continue;
+            const pcts = (Array.isArray(e.windows) ? e.windows : []).slice(0, 10).map(pctOf).filter((p) => p != null);
+            const most = pcts.length ? Math.max(...pcts) : 0;
+            out.push({
+                machine: m.id == null ? null : clip(m.id, 80), machine_name: clip(m.name || m.id, 60) || null, harness: agent,
+                harness_name: clip(e.name || agent, 60), plan: PLAN_OF[agent] || null,
+                online: m.online === true && e.installed !== false && e.signed_in === true, window_left: most >= FULL_PCT ? 0 : null, _most: most,
+            });
+        }
+    }
+    return out.sort((a, b) => a._most - b._most).map(({ _most, ...f }) => f);
 }
 
 /** Bot's machines (each with the fleet its Link reports) → each coding agent once: where it is, signed in, its windows. */
@@ -136,4 +180,4 @@ function harnessesOf(machines) {
     return [...by.values()].slice(0, 20).map((h) => ({ ...h, machines: h.machines.slice(0, 10), windows: [...h.windows.values()] }));
 }
 
-module.exports = { createResources, harnessesOf };
+module.exports = { createResources, harnessesOf, codeFleetOf };
