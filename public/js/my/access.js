@@ -7,7 +7,7 @@
      POST /api/v1/me/nodes/access-requests/:id/answer { approve, scopes?, duration_seconds? }: only narrower or shorter
      GET  /api/v1/me/nodes/access-grants               POST …/:id/revoke
      GET  /api/v1/me/nodes/access-audit                each use of a grant
-     GET/PUT /api/v1/me/nodes/:principal/access-settings  the three switches on a machine's card
+     GET/PUT /api/v1/me/nodes/:principal/access-settings  the four switches on a machine's card
      GET  /api/v1/me/agents   PUT …/:id/allow-others   GET /api/v1/me/agent-threads   POST …/:id/stop
    Uses mcEl, mcIcon, mcAgo and mcSay from machines.js. Every name is a text node. */
 
@@ -144,7 +144,7 @@ async function loadMachineAccess() {
     const ended = [...requests.filter((r) => r.status === 'denied' || r.status === 'expired'), ...grants.filter((g) => !maLive(g))]
         .sort((a, b) => Date.parse(b.answered_at || b.revoked_at || b.expires_at || 0) - Date.parse(a.answered_at || a.revoked_at || a.expires_at || 0)).slice(0, 10);
     const parts = [mcEl('h3', 'ma-h', [mcEl('span', 'icon', [mcIcon('fa-key')]), ' Access between machines'])];
-    parts.push(mcEl('p', 'muted ma-note', ['A machine can ask another for access: to send files, talk to its agents, watch its screen. Each owner answers, and can take it back at any time. People can only ask if they follow you and the machine allows it (on its card above).']));
+    parts.push(mcEl('p', 'muted ma-note', ['A machine can ask another for access: to send files, talk to its agents, watch its screen. Each owner answers, and can take it back at any time. People can only ask where the machine allows it (on its card above): people you follow, or anyone if you chose that.']));
     if (asking.length) parts.push(maSection(`Asking you (${asking.length})`, '', asking.map(maAskCard)));
     if (live.length) parts.push(maSection('Allowed now', '', [mcEl('ul', 'ma-grants', live.map(maGrantRow))]));
     if (waiting.length) {
@@ -253,7 +253,8 @@ function mcAccessSwitches(m, side) {
     const all = [
         ['auto_agent_send', 'My other computers may use it without asking', 'Your own computers may send it files and tasks without waiting for your yes.', 'fa-laptop', 'you'],
         ['agents_talk', 'Its agents may work with other agents', 'Agents here may hand tasks to your other agents, and to other people\u2019s agents where those people allow it.', 'fa-robot', 'you'],
-        ['others_may_ask', 'Let people ask to use it', 'People you follow may ask to use this computer. You say yes or no each time; off, nobody can ask.', 'fa-user-group', 'others'],
+        ['others_may_ask', 'Let people ask to use it', 'People you follow may ask to use this computer (or anyone, with the switch below). You say yes or no each time; off, nobody can ask.', 'fa-user-group', 'others'],
+        ['anyone_may_ask', 'Anyone may ask, not only people you follow', 'Everyone on OpenVibe may ask. You still say yes or no each time, and nobody can ask more than five times a day.', 'fa-earth-americas', 'others'],
     ];
     const rows = all.filter((r) => !side || r[4] === side);
     const boxes = {};

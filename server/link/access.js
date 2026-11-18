@@ -70,24 +70,25 @@ async function owner(db, req) {
 }
 
 async function settings(db, principal) {
-    const row = await db.prepare('SELECT others_may_ask, auto_agent_send, agents_talk FROM link_access_settings WHERE principal_id = ?').get(principal);
-    return { others_may_ask: !!row?.others_may_ask, auto_agent_send: !!row?.auto_agent_send, agents_talk: !!row?.agents_talk };
+    const row = await db.prepare('SELECT others_may_ask, anyone_may_ask, auto_agent_send, agents_talk FROM link_access_settings WHERE principal_id = ?').get(principal);
+    return { others_may_ask: !!row?.others_may_ask, anyone_may_ask: !!row?.anyone_may_ask, auto_agent_send: !!row?.auto_agent_send, agents_talk: !!row?.agents_talk };
 }
 
 async function putSettings(db, principal, who, body) {
     const p = await machine(db, principal);
     if (!p || p.owner_subject !== who) fail(404, 'link_access.machine_not_found', 'no such machine of yours');
-    const keys = ['others_may_ask', 'auto_agent_send', 'agents_talk'];
+    const keys = ['others_may_ask', 'anyone_may_ask', 'auto_agent_send', 'agents_talk'];
     if (!body || typeof body !== 'object' || Object.keys(body).some((key) => !keys.includes(key)) ||
         keys.some((key) => body[key] !== undefined && typeof body[key] !== 'boolean')) {
         fail(422, 'link_access.invalid_settings', 'settings must be boolean owner switches');
     }
     const old = await settings(db, principal);
     const next = Object.fromEntries(keys.map((key) => [key, body[key] === undefined ? old[key] : body[key]]));
-    await db.prepare(`INSERT INTO link_access_settings (principal_id, others_may_ask, auto_agent_send, agents_talk, updated_at)
-        VALUES (?, ?, ?, ?, ?) ON CONFLICT (principal_id) DO UPDATE SET others_may_ask = excluded.others_may_ask,
-        auto_agent_send = excluded.auto_agent_send, agents_talk = excluded.agents_talk, updated_at = excluded.updated_at`)
-        .run(principal, +next.others_may_ask, +next.auto_agent_send, +next.agents_talk, iso(Date.now()));
+    await db.prepare(`INSERT INTO link_access_settings (principal_id, others_may_ask, anyone_may_ask, auto_agent_send, agents_talk, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (principal_id) DO UPDATE SET others_may_ask = excluded.others_may_ask,
+        anyone_may_ask = excluded.anyone_may_ask, auto_agent_send = excluded.auto_agent_send, agents_talk = excluded.agents_talk,
+        updated_at = excluded.updated_at`)
+        .run(principal, +next.others_may_ask, +next.anyone_may_ask, +next.auto_agent_send, +next.agents_talk, iso(Date.now()));
     return next;
 }
 
@@ -127,10 +128,14 @@ async function ask(db, from, body, now = Date.now()) {
         const switches = await settings(db, to.id);
         if (!switches.others_may_ask) fail(403, 'link_access.others_off', 'the owner is not accepting requests');
         // The owner's follow graph (server/identity/follows.js): its one target kind today is a Live channel, named
-        // by the target person's subject, so an active channel follow of the asker is the person's follow.
-        const followed = await db.prepare("SELECT 1 FROM user_follows WHERE follower_subject = ? AND target_type = 'channel' AND target_id = ? AND active = 1")
-            .get(to.owner_subject, from.owner_subject);
-        if (!followed) fail(403, 'link_access.not_followed', 'the receiving owner has not added the asker');
+        // by the target person's subject, so an active channel follow of the asker is the person's follow. "Anyone may
+        // ask" (11-14) opens the asking to every signed-in person; the owner still answers each request, and the limits
+        // below (five a day, a day's wait after a refusal) hold for everyone.
+        if (!switches.anyone_may_ask) {
+            const followed = await db.prepare("SELECT 1 FROM user_follows WHERE follower_subject = ? AND target_type = 'channel' AND target_id = ? AND active = 1")
+                .get(to.owner_subject, from.owner_subject);
+            if (!followed) fail(403, 'link_access.not_followed', 'the receiving owner has not added the asker');
+        }
     }
     const agent = body?.from_agent == null ? null : String(body.from_agent);
     if (agent) {
