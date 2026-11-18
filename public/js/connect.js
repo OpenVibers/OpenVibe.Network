@@ -61,6 +61,41 @@
         return n;
     }
 
+    /** A line under a control that says what went wrong, in place of a browser alert (11-18). */
+    function sayNear(node, text) {
+        var host = node && (node.closest('.ovk-grant-row, .ovk-row, li, p, div') || node.parentNode);
+        if (!host) return;
+        var box = host.querySelector(':scope > .ovk-result[data-ovk-near]');
+        if (!box) { box = el('p', { class: 'ovk-result ovk-result--bad', 'data-ovk-near': '1', role: 'alert' }); host.append(box); }
+        box.hidden = false;
+        box.textContent = text;
+    }
+
+    /**
+     * Ask in place (11-18, no browser confirm): the first tap turns the button into "Tap again to …" for four seconds;
+     * the second does it.
+     */
+    function askTwice(btn, words, act) {
+        if (btn.getAttribute('data-ovk-armed') === '1') {
+            btn.removeAttribute('data-ovk-armed');
+            btn.classList.remove('is-armed');
+            if (btn.__ovkWas != null) btn.innerHTML = btn.__ovkWas;
+            act();
+            return;
+        }
+        btn.__ovkWas = btn.innerHTML;
+        btn.setAttribute('data-ovk-armed', '1');
+        btn.classList.add('is-armed');
+        btn.textContent = words;
+        clearTimeout(btn.__ovkT);
+        btn.__ovkT = setTimeout(function () {
+            if (btn.getAttribute('data-ovk-armed') !== '1') return;
+            btn.removeAttribute('data-ovk-armed');
+            btn.classList.remove('is-armed');
+            btn.innerHTML = btn.__ovkWas;
+        }, 4000);
+    }
+
     function say(box, text, kind) {
         if (!box) return;
         box.hidden = false;
@@ -126,19 +161,21 @@
             btn.addEventListener('click', function () {
                 var app = btn.getAttribute('data-ovk-revoke');
                 var label = btn.getAttribute('data-ovk-label') || 'default';
-                if (!window.confirm('Revoke the credential for ' + app + '? The key is gone from OpenVibe.')) return;
-                api('/credentials/' + encodeURIComponent(app) + '/' + encodeURIComponent(label), { method: 'DELETE' })
-                    .then(function () { window.location.reload(); })
-                    .catch(function (e) { window.alert(e.message); });
+                askTwice(btn, 'Tap again: the key is gone from OpenVibe', function () {
+                    api('/credentials/' + encodeURIComponent(app) + '/' + encodeURIComponent(label), { method: 'DELETE' })
+                        .then(function () { window.location.reload(); })
+                        .catch(function (e) { sayNear(btn, e.message); });
+                });
             });
         });
         document.querySelectorAll('[data-ovk-revoke-caller]').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var id = btn.getAttribute('data-ovk-revoke-caller');
-                if (!window.confirm('Revoke this caller? Its grants go with it.')) return;
-                api('/callers/' + encodeURIComponent(id), { method: 'DELETE' })
-                    .then(function () { window.location.reload(); })
-                    .catch(function (e) { window.alert(e.message); });
+                askTwice(btn, 'Tap again: its grants go with it', function () {
+                    api('/callers/' + encodeURIComponent(id), { method: 'DELETE' })
+                        .then(function () { window.location.reload(); })
+                        .catch(function (e) { sayNear(btn, e.message); });
+                });
             });
         });
     }
@@ -173,31 +210,45 @@
             creds.forEach(function (c) { if (apps.indexOf(c.app) === -1) apps.push(c.app); });
             panel.replaceChildren();
             if (!apps.length) { panel.append(el('p', { class: 'ovk-note', text: 'Connect an app first, then give your callers a grant in it.' })); return; }
+            var names = {};
+            try { names = JSON.parse(panel.getAttribute('data-ovk-app-names') || '{}') || {}; } catch (e) { names = {}; }
             var rows = [];
             callers.forEach(function (call) {
                 apps.forEach(function (app) {
-                    var level = (call.grants || {})[app] || '';
-                    var select = el('select', { class: 'ovk-grant-select', 'data-ovk-grant': call.id, 'data-ovk-app': app });
-                    [['', 'No access'], ['read', 'Read'], ['write', 'Read and write']].forEach(function (opt) {
-                        var o = el('option', { value: opt[0], text: opt[1] });
-                        if (opt[0] === level) o.selected = true;
-                        select.append(o);
-                    });
-                    select.addEventListener('change', function () {
-                        api('/callers/' + encodeURIComponent(call.id) + '/grants', { method: 'PUT', body: { app: app, level: select.value || null } })
-                            .catch(function (e) { window.alert(e.message); });
-                    });
-                    rows.push(el('div', { class: 'ovk-grant-row' },
-                        el('span', { class: 'ovk-grant-who', text: call.name }),
-                        el('span', { class: 'ovk-grant-app', text: app }),
-                        select));
+                    rows.push(grantRow(call, app, names[app] || app, (call.grants || {})[app] || ''));
                 });
             });
             if (!rows.length) { panel.append(el('p', { class: 'ovk-note', text: 'No callers yet.' })); return; }
-            panel.append(el('div', { class: 'ovk-grants-head' },
-                el('span', { text: 'Caller' }), el('span', { text: 'App' }), el('span', { text: 'Grant' })));
             rows.forEach(function (r) { panel.append(r); });
         }).catch(function () { /* the page still works without the panel */ });
+    }
+
+    /**
+     * One caller in one app (11-18: chips, not a browser drop-down): Off, Read, Read and write. The chip turns at once;
+     * a refusal turns it back and says why under the row.
+     */
+    var LEVELS = [['', 'Off'], ['read', 'Read'], ['write', 'Read and write']];
+    function grantRow(call, app, appName, level) {
+        var chips = el('div', { class: 'ovk-seg', role: 'radiogroup', 'aria-label': call.name + ' in ' + appName });
+        var row = el('div', { class: 'ovk-grant-row', 'data-ovk-grant': call.id, 'data-ovk-app': app },
+            [el('div', { class: 'ovk-grant-what' }, [el('b', { class: 'ovk-grant-who', text: call.name }), el('span', { class: 'ovk-grant-app', text: appName })]), chips]);
+        function paint(now) {
+            chips.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', b.getAttribute('data-level') === now ? 'true' : 'false'); });
+        }
+        LEVELS.forEach(function (opt) {
+            chips.append(el('button', { type: 'button', role: 'radio', class: 'ovk-seg-b', 'data-level': opt[0], text: opt[1], onclick: function () {
+                var was = level;
+                if (opt[0] === was) return;
+                level = opt[0];
+                paint(level);
+                var near = row.querySelector('.ovk-result[data-ovk-near]');
+                if (near) near.hidden = true;
+                api('/callers/' + encodeURIComponent(call.id) + '/grants', { method: 'PUT', body: { app: app, level: level || null } })
+                    .catch(function (e) { level = was; paint(level); sayNear(row, e.message); });
+            } }));
+        });
+        paint(level);
+        return row;
     }
 
     // ── The approvals that wait for the person ─────────────────
@@ -208,7 +259,7 @@
                 var decision = btn.getAttribute('data-ovk-decision');
                 api('/approvals/' + encodeURIComponent(id), { method: 'POST', body: { decision: decision } })
                     .then(function () { window.location.reload(); })
-                    .catch(function (e) { window.alert(e.message); });
+                    .catch(function (e) { sayNear(btn, e.message); });
             });
         });
     }
@@ -224,24 +275,26 @@
                 if (count) count.textContent = String(pending.length);
                 var list = section.querySelector('.ovk-list');
                 if (list && pending.length) {
+                    // 11-18: el() takes its children as a list; these rows passed them one by one and threw, so an
+                    // approval that arrived while the page was open never showed until a reload.
                     list.replaceChildren.apply(list, pending.map(function (a) {
-                        return el('li', { class: 'ovk-row ovk-row--static' },
-                            el('span', { class: 'ovk-row-main' },
-                                el('span', { class: 'ovk-row-top' }, el('strong', { text: a.summary || a.action })),
-                                el('span', { class: 'ovk-row-sub' }, el('span', { text: a.action }))),
-                            el('span', { class: 'ovk-row-trail' },
-                                el('button', { class: 'ovk-btn ovk-btn--primary ovk-btn--small', type: 'button', text: 'Allow', onclick: function () { decide(a.id, 'approve'); } }),
-                                el('button', { class: 'ovk-btn ovk-btn--quiet ovk-btn--small', type: 'button', text: 'Deny', onclick: function () { decide(a.id, 'deny'); } })));
+                        return el('li', { class: 'ovk-row ovk-row--static' }, [
+                            el('span', { class: 'ovk-row-main' }, [
+                                el('span', { class: 'ovk-row-top' }, [el('strong', { text: a.summary || a.action })]),
+                                el('span', { class: 'ovk-row-sub' }, [el('span', { text: a.action })])]),
+                            el('span', { class: 'ovk-row-trail' }, [
+                                el('button', { class: 'ovk-btn ovk-btn--primary ovk-btn--small', type: 'button', text: 'Allow', onclick: function (ev) { decide(a.id, 'approve', ev.currentTarget); } }),
+                                el('button', { class: 'ovk-btn ovk-btn--quiet ovk-btn--small', type: 'button', text: 'Deny', onclick: function (ev) { decide(a.id, 'deny', ev.currentTarget); } })])]);
                     }));
                 }
             }).catch(function () { /* offline: the page keeps what it has */ });
         }, 5000);
     }
 
-    function decide(id, decision) {
+    function decide(id, decision, btn) {
         api('/approvals/' + encodeURIComponent(id), { method: 'POST', body: { decision: decision } })
             .then(function () { window.location.reload(); })
-            .catch(function (e) { window.alert(e.message); });
+            .catch(function (e) { sayNear(btn, e.message); });
     }
 
     document.addEventListener('DOMContentLoaded', function () {
