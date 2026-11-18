@@ -243,7 +243,7 @@ async function renderPage(ctx, user) {
         });
 
         if (tab === 'connected') {
-            body = needsYou + connectedHtml(list, callersList, subject) + kit.section({ title: 'Who may do what', note: 'Each caller of yours, in each app: nothing, read, or read and write.', body: `<div class="ovk-grants-panel" data-ovk-grants-panel data-ovk-app-names="${esc(JSON.stringify(Object.fromEntries(registry.all().map((d) => [d.key, d.name]))))}"></div>` }) + callersHtml(callersList);
+            body = needsYou + connectedHtml(list, callersList, subject) + kit.section({ title: 'Who may do what', note: 'Each caller of yours, in each app: nothing, read, or read and write.', body: `<div class="ovk-grants-panel" data-ovk-grants-panel data-ovk-app-names="${esc(JSON.stringify({ ...Object.fromEntries(registry.all().map((d) => [d.key, d.name])), ...Object.fromEntries(Object.entries(require('./first-party').FIRST_PARTY).map(([k, v]) => [k, v.name])) }))}" data-ovk-first-party="${esc(JSON.stringify(Object.keys(require('./first-party').FIRST_PARTY)))}"></div>` }) + callersHtml(callersList);
         } else if (tab === 'log') {
             const rows = await ctx.gateway.listLog({ subject, limit: 100 });
             body = needsYou + logHtml(rows);
