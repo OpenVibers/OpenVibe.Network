@@ -11,10 +11,10 @@ const reasons = require('./reasons-list');
 
 const QUEST_TTL_MS = 10 * 60_000;
 let questCache = { at: 0, names: new Map() };
+let questLoading = null;
 
-/** Quest ids → their own names and addresses, from Quest's public catalog (cached, best-effort). */
-async function questNames(fetchImpl = globalThis.fetch) {
-    if (questCache.at && Date.now() - questCache.at < QUEST_TTL_MS) return questCache.names;
+/** One read of Quest's public catalog: ids → { name, url }; an empty map when it does not answer. */
+async function readQuests(fetchImpl) {
     const kind = reasons.KINDS.find((k) => k.subject === 'quest');
     const base = String(process.env.QUESTS_URL || (kind && kind.catalog) || 'https://openvibe.quest/api/v1/quests').replace(/\/+$/, '');
     const names = new Map();
@@ -31,8 +31,25 @@ async function questNames(fetchImpl = globalThis.fetch) {
             }
         }
     } catch { /* the slug and the id still answer */ }
-    questCache = { at: Date.now(), names };
     return names;
+}
+
+/**
+ * Quest ids → their own names and addresses, from Quest's public catalog (cached, best-effort). Past ten minutes the
+ * names it has answer at once and one read runs behind them (11-18: the read leaves through Cloudflare and takes
+ * 1.1 s from this server, so every expiry held a wallet or a coins history that long; /api/coins/me/history was
+ * 0.85 s at p95). Only the first read after a start is waited for.
+ */
+async function questNames(fetchImpl = globalThis.fetch) {
+    const fresh = questCache.at && Date.now() - questCache.at < QUEST_TTL_MS;
+    if (fresh) return questCache.names;
+    if (!questLoading) {
+        questLoading = readQuests(fetchImpl)
+            .then((names) => { if (names.size || !questCache.names.size) questCache = { at: Date.now(), names }; else questCache = { ...questCache, at: Date.now() }; return questCache.names; })
+            .finally(() => { questLoading = null; });
+    }
+    if (questCache.at) return questCache.names;
+    return questLoading;
 }
 
 /** Log an undeclared key once per process: support can see it, a person never does. */
