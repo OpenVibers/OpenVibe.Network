@@ -134,6 +134,9 @@ const DEFAULT_GRANTS = [
     ['community', 'media.object.read', 'openvibe.media', ['community']],
     ['community', 'media.object.delete', 'openvibe.media', ['community']],
     ['community', 'network.notifications.push', SELF_AUDIENCE, ['community']],
+    // Tools tells a person what their scheduled tool answered (plan 2026-11-13 §AD.12 (g), Tools #378): one notification
+    // per scheduled run, to the tool's owner by subject, as service 'tools' only.
+    ['tools', 'network.notifications.push', SELF_AUDIENCE, ['tools']],
     // Wave 11: Tools job results as Media objects; Wave 12: Games map-editor assets.
     // tools.* : developer projects' results go to tools.app.<project_id>[.sandbox] (WS-L task 5).
     ['tools', 'media.object.upload', 'openvibe.media', ['tools', 'tools.*']],
@@ -379,12 +382,15 @@ const DEFAULT_GRANTS = [
     // CHANGED_DEFAULT_NAMESPACES entry is needed. The deploy applies them from ensureSchema() at boot.
     ...['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor']
         .map((svc) => ['network', `${svc}.config.manage`, `openvibe.${svc}`, []]),
+    // Network's own sign-in settings (network.signin, plan §AB.20) are answered in process: Contracts deliberately has
+    // no network.config.manage (openvibe-contracts/test/run.js), and the proxy's callService dispatches `network`
+    // locally. Nothing to seed.
     // The owner's Setup tab (OWNER-SETUP-AND-ADMIN-CLARITY-DESIGN, 2026-11-07): the same proxy reaches the eight more
     // services that hold an owner input. Their <svc>.config.manage capabilities are Contracts 0.308.0 (planned until
     // each service mounts /internal/config). A grant is seeded only once the pinned Contracts knows its capability, so
     // this works on the pin before 0.308.0 and seeds all eight at the first boot after the pin moves. New rows, as for
     // the nine: no RESTORED_GRANTS or CHANGED_DEFAULT_NAMESPACES entry.
-    ...['chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run']
+    ...['chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run', 'mail']
         .filter((svc) => capabilities.get(`${svc}.config.manage`))
         .map((svc) => ['network', `${svc}.config.manage`, `openvibe.${svc}`, []]),
     // The editorial queue's AI editor (Contracts 0.315.0, 2026-11-07): the orchestrator's service principal records
@@ -444,6 +450,10 @@ const DEFAULT_GRANTS = [
     // run-job actions start Run jobs for the owner in that project (X-OV-Subject + X-OV-Project). Watch checks the
     // owner's membership when the watch is saved; Run checks it again before every delegated job.
     ['watch', 'run.job.submit', 'openvibe.run', []],
+    // Code tools people make run as Run function jobs (openvibe-skill-runner@1.1.0; plan §AD.13 (2), Link v0.70.0): Tools
+    // submits each run for the person it is for (X-OV-Subject, X-OV-Project) and reads the jobs it submitted.
+    ['tools', 'run.job.submit', 'openvibe.run', []],
+    ['tools', 'run.job.read', 'openvibe.run', []],
     ['watch', 'network.project.member.read', SELF_AUDIENCE, []],
     ['run', 'network.project.member.read', SELF_AUDIENCE, []],
     ['run', 'network.notifications.push', SELF_AUDIENCE, []],
@@ -514,6 +524,9 @@ const DEFAULT_GRANTS = [
     // Bot, only as that machine's owner (X-OV-Subject) and only where the owner turned on "Let my agent use this
     // computer"; the level the owner set on the machine decides what may happen there.
     ['actor', 'bot.computer.control', 'openvibe.bot', []],
+    // A page Link drew for the Design bot (computer_page_check, plan §AD.25), judged by Vision's review panel: several
+    // models on Design's rules, their agreement counted (Vision #225). Vision's own account pays, as for anyone.
+    ['actor', 'vision.model.compare', 'openvibe.vision', []],
     // Plan L55 C1b (contracts 0.268.0): a chat turn shows the desk the agent works on, live, and lets the person take it
     // over. Actor asks Bot for a short-lived watch link to that desk (the private desk or its own desk-<name>, never the
     // owner's screen), only for the person's own machine and only where they let their agent use it.
@@ -541,10 +554,26 @@ const DEFAULT_GRANTS = [
     ...(capabilities.get('git.repo.read') && capabilities.get('git.repo.write') ? [
         ['codes', 'git.repo.read', 'openvibe.git', []],
         ['codes', 'git.repo.write', 'openvibe.git', []],
+        // Plan §AD.10 step 1 (2026-11-15): a person's Actor makes repositories in their namespace, commits to them and
+        // opens changes for them to merge, acting as that person with X-OV-Subject (Actor's git_* tools).
+        ['actor', 'git.repo.read', 'openvibe.git', []],
+        ['actor', 'git.repo.write', 'openvibe.git', []],
+        // Plan §AD.10 step 2 (2026-11-15): a Space site published from a person's OpenVibe.Git repository. Space's
+        // dashboard reads the person's repositories and sets where one is published (Git's space-publish), acting as
+        // that person with X-OV-Subject; Space itself never fetches a repository.
+        ['space', 'git.repo.read', 'openvibe.git', []],
+        ['space', 'git.repo.write', 'openvibe.git', []],
     ] : []),
+    // Plan §AD.10 step 2: OpenVibe.Git sends the folder of each push to the published branch to the owner's Space site
+    // through Space's git deploy door, as that owner (X-OV-Subject); it lands as the site's preview.
+    ['git', 'space.deploy.create', 'openvibe.space', []],
     // Plan T16/T17 (contracts 0.162.0): a person's OpenVibe.Actor agent routes coding work to OpenVibe.Codes, which runs
     // it on that person's own machine (X-OV-Subject); Codes shows Actor only the tasks Actor started for that person.
     ...['codes.task.start', 'codes.task.read', 'codes.task.cancel'].map((c) => ['actor', c, 'openvibe.codes', []]),
+    // Plan §AD.22 (2026-11-17): the other way round. A person's Codes conductor hands desktop and browser work to their
+    // Actor (codes_actor_task), which runs it on their own machine or an OpenVibe shared node, acting as that person with
+    // X-OV-Subject; Actor shows Codes only the tasks Codes started for them, and their own level still decides each step.
+    ...['actor.task.create', 'actor.task.read'].map((c) => ['codes', c, 'openvibe.actor', []]),
     // Plan T18/T16: a watch's codes-run action starts a coding task for its owner on Codes (Watch#55).
     ['watch', 'codes.task.start', 'openvibe.codes', []],
     // Plan T2 lane B step 3: Host places and runs per project, so it reads a project's tenancy, placement and quotas.
@@ -566,6 +595,18 @@ const DEFAULT_GRANTS = [
     ['ai', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // WS-N task 12: ovhost incident / maintenance post to the status page.
     ['host', 'network.status.incident', SELF_AUDIENCE, []],
+    // Plan §AD.21 item 6 (11-17): the release browser check runs on the shared node as a Run job, not as a full Chrome on
+    // production after every deploy. ovhost browser-watch submits it for the operator, in their checks project
+    // (X-OV-Subject + X-OV-Project, the ADR-003 delegation Run confirms with Network), and reads its report.
+    ['host', 'run.job.submit', 'openvibe.run', []],
+    ['host', 'run.job.read', 'openvibe.run', []],
+    // Plan §AD.21b item 6: Live's live-lane speech-to-text (Parakeet, 10 s segments) as a Run job on the shared node,
+    // not on production's four cores. Submit and read only, like Host's release check.
+    ['live', 'run.job.submit', 'openvibe.run', []],
+    ['live', 'run.job.read', 'openvibe.run', []],
+    // AI's VOD and clip transcripts (Parakeet, 10 s pieces) as Run jobs on the shared node, local on any failure.
+    ['ai', 'run.job.submit', 'openvibe.run', []],
+    ['ai', 'run.job.read', 'openvibe.run', []],
     // WS-L task 4: OpenVibe.Host's scheduled Tools job proof (openvibe-toolsjob.timer, OpenVibe.Examples
     // scripts/tools-job-proof.js) submits a converter job as `probe` and finds its tools.job.* events.
     ['probe', 'tools.job.create', 'openvibe.tools', []],
@@ -605,6 +646,20 @@ const DEFAULT_GRANTS = [
     // (workflow ai.complete), the same one Codes' harnesses use. 11-13 (plan §Z.9): and video.analyze, so an agent can
     // watch a video the person may read (AI checks the namespace; the person rides as on_behalf_of). Nothing else of AI's.
     ['actor', 'ai.run.create', 'openvibe.ai', ['ai.complete', 'video.analyze']],
+    // Tools people make (plan 2026-11-13 §AD.7 step 2, Tools #364): a prompt tool runs through AI's ai.complete as the
+    // person who runs it (on_behalf_of: their allowance, Vibes or keys pay, never the tool's maker). Nothing else of AI's.
+    ['tools', 'ai.run.create', 'openvibe.ai', ['ai.complete']],
+    // Agents run the tools people make (plan §AD.12 (b), Contracts 0.437.0 tools.made.run): Actor's and Codes' agents list
+    // a person's tools and run one as them (X-OV-Subject), paid from that person's allowance; they never make or change one.
+    ['actor', 'tools.made.run', 'openvibe.tools', []],
+    ['codes', 'tools.made.run', 'openvibe.tools', []],
+    // And make one for the person who asked (Contracts 0.439.0 tools.made.write; the owner, 11-15: "use codes or actor
+    // to create a tool for you completely end to end"): draft it from their words and save it as theirs, always private
+    // until they publish it. Changing or deleting a tool stays the person's own. From the Contracts release that has it.
+    ...(capabilities.get('tools.made.write') ? [
+        ['actor', 'tools.made.write', 'openvibe.tools', []],
+        ['codes', 'tools.made.write', 'openvibe.tools', []],
+    ] : []),
     // A streamer's daily AI-viewer budget is an AI quota on their attribution (live:user:<id>), which Live sets.
     ['live', 'ai.quota.attribution.manage', 'openvibe.ai', []],
     // Wave 3: producers publish to OpenVibe.Events (their own source only, enforced by Events).
@@ -701,6 +756,14 @@ const DEFAULT_GRANTS = [
     // both also follow network.block.changed through their own Events subscriptions.
     ['chat', 'network.blocks.read', SELF_AUDIENCE, []],
     ['community', 'network.blocks.read', SELF_AUDIENCE, []],
+    // Friends across every site (plan §AB.51, Contracts 0.431.0): Chat reads a person's mutual friends from
+    // Network's GET /internal/friends (network.friends.read) to offer them in its contacts and to start a DM.
+    // The row is new (never granted and never revoked before), so it needs no RESTORED_GRANTS entry, and it
+    // carries no namespaces, so no CHANGED_DEFAULT_NAMESPACES entry either.
+    ['chat', 'network.friends.read', SELF_AUDIENCE, []],
+    // Setup done by your agent (plan §AB.44, Contracts 0.432.0): Actor's setup skill saves the key(s) of the one Setup row
+    // a live, owner-made grant names (POST /internal/setup/grants/:id/save). A new row: no RESTORED_GRANTS entry.
+    ['actor', 'network.setup.grant.save', SELF_AUDIENCE, []],
     ['live', 'chat.live_bridge.write', 'openvibe.chat', []],
     ['live', 'chat.presence.read', 'openvibe.chat', []],
     // Plan T3: Live reads a channel's moderation settings, its moderators and emote count from Chat.
@@ -733,6 +796,8 @@ const DEFAULT_GRANTS = [
     ['food', 'search.document.write', 'openvibe.search', []],
     // OpenVibe.Bot's robot model pages in Search through the owner API (owner bot).
     ['bot', 'search.document.write', 'openvibe.search', []],
+    // OpenVibe.Space's live websites in Search through the owner API (owner space, type site; plan §AD.10 step 6).
+    ['space', 'search.document.write', 'openvibe.search', []],
     // Plan T5 step 7: Tools posts one usage reading per ended tool job to Billing (POST /api/v1/usage).
     ['tools', 'billing.usage.record', 'openvibe.billing', []],
     // Plan T5 step 14: Network's own usage producers — AI (per model run), Events (per delivered event)

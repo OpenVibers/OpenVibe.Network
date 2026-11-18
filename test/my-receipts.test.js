@@ -63,13 +63,10 @@ const receipt = (i) => ({
 });
 
 (async () => {
-    // ── Inbox AI off: the card shows one quiet line, links the switch, and draws no sample receipt ──
+    // ── Inbox AI off (11-15, the owner's shot: a card that only said "Turn on Inbox AI" near the top): the card stays out ──
     let p = page();
     p.sandbox.renderReceipts({ enabled: false, receipts: [] });
-    assert.strictEqual(p.ids.receipts.hidden, false, 'the card stays under Needs you');
-    assert.strictEqual(p.ids['receipts-body'].children.length, 1, 'one quiet line');
-    assert.strictEqual(p.ids['receipts-body'].children[0].textContent, 'Turn on Inbox AI on openvibe.email to see receipts here');
-    assert.strictEqual(p.ids['receipts-body'].children[0].getAttribute('href'), 'https://openvibe.email/inbox#inbox-ai');
+    assert.strictEqual(p.ids.receipts.hidden, true, 'no card while there is nothing to show');
     assert.strictEqual(p.ids['receipts-body'].all((c) => c.className === 'rc-row').length, 0, 'no sample receipt');
     assert.strictEqual(p.ids['setup-fold'].hidden, true, 'the setup fold is not hijacked');
 

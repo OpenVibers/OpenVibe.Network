@@ -80,6 +80,40 @@ async function loadSetup() {
     }
 }
 
+/**
+ * What is left on each AI provider account (plan §AB.21: "the gift credits on all the providers need to be detectable"),
+ * read live by OpenVibe.AI with your keys: a line under the head, "DeepSeek $12.50 (gift $10.00) · OpenRouter $12.75 ·
+ * Moonshot (Kimi): no key yet". Read once a page; nothing is shown when AI does not answer.
+ */
+async function setupBalances(root) {
+    let box = root.querySelector('#setup-balances');
+    if (!box) {
+        box = document.createElement('p');
+        box.id = 'setup-balances'; box.className = 'setup-balances muted';
+        const head = root.querySelector('.setup-head');
+        if (!head) return;
+        head.appendChild(box);
+    }
+    try {
+        if (!SETUP.balances) SETUP.balances = await api('/api/admin/ai/config/balances');
+    } catch { box.remove(); return; }
+    const rows = (SETUP.balances && SETUP.balances.providers) || [];
+    if (!rows.length) { box.remove(); return; }
+    const money = (n, cur) => { try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD' }).format(n); } catch { return '$' + Number(n).toFixed(2); } };
+    box.textContent = '';
+    const lead = document.createElement('strong'); lead.textContent = 'Left on your accounts: '; box.appendChild(lead);
+    rows.forEach((r, i) => {
+        if (i) box.appendChild(document.createTextNode(' · '));
+        const s = document.createElement('span');
+        s.className = 'setup-bal is-' + (r.state === 'read' ? (r.balance != null && r.balance < 1 ? 'low' : 'ok') : 'none');
+        s.textContent = r.state === 'read' && r.balance != null
+            ? r.name + ' ' + money(r.balance, r.currency) + (r.gift ? ' (gift ' + money(r.gift, r.currency) + ')' : '')
+            : r.name + ': ' + String(r.note || 'not read').replace(/^./, (c) => c.toLowerCase());
+        if (r.note && r.state === 'read') s.title = r.note;
+        box.appendChild(s);
+    });
+}
+
 function setupHead(summary) {
     return '<header class="setup-head">'
         + '<h2><i class="fa-solid fa-list-check" aria-hidden="true"></i> Setup</h2>'
@@ -114,6 +148,7 @@ function setupRender(root) {
         + empty + reach
         + '<p class="setup-foot muted">Network\'s own email and Discord keys are on the <a href="/admin/settings">Settings</a> tab; the AI providers\' keys are also on the <a href="/admin/ai">AI</a> tab.</p>';
     for (const li of root.querySelectorAll('[data-setup-row]')) setupAttachControls(li);
+    setupBalances(root);
     root.onclick = setupClick;
     if (window.OVForms && window.OVForms.enhance) window.OVForms.enhance(root);
 }
@@ -232,7 +267,98 @@ function setupAttachControls(li) {
     more.className = 'setup-more-actions';
     if (row.testable && row.set) more.append(setupButton('Test', 'test'));
     if (row.set) more.append(setupButton('Remove', 'remove', 'pai-quiet pai-quiet-danger'));
+    // Plan §AB.44: your own agent opens the provider's page on a desk, hands it to you to sign in, makes the key and
+    // saves it here (a one-time grant for this row; the key never reaches the agent's words).
+    if (setupAgentProvider(row)) more.append(setupButton('Let my agent do it', 'agent'));
     if (more.childNodes.length) box.append(more);
+}
+
+// The providers whose new keys OpenVibe.Actor can read from their page (Network server/admin/setup-grants.js).
+const SETUP_AGENT_PROVIDERS = ['openai', 'anthropic', 'deepseek', 'openrouter', 'groq', 'gemini', 'kimi', 'xai', 'fireworks', 'resend', 'stripe'];
+const SETUP_AGENT_ALIASES = { moonshot: 'kimi', 'google ai': 'gemini', claude: 'anthropic', grok: 'xai' };
+/** The provider a key row is for, when the agent can make its key; else null. */
+function setupAgentProvider(row) {
+    if (!row || !row.secret || !row.get_it_at || row.pinned || row.kind === 'task') return null;
+    const hay = (String(row.key || '') + ' ' + String(row.namespace || '') + ' ' + String(row.title || '')).toLowerCase();
+    for (const p of SETUP_AGENT_PROVIDERS) if (hay.includes(p)) return p;
+    for (const [a, p] of Object.entries(SETUP_AGENT_ALIASES)) if (hay.includes(a)) return p;
+    return null;
+}
+
+async function setupAgent(li, row, button) {
+    button.disabled = true;
+    try {
+        const out = await api('/api/admin/setup/grants', { method: 'POST', body: {
+            service: row.service, namespace: row.namespace, keys: [row.key], provider: setupAgentProvider(row), label: row.title, get_it_at: row.get_it_at, start: true,
+        } });
+        setupAgentNotice(li, row, out.grant);
+    } catch (err) {
+        button.disabled = false;
+        if (setupFresh(err)) return;
+        setupShowResult(li, (err && err.message) || 'Your agent could not start. Paste the key yourself.', 'bad');
+    }
+}
+
+/** The row while the agent works: what it does, where to watch it, Stop; it turns Connected when the key is saved. */
+function setupAgentNotice(li, row, grant) {
+    const box = li.querySelector('[data-setup-actions]');
+    if (!box || !grant) return;
+    const note = document.createElement('div');
+    note.className = 'setup-agent';
+    note.setAttribute('role', 'status');
+    const text = document.createElement('p');
+    text.textContent = 'Your agent is making the key. When the page asks you to sign in or confirm, it hands you its screen: take it, then give it back.';
+    // Its screen opens beside the step (plan §AB.44); its own page stays one tap away for taking over.
+    const watch = document.createElement('button');
+    watch.type = 'button';
+    watch.className = 'btn btn-primary btn-sm';
+    watch.textContent = 'Watch it work';
+    watch.addEventListener('click', () => setupDeskOpen(row, grant));
+    const stop = document.createElement('button');
+    stop.type = 'button'; stop.className = 'btn btn-secondary btn-sm';
+    stop.textContent = 'Stop';
+    let timer = 0;
+    const until = Date.now() + 30 * 60 * 1000;
+    const end = (words, tone) => { clearInterval(timer); note.remove(); setupDeskClose(); setupShowResult(li, words, tone); };
+    // Stop says what really happened (11-14 review): it used to say "Stopped" even when the request failed.
+    stop.addEventListener('click', async () => {
+        stop.disabled = true;
+        const task = grant.task && grant.task.id ? '?task=' + encodeURIComponent(grant.task.id) : '';
+        let out;
+        try { out = await api('/api/admin/setup/grants/' + encodeURIComponent(grant.ref) + task, { method: 'DELETE' }); } catch (err) {
+            stop.disabled = false;
+            setupShowResult(li, 'It could not be stopped' + (err && err.message ? ': ' + err.message : '') + '. Try again.', 'bad');
+            return;
+        }
+        // 11-15: "saved" only once the key is written, and "stopped" only once Actor says the task ended.
+        const taskWords = !task ? '' : out && out.task_state === 'stopping' ? ' Its task is stopping: it finishes the step it is on.'
+            : out && out.task_stopped === false ? ' Its task did not stop from here: open it and stop it there.' : ' Its task is stopped.';
+        if (out && (out.state === 'spent' || out.state === 'saving')) {
+            end((out.state === 'spent' ? 'Your agent had already saved the key. It stays in Setup: remove it there if you do not want it.'
+                : 'Your agent is saving the key right now. Look at Setup in a moment: remove it there if you do not want it.') + taskWords, 'muted');
+            try { SETUP.data = await api('/api/admin/setup'); setupRender(document.getElementById('setup-content')); } catch { /* the next load shows it */ }
+            return;
+        }
+        if (out && out.state === 'save_failed') {
+            end('Your agent tried to save the key and the save failed, so nothing new is in Setup.' + taskWords, 'muted');
+            return;
+        }
+        end('Stopped: your agent can no longer save this key.' + taskWords, 'muted');
+    });
+    const actions = document.createElement('p');
+    actions.className = 'setup-agent-actions';
+    actions.append(watch, stop);
+    note.append(text, actions);
+    box.prepend(note);
+    // Saved when the row says so (the agent's save is the owner's own, through the same path).
+    timer = setInterval(async () => {
+        if (!li.isConnected || Date.now() > until) { clearInterval(timer); return; }
+        try {
+            const data = await api('/api/admin/setup');
+            const now = (data.rows || []).find((r) => r.id === row.id);
+            if (now && now.set && now.state === 'connected') { SETUP.data = data; end('Saved by your agent.', 'ok'); setupRender(document.getElementById('setup-content')); }
+        } catch { /* try again */ }
+    }, 10000);
 }
 
 function setupFresh(err) {
@@ -313,6 +439,7 @@ async function setupClick(ev) {
     if (act === 'test') return setupTest(li, row, button);
     if (act === 'remove') return setupRemove(li, row, button);
     if (act === 'done' || act === 'undo') return setupTask(li, row, button, act === 'done');
+    if (act === 'agent') return setupAgent(li, row, button);
 }
 
 async function setupTest(li, row, button) {
@@ -363,4 +490,91 @@ async function setupTask(li, row, button, done) {
         setupShowResult(li, err.message || 'It was not saved.', 'bad');
         button.disabled = false;
     }
+}
+
+
+// ── The agent's screen beside the step (plan §AB.44) ──
+// A panel at the side (a sheet from the bottom on a phone) with the desk's latest picture, what the agent is doing and
+// what it needs from you, read every two seconds through Network (GET /api/admin/setup/grants/agent/:task, /still).
+// Taking over (signing in, a code, a payment) happens on the agent's own page, which can drive its desk.
+let setupDesk = null;
+function setupDeskClose() {
+    if (!setupDesk) return;
+    clearTimeout(setupDesk.timer);
+    if (setupDesk.url) URL.revokeObjectURL(setupDesk.url);
+    setupDesk.box.remove();
+    if (setupDesk.from && setupDesk.from.isConnected) setupDesk.from.focus();
+    setupDesk = null;
+}
+function setupDeskOpen(row, grant) {
+    const task = grant && grant.task && grant.task.id;
+    if (!task) return;
+    if (setupDesk && setupDesk.task === task) { setupDesk.box.querySelector('button').focus(); return; }
+    setupDeskClose();
+    const box = document.createElement('aside');
+    box.className = 'setup-desk';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-label', 'Your agent at work on ' + (row.title || 'this step'));
+    const head = document.createElement('header');
+    const title = document.createElement('b');
+    title.textContent = 'Your agent · ' + (row.title || 'Setup');
+    const close = document.createElement('button');
+    close.type = 'button'; close.className = 'setup-desk-close'; close.setAttribute('aria-label', 'Close'); close.textContent = '×';
+    close.addEventListener('click', setupDeskClose);
+    head.append(title, close);
+    const screen = document.createElement('div');
+    screen.className = 'setup-desk-screen';
+    const img = document.createElement('img');
+    img.alt = 'Your agent\'s screen';
+    img.hidden = true;
+    const wait = document.createElement('p');
+    wait.textContent = 'Its screen shows here when it opens one.';
+    screen.append(img, wait);
+    const state = document.createElement('p');
+    state.className = 'setup-desk-state';
+    state.setAttribute('aria-live', 'polite');
+    state.textContent = 'Starting…';
+    const needs = document.createElement('p');
+    needs.className = 'setup-desk-needs';
+    needs.hidden = true;
+    const actions = document.createElement('p');
+    actions.className = 'setup-desk-actions';
+    const page = document.createElement('a');
+    page.className = 'btn btn-secondary btn-sm';
+    page.href = grant.task.url || '#'; page.target = '_blank'; page.rel = 'noopener';
+    page.textContent = 'Take over on its page';
+    actions.append(page);
+    box.append(head, screen, state, needs, actions);
+    document.body.append(box);
+    setupDesk = { box, task, timer: 0, url: '', from: document.activeElement };
+    close.focus();
+    box.addEventListener('keydown', (e) => { if (e.key === 'Escape') setupDeskClose(); });
+    const WORDS = { queued: 'Waiting for a desk…', running: 'Working…', waiting: 'Waiting for you', succeeded: 'Done', failed: 'It stopped', cancelled: 'Stopped' };
+    const tick = async () => {
+        if (!setupDesk || setupDesk.task !== task) return;
+        let view = null;
+        try { view = (await api('/api/admin/setup/grants/agent/' + encodeURIComponent(task))).agent; } catch { view = null; }
+        if (!setupDesk || setupDesk.task !== task) return;
+        if (view) {
+            state.textContent = view.error ? 'It stopped: ' + view.error : view.needs_you ? WORDS.waiting : (WORDS[view.state] || view.state || 'Working…');
+            needs.hidden = !view.needs_you;
+            needs.textContent = view.needs_you ? 'It needs you: ' + view.needs_you.what : '';
+            box.classList.toggle('needs-you', Boolean(view.needs_you));
+            // When it waits for you, taking over is the one thing to do.
+            page.className = 'btn btn-sm ' + (view.needs_you ? 'btn-primary' : 'btn-secondary');
+            if (view.desk) {
+                try {
+                    const res = await fetch(API + '/api/admin/setup/grants/agent/' + encodeURIComponent(task) + '/still', { headers: token ? { Authorization: 'Bearer ' + token } : {}, credentials: 'include' });
+                    if (res.ok && setupDesk && setupDesk.task === task) {
+                        const url = URL.createObjectURL(await res.blob());
+                        if (setupDesk.url) URL.revokeObjectURL(setupDesk.url);
+                        setupDesk.url = url; img.src = url; img.hidden = false; wait.hidden = true;
+                    }
+                } catch { /* the next tick tries again */ }
+            }
+            if (view.ended) return;
+        }
+        if (setupDesk && setupDesk.task === task) setupDesk.timer = setTimeout(tick, 2000);
+    };
+    tick();
 }

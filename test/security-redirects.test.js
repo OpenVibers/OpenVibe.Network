@@ -80,9 +80,15 @@ for (const check of [allowedOrigin, rpOrigin]) {
     const conf = require('fs').readFileSync(require('path').join(__dirname, '..', 'deploy', 'nginx', 'parked-domains.conf'), 'utf8');
     const targets = [...conf.matchAll(/^\s*return\s+30[1278]\s+(\S+?);/gm)].map((m) => m[1]);
     assert.ok(targets.length >= 4, 'the parked file names its targets');
-    const ours = (host) => OWNED_ZONES.some((z) => host === z || host.endsWith('.' + z));
+    // Ours: the sign-in zones, and (2026-11-18, openvibe.expert → openvibe.actor/experts) every domain a service of
+    // ours names in its manifest in openvibe-contracts. openvibe.ai is in neither.
+    const manifests = require('openvibe-contracts').services.manifests;
+    const SERVICE_DOMAINS = (Array.isArray(manifests) ? manifests : manifests instanceof Map ? [...manifests.values()] : Object.values(manifests || {}))
+        .flatMap((m) => (m && Array.isArray(m.domains) ? m.domains : [])).map(String);
+    assert.ok(SERVICE_DOMAINS.includes('openvibe.actor') && !SERVICE_DOMAINS.some((d) => d === 'openvibe.ai' || d.endsWith('.openvibe.ai')), 'the manifests name our domains, not openvibe.ai');
+    const ours = (host) => OWNED_ZONES.some((z) => host === z || host.endsWith('.' + z)) || SERVICE_DOMAINS.includes(host);
     const foreign = targets.filter((t) => { const m = /^https:\/\/([a-z0-9.-]+|\$host|\$server_name)(?=[/$:]|$)/.exec(t); return !m || (!m[1].startsWith('$') && !ours(m[1])); });
-    assert.deepStrictEqual([...new Set(foreign)], [], 'every parked name redirects to an owned zone');
+    assert.deepStrictEqual([...new Set(foreign)], [], 'every parked name redirects to an owned zone or a service of ours');
 }
 
 console.log('post-sign-in redirects and owned-zone trust: all checks passed');

@@ -14,11 +14,12 @@ const express = require('express');
 
 const MAX_PER_USER = 20000;          // oldest rows beyond this are trimmed on write
 const DEDUPE_WINDOW_MIN = 60;       // same URL within this window bumps the entry instead of adding one
-const TYPES = new Set(['tool', 'stream', 'vod', 'clip', 'paste', 'game', 'page', 'post', 'account', 'theme', 'download', 'chat', 'thread', 'video', 'document', 'conversation']);
+// `search` (plan §AB.34): a search the person ran from the menu on any site, so "Recent searches" follow the account.
+const TYPES = new Set(['tool', 'stream', 'vod', 'clip', 'paste', 'game', 'page', 'post', 'account', 'theme', 'download', 'chat', 'thread', 'video', 'document', 'conversation', 'search']);
 const SERVICE_LABELS = {
     live: 'Live', tools: 'Tools', games: 'Games', media: 'Media', network: 'Network', community: 'Community', space: 'Space',
     chat: 'Chat', codes: 'Codes', blog: 'Blog', wiki: 'Wiki', news: 'News', reviews: 'Reviews', tips: 'Tips',
-    vip: 'VIP', trade: 'Trade', host: 'Host', deals: 'Deals', coupons: 'Coupons', openre: 'Restream',
+    vip: 'VIP', trade: 'Trade', host: 'Host', deals: 'Deals', coupons: 'Coupons', openre: 'Restream', search: 'Search',
 };
 
 async function ensureSchema(db) { /* the schema is migrations/NNNN_*.sql (plan T2); nothing is created at runtime */ }
@@ -104,12 +105,13 @@ async function createHistoryRoutes(db, requireAuth) {
         if ((req.body?.private && !privacy?.history_keep_private) || (req.body?.mature && !privacy?.history_keep_mature)) return res.json({ ok: true, skipped: 'private_or_mature' });
         await db.prepare("DELETE FROM user_history WHERE user_id = ? AND updated_at < (now() - interval '1 year')::text").run(req.user.id);
         const title = String(req.body?.title || '').trim().slice(0, 200) || url;
-        const TYPE_ICONS = { tool: 'fa-screwdriver-wrench', stream: 'fa-tower-broadcast', vod: 'fa-clapperboard', video: 'fa-clapperboard', clip: 'fa-scissors', paste: 'fa-paste', game: 'fa-gamepad', page: 'fa-file-lines', document: 'fa-file-lines', thread: 'fa-comments', post: 'fa-comments', account: 'fa-user', theme: 'fa-palette', download: 'fa-download', chat: 'fa-comment', conversation: 'fa-comment' };
+        const TYPE_ICONS = { tool: 'fa-screwdriver-wrench', stream: 'fa-tower-broadcast', vod: 'fa-clapperboard', video: 'fa-clapperboard', clip: 'fa-scissors', paste: 'fa-paste', game: 'fa-gamepad', page: 'fa-file-lines', document: 'fa-file-lines', thread: 'fa-comments', post: 'fa-comments', account: 'fa-user', theme: 'fa-palette', download: 'fa-download', chat: 'fa-comment', conversation: 'fa-comment', search: 'fa-magnifying-glass' };
         const icon = /^fa-[a-z0-9-]{1,40}$/.test(String(req.body?.icon || '')) ? String(req.body.icon) : (TYPE_ICONS[type] || null);
         const imageUrl = allowedUrl(req.body?.image_url || req.body?.picture) || null;
         const inf = serviceFromUrl(url);
         const service = String(req.body?.service || inf.service || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 32) || null;
-        const sub = String(req.body?.sub || inf.sub || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 48) || null;
+        // A search is the menu's, not a sub-site's (search.openvibe.network would read "search.Search").
+        const sub = type === 'search' ? null : String(req.body?.sub || inf.sub || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 48) || null;
         let meta = null;
         if (req.body?.meta && typeof req.body.meta === 'object') {
             const s = JSON.stringify(req.body.meta);
@@ -145,6 +147,13 @@ async function createHistoryRoutes(db, requireAuth) {
     router.delete('/day/:day', async (req, res) => {
         const d = String(req.params.day).slice(0, 10);
         const r = await db.prepare('DELETE FROM user_history WHERE user_id = ? AND updated_at >= ? AND updated_at < ?').run(req.user.id, `${d} 00:00:00`, `${d} 23:59:59`);
+        res.json({ ok: true, deleted: r.changes });
+    });
+    // One kind only (the menu's "Clear" under Recent searches: DELETE /api/history/type/search).
+    router.delete('/type/:type', async (req, res) => {
+        const type = String(req.params.type).slice(0, 32);
+        if (!TYPES.has(type)) return res.status(400).json({ error: 'Unknown kind' });
+        const r = await db.prepare('DELETE FROM user_history WHERE user_id = ? AND type = ?').run(req.user.id, type);
         res.json({ ok: true, deleted: r.changes });
     });
     router.delete('/site/:site', async (req, res) => {

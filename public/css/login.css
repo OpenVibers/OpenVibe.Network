@@ -131,19 +131,23 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
 /* Extras */
 .divider{text-align:center;position:relative;margin:24px 0}
 .divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:var(--border)}
-.divider span{position:relative;background:var(--bg-card);padding:0 12px;font-size:11px;color:var(--text-dim);font-weight:500}
+.divider span{position:relative;background:var(--bg-card);padding:0 12px;font-size:11.5px;color:var(--text-muted);font-weight:500}
 
 .anon-btn{
-    width:100%;padding:12px;border:1px dashed var(--border);border-radius:10px;
+    width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:1px dashed var(--border);border-radius:10px;
     background:transparent;color:var(--text-muted);font-size:13px;font-weight:500;
     cursor:pointer;transition:all var(--ov-dur-2, .2s);
 }
 .anon-btn:hover{border-color:var(--accent-dark);color:var(--text);background:rgba(139,92,246,0.04)}
+/* The passkey button is a second way to sign in, not a way out: it sits under Sign In with room to breathe and a
+   solid outline; the dashed one stays the guest's. */
+#passkey-btn{margin-top:10px;border-style:solid;color:var(--text);font-weight:600}
 
 .services{text-align:center;margin-top:24px;padding-top:16px;border-top:1px solid var(--border)}
 /* The line read at 2.3:1 in --text-dim; muted reads at 5.6:1 on the card (contrast probe, 2026-11-01). */
 .services p{font-size:11px;color:var(--text-muted);margin-bottom:10px}
-.services .icons{display:flex;justify-content:center;gap:10px}
+.services .icons{display:flex;justify-content:center;gap:12px}
+.services .icons > span{position:relative;display:inline-flex}
 .services .icons span{font-size:16px;opacity:0.4;transition:opacity var(--ov-dur-2, .2s)}
 .services .icons span:hover{opacity:0.8}
 .inline-link{display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-size:12px;color:var(--accent);cursor:pointer;text-decoration:none;font-weight:600}
@@ -261,3 +265,25 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
     .tab-bar button{font-size:12px;padding:8px 6px}
 }
 
+
+/* Sign-in apps (plan §AB.20): the provider buttons, in the page's HTML so it stays indexable. They fill the row: one
+   provider is one full-width "Sign in with Steam"; two or more sit two to a row by name, and an odd last one takes the
+   whole row, so the card never shows a half-width button beside a gap (the 11-14 review). */
+.providers{margin-bottom:4px}
+.providers[hidden]{display:none}
+.providers-head{font-size:13px;font-weight:600;color:var(--text-muted);line-height:1.45;margin-bottom:12px;text-align:center;text-wrap:balance}
+.provider-list{display:flex;flex-wrap:wrap;gap:8px}
+.provider-btn{
+    flex:1 1 calc(50% - 4px);min-width:0;min-height:46px;
+    display:flex;align-items:center;justify-content:center;gap:10px;padding:11px 14px;border-radius:10px;
+    border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:14px;font-weight:600;
+    text-decoration:none;transition:border-color var(--ov-dur-2, .2s), background var(--ov-dur-2, .2s);
+}
+.provider-btn span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.provider-btn:hover{border-color:var(--accent-dark);background:rgba(139,92,246,0.06)}
+.provider-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.provider-btn i{flex:none;display:inline-flex;width:20px;height:20px;font-size:20px;line-height:1}
+.provider-btn i svg{width:100%;height:100%}
+.providers-note{font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-top:10px;text-align:center;text-wrap:balance}
+/* The "or" between the providers and the username form belongs to the providers: it goes when they do. */
+.providers-or{margin:20px 0 18px}

@@ -45,14 +45,19 @@ const { isFreshSignIn } = require('../identity/reauth');
 // The nine AI Exchange services (D11), then every other service that holds an owner input (the Setup tab,
 // 2026-11-07). A service that has not mounted openvibe-shared/config's routes yet answers 404 or does not answer;
 // the panel says it "has not published settings yet".
-const SERVICES = ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor',
-    'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run'];
+// `network` is Network's own settings (network.signin, plan §AB.20): the same handlers answer in process, because
+// Contracts gives Network no network.config.manage (openvibe-contracts/test/run.js). It is last on purpose: the
+// owner's usual tabs stay first, and the Setup tab groups by its own order anyway.
+// 2026-11-15: Bench is out: it runs inside OpenVibe.Compare now (its retired unit never answers, and the guided setup's
+// "Every service answers" waited on it for ever, the owner: "broke").
+const SERVICES = ['ai', 'billing', 'services', 'watch', 'report', 'host', 'codes', 'actor',
+    'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run', 'mail', 'network'];
 const LABELS = {
     ai: 'OpenVibe.AI', billing: 'OpenVibe.Billing', services: 'OpenVibe.Services', watch: 'OpenVibe.Watch',
     bench: 'OpenVibe.Bench', report: 'OpenVibe.Report', host: 'OpenVibe.Host', codes: 'OpenVibe.Codes',
     actor: 'OpenVibe.Actor', chat: 'OpenVibe.Chat', connect: 'OpenVibe Connect', deals: 'OpenVibe.Deals',
     work: 'OpenVibe.Work', sources: 'OpenVibe.Sources', design: 'OpenVibe.Design', domains: 'OpenVibe.Domains',
-    media: 'OpenVibe.Media', run: 'OpenVibe.Run',
+    media: 'OpenVibe.Media', run: 'OpenVibe.Run', mail: 'OpenVibe.Email', network: 'OpenVibe.Network',
 };
 const TEST_TIMEOUT_MS = 20000;   // the service gives its tester 15 s; this leaves it time to answer
 const TEST_MESSAGE_MAX = 300;
@@ -128,6 +133,7 @@ function secretMarkers(secrets) {
     if (!secrets || typeof secrets !== 'object' || Array.isArray(secrets)) return {};
     const out = {};
     for (const [key, m] of Object.entries(secrets)) {
+        // Keys may be dotted (network.signin's `google.client_secret`): the same charset, a dot allowed inside.
         if (!KEY_RE.test(key) || !m || typeof m !== 'object') continue;
         out[key] = {
             hint: typeof m.hint === 'string' && m.hint.length <= 4 ? m.hint : null,
@@ -190,6 +196,13 @@ function createServiceCaller(opts = {}) {
 
     async function callService(req, service, pathName, { method = 'GET', body = null, cap = `${service}.config.manage`, fresh = false, secret = null, timeout = 8000 } = {}) {
         const st = state(req);
+        // Network's own settings (openvibe-shared/config, `network.signin`): Contracts gives Network no
+        // `network.config.manage` (it uses its own admin routes), so the same handlers answer in process instead of
+        // over a hop. Nothing changes in the shapes below.
+        if (service === 'network') {
+            const out = await require('../auth/providers/owner-config').local(req.app, req, pathName, { method, body });
+            return { status: out.status, answer: secret ? redact(out.answer, secret) : out.answer };
+        }
         const entry = st.services && st.services[service];
         const base = entry && entry.internalUrl;
         if (!base) throw new ProxyError(503, 'config.service_unavailable', `${label(service)} is not configured`);
@@ -401,6 +414,23 @@ function createAiConfigProxy(opts = {}) {
     async function ownerInfCall(req, method, pathName, body = null, { cap = 'ai.provider.manage' } = {}) {
         return await callService(req, 'ai', pathName, { method, body, cap });
     }
+
+    // What is left on each AI provider account, read live by AI with the owner's keys (plan §AB.21: "the gift credits
+    // on all the providers need to be detectable"): numbers and words only, never a key.
+    r.get('/balances', async (req, res) => {
+        try {
+            const out = await callService(req, 'ai', '/api/v1/admin/console/provider-balances', { cap: 'ai.config.manage' });
+            if (out.status < 200 || out.status >= 300) return upstreamFailed(res, 'ai', out);
+            const rows = (out.answer && Array.isArray(out.answer.providers) ? out.answer.providers : []).map((p) => ({
+                provider: String(p.provider || '').slice(0, 40), name: String(p.name || p.provider || '').slice(0, 60), currency: String(p.currency || 'USD').slice(0, 3),
+                balance: Number.isFinite(Number(p.balance)) && p.balance !== null ? Number(p.balance) : null,
+                gift: Number.isFinite(Number(p.gift)) && p.gift !== null ? Number(p.gift) : null,
+                paid: Number.isFinite(Number(p.paid)) && p.paid !== null ? Number(p.paid) : null,
+                state: String(p.state || 'unavailable').slice(0, 20), note: p.note ? String(p.note).slice(0, 120) : null, checked_at: p.checked_at || null,
+            }));
+            send(res, 200, { ok: true, providers: rows });
+        } catch (err) { send(res, 502, { ok: false, error: 'AI did not answer' }); }
+    });
 
     r.get('/owner-inference', async (req, res) => {
         try {
@@ -690,6 +720,26 @@ function createAiConfigProxy(opts = {}) {
         } catch (err) { fail(res, err); }
     });
 
+    /**
+     * A key saved for the owner by the owner's own agent, through a one-time setup grant (server/admin/setup-grants.js,
+     * plan §AB.44): the same secret path a hand-made save takes (fresh, sealed by the owning service), as the grant's
+     * owner, audited and announced as saved by the owner's agent. The value is never returned or logged.
+     */
+    r.saveSecretAsOwner = async (ownerReq, { service, namespace, key, value }) => {
+        if (!SERVICES.includes(service)) throw new ProxyError(404, 'config.service_not_found', 'no such service');
+        const ns = namespaceOf({ ...ownerReq, params: { namespace } }, service);
+        if (!KEY_RE.test(String(key || ''))) throw new ProxyError(400, 'config.bad_request', 'that is not a configuration key');
+        const body = { value: String(value) };
+        const checked = contracts.validate('common.config-secret-put@1', body);
+        if (!checked.valid) throw new ProxyError(400, 'config.bad_request', 'the secret is not valid');
+        const out = await callService(ownerReq, service, `/internal/config/${encodeURIComponent(ns)}/secrets/${encodeURIComponent(key)}`, {
+            method: 'PUT', body, fresh: true, secret: body.value,
+        });
+        if (out.status < 200 || out.status >= 300) throw new ProxyError(502, 'config.upstream_failed', `${label(service)} did not save it`);
+        await audit(ownerReq, { service, namespace: ns, keys: [key], action: 'secret.put.by_agent' });
+        await announce(ownerReq, { service, namespace: ns, keys: [key], action: 'secret.put' });
+        return { service, namespace: ns, key };
+    };
     return r;
 }
 

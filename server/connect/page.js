@@ -30,11 +30,26 @@ const PAGE_CSS = `<style>
 .ovk-connect .ovk-result--bad{border-color:#b91c1c;color:#fca5a5}
 .ovk-connect .ovk-result--ok{border-color:#15803d;color:#86efac}
 .ovk-connect .ovk-grants{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
-.ovk-connect .ovk-grants-panel{margin:0 0 18px}
-.ovk-connect .ovk-grants-head,.ovk-connect .ovk-grant-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--ovk-line,var(--border));font-size:14px}
-.ovk-connect .ovk-grants-head{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ovk-muted,var(--text-secondary))}
-.ovk-connect .ovk-grant-select{min-height:40px;border-radius:8px;border:1px solid var(--ovk-line,var(--border));background:var(--ovk-input,var(--bg-input));color:inherit;font:inherit;padding:6px 8px}
+.ovk-connect .ovk-grants-panel{margin:0 0 18px;padding:0 15px}
+.ovk-connect .ovk-grants-panel>.ovk-grant-row:last-child{border-bottom:0}
+/* 11-18: one row per caller and app, the grant as three chips (no browser drop-down); on a phone the chips go under. */
+.ovk-connect .ovk-grant-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--ovk-line,var(--border));font-size:14px}
+.ovk-connect .ovk-grant-what{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ovk-connect .ovk-grant-who,.ovk-connect .ovk-grant-app{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ovk-connect .ovk-grant-app{font-size:13px;color:var(--ovk-muted,var(--text-secondary))}
+.ovk-connect .ovk-grant-row>.ovk-result{grid-column:1/-1;margin:0}
+.ovk-connect .ovk-seg{display:inline-flex;gap:2px;padding:3px;border-radius:12px;background:var(--ovk-input,var(--bg-input));border:1px solid var(--ovk-line,var(--border))}
+.ovk-connect .ovk-seg-b{min-height:40px;padding:0 12px;border:0;border-radius:9px;background:transparent;color:var(--ovk-muted,var(--text-secondary));font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;transition:background .16s ease,color .16s ease,transform .12s ease}
+.ovk-connect .ovk-seg-b:active{transform:scale(.96)}
+.ovk-connect .ovk-seg-b[aria-checked="true"]{background:var(--accent,var(--ovk-acc,#5b8cff));color:var(--accent-contrast,#fff)}
+.ovk-connect .ovk-seg-b[aria-checked="true"][data-level=""]{background:var(--ovk-line,var(--border));color:inherit}
+.ovk-connect .ovk-seg-b:focus-visible{outline:2px solid var(--accent,#5b8cff);outline-offset:1px}
+.ovk-connect .is-armed{border-color:var(--danger,#b91c1c) !important;color:var(--danger,#fca5a5) !important}
+html[data-ov-motion="off"] .ovk-connect .ovk-seg-b{transition:none}
 @media (max-width:480px){
+.ovk-connect .ovk-grant-row{grid-template-columns:minmax(0,1fr)}
+.ovk-connect .ovk-seg{display:flex}
+.ovk-connect .ovk-seg-b{flex:1 1 0;min-height:44px;padding:0 6px}
 .ovk-connect .ovk-btn{width:100%}
 .ovk-connect .ovk-row-trail{width:100%;padding-left:48px;box-sizing:border-box}
 }
@@ -189,7 +204,10 @@ async function renderPage(ctx, user) {
             }),
             kit.section({
                 title: 'For your own agents',
-                body: '<p>Point any MCP client (Claude Code, Codex, Cursor) at <code>https://connect.openvibe.network/mcp</code> with a key you make here, and it sees only the apps you granted it.</p>',
+                body: '<p>Point any MCP client (Claude Code, Codex, Cursor) at <code>https://connect.openvibe.network/mcp</code> with a key you make here, and it sees only the apps you granted it.</p>'
+                    // 11-18 (plan §AD.26): all of OpenVibe in two tools, for agents that write code better than they call tools.
+                    + '<p><b>All of OpenVibe in two tools:</b> <code>https://connect.openvibe.network/mcp/all</code> gives your agent <code>search</code> (find any tool: your apps, OpenVibe.Tools, Design and Vision) and <code>execute</code> (a short script that calls them; only its result comes back). With Claude Code:</p>'
+                    + '<pre><code>claude mcp add --transport http openvibe https://connect.openvibe.network/mcp/all --header "Authorization: Bearer YOUR_KEY"</code></pre>',
             }),
         ].join('\n');
     } else {
@@ -225,7 +243,7 @@ async function renderPage(ctx, user) {
         });
 
         if (tab === 'connected') {
-            body = needsYou + connectedHtml(list, callersList, subject) + kit.section({ title: 'Who may do what', note: 'Each caller of yours, in each app: nothing, read, or read and write.', body: '<div class="ovk-grants-panel" data-ovk-grants-panel></div>' }) + callersHtml(callersList);
+            body = needsYou + connectedHtml(list, callersList, subject) + kit.section({ title: 'Who may do what', note: 'Each caller of yours, in each app: nothing, read, or read and write.', body: `<div class="ovk-grants-panel" data-ovk-grants-panel data-ovk-app-names="${esc(JSON.stringify({ ...Object.fromEntries(registry.all().map((d) => [d.key, d.name])), ...Object.fromEntries(Object.entries(require('./first-party').FIRST_PARTY).map(([k, v]) => [k, v.name])) }))}" data-ovk-first-party="${esc(JSON.stringify(Object.keys(require('./first-party').FIRST_PARTY)))}"></div>` }) + callersHtml(callersList);
         } else if (tab === 'log') {
             const rows = await ctx.gateway.listLog({ subject, limit: 100 });
             body = needsYou + logHtml(rows);

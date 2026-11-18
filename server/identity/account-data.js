@@ -177,6 +177,12 @@ async function networkPart(db, userId) {
     }
     await byUser('oauth_grants.json', 'oauth_tokens');
     await byUser('notifications.json', 'notifications');
+    // Group conversations (plan §AD.19): the groups they are in and what they said there.
+    if (u.subject_id) {
+        add('groups.json', (await rowsOf(db, 'frame_group_members', "kind = 'person' AND subject = ?", [u.subject_id])).rows);
+        const said = await rowsOf(db, 'frame_group_messages', "by_subject = ? AND from_kind = 'person'", [u.subject_id]);
+        add('group-messages.json', said.rows, said.truncated);
+    }
     const prefs = (await rowsOf(db, 'user_preferences', 'user_id = ?', [u.id])).rows[0] || null;
     add('preferences.json', {
         display: prefs,
@@ -384,6 +390,14 @@ async function erase(db, deletion, { now = Date.now() } = {}) {
         consentEvents = await require('../consent').revokeForDeletion(db, subjects, { at });
         // The Dock's state (the Dock plan 2026-10-30, K-D1): the person's own row, gone with them.
         await del('dock_states', `subject IN ${inS}`, subjects, 'dock_states');
+        // Group conversations (plan §AD.19): their places in groups and the runs kept for them go; what they said is
+        // emptied (the thread keeps its order for the others), and agent answers they started no longer name them.
+        await del('frame_group_members', `kind = 'person' AND subject IN ${inS}`, subjects, 'group_memberships');
+        await del('frame_group_runs', `subject IN ${inS}`, subjects, 'group_runs');
+        if (await tableExists(db, 'frame_group_messages')) {
+            count('group_messages', (await db.prepare(`UPDATE frame_group_messages SET text = CASE WHEN from_kind = 'person' THEN '' ELSE text END,
+                files = CASE WHEN from_kind = 'person' THEN '[]'::jsonb ELSE files END, by_subject = NULL WHERE by_subject IN ${inS}`).run(...subjects)).changes);
+        }
         // People's own controls (2026-11-11): the layouts they made, and their share links, go with them.
         await del('ui_layouts', `subject_id IN ${inS}`, subjects, 'ui_layouts');
         await del('user_follows', `follower_subject IN ${inS} OR target_id IN ${inS}`, [...subjects, ...subjects], 'follows');

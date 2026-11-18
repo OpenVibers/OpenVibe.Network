@@ -112,6 +112,25 @@ const server = http.createServer(app);
     r = await call('DELETE', '/api/history', 'a'); assert.strictEqual(r.body.deleted, 1);
     r = await call('GET', '/api/history', 'a'); assert.strictEqual(r.body.total, 0);
 
+    // ── Searches follow the account (plan §AB.34): the menu records each one, reads them back, clears only them ──
+    r = await call('POST', '/api/history', 'a', { type: 'search', title: 'lofi streams', url: 'https://search.openvibe.network/?q=lofi%20streams', service: 'search' });
+    assert.strictEqual(r.status, 201, 'a search is recorded');
+    r = await call('POST', '/api/history', 'a', { type: 'search', title: 'lofi streams', url: 'https://search.openvibe.network/?q=lofi%20streams' });
+    assert.strictEqual(r.body.merged, true, 'the same search again bumps it');
+    await call('POST', '/api/history', 'a', { type: 'tool', title: 'JSON Formatter', url: 'https://json.openvibe.tools/' });
+    r = await call('GET', '/api/history?type=search&limit=8', 'a');
+    assert.deepStrictEqual(r.body.items.map((x) => [x.type, x.title, x.icon, x.service_label]), [['search', 'lofi streams', 'fa-magnifying-glass', 'Search']], 'only searches, newest first');
+    r = await call('GET', '/api/history?type=search', 'b');
+    assert.strictEqual(r.body.total, 0, 'another account sees none of them');
+    r = await call('DELETE', '/api/history/type/search', 'b');
+    assert.strictEqual(r.body.deleted, 0, 'clearing one\'s own searches touches nobody else\'s');
+    r = await call('DELETE', '/api/history/type/search', 'a');
+    assert.strictEqual(r.body.deleted, 1, 'clear removes the searches');
+    r = await call('GET', '/api/history', 'a');
+    assert.deepStrictEqual(r.body.items.map((x) => x.type), ['tool'], 'and nothing else');
+    r = await call('DELETE', '/api/history/type/nope', 'a');
+    assert.strictEqual(r.status, 400, 'an unknown kind is refused');
+
     server.close();
     console.log('history + sso targets: all checks passed');
 })().catch((err) => { console.error(err); server.close(); process.exit(1); });

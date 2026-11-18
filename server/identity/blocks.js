@@ -96,6 +96,9 @@ async function setBlock(db, blocker, blocked, active) {
                 .run(blocker, blocked, at, at);
         }
         await eventRelay.writerFor(db).enqueue(buildEnvelope({ blocker, blocked, active, revision, at }));
+        // A block ends the friendship: both sides close, and the pair is told (plan §AB.51, network.friend.removed).
+        // The friends module is required here, not at the top: it needs this one, and a cycle would break both.
+        if (active) await require('./friends').endFriendship(db, blocker, blocked);
         return { changed: true, active: !!active, revision, at };
     });
 }

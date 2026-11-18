@@ -51,6 +51,19 @@ const fmt = (n) => {
 const exact = (n) => (n == null ? '—' : Math.round(Number(n)).toLocaleString('en-US'));
 /** Change against the window before, as a percentage, or null when there is nothing to compare with. */
 const change = (now, before) => (before > 0 && now != null ? Math.round(((now - before) / before) * 100) : null);
+// An email's kind in words, as Network's Email tab says it (public/js/admin/content.js emailKindWords), never the
+// machine word ("notification:OPERATOR_ALERT" is "Operator alert").
+const EMAIL_KINDS = { email_verification: 'Email check', password_reset: 'Password reset', password_changed: 'Password changed',
+    account_security: 'Account security', notification_digest: 'Notification digest', test: 'Test email' };
+function emailKind(type) {
+    const raw = String(type || '').trim();
+    const words = (t) => { const w = String(t || '').replace(/[_:.-]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase(); return w ? w.charAt(0).toUpperCase() + w.slice(1) : 'Other'; };
+    if (EMAIL_KINDS[raw]) return EMAIL_KINDS[raw];
+    if (raw.startsWith('notification_digest:')) return 'Notification digest';
+    if (raw.startsWith('notification:')) return words(raw.slice('notification:'.length));
+    if (raw.startsWith('webhook:')) return 'Provider report';
+    return words(raw).slice(0, 60);
+}
 function windowOf(q) { const d = parseInt(q, 10); return WINDOWS.includes(d) ? d : 30; }
 
 function createOpenStats({ db, selfToken = () => null, statusRows = () => [], prometheusUrl, liveUrl, release = null, fetchImpl = globalThis.fetch, now = () => Date.now(), toolsOf = toolsCatalog }) {
@@ -117,6 +130,22 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
     }
 
     // ── OpenVibe.Live counts its own page views (its own navbar and analytics): totals for the windows ──
+    // ── Distinct visitors per site (frame/visitors.js, 11-16): each day's distinct visitors, summed over the window ──
+    async function visitorsBySite(days) {
+        const window = new Set(daysOf(days));
+        const since = [...window].sort()[0];
+        const rows = await all(`SELECT day, host, visitors::bigint AS n FROM frame_visitor_days WHERE day >= ?
+            UNION ALL SELECT day, host, COUNT(*)::bigint AS n FROM frame_visitors WHERE day >= ? GROUP BY day, host`, since, since);
+        if (!rows) return null;
+        const by = new Map();
+        for (const r of rows) {
+            if (!window.has(r.day)) continue;
+            const site = siteForHost(r.host);
+            if (site) by.set(site.id, (by.get(site.id) || 0) + (Number(r.n) || 0));
+        }
+        return by;
+    }
+
     async function livePageviews(days) {
         const token = selfToken('openvibe.live', ['live.analytics.read']);
         if (!token) return null;
@@ -233,7 +262,7 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
     }
 
     async function compute(days) {
-        const [pv, livePv, acc, coin, tr, liveN, tpv, uses] = await Promise.all([pageviews(days), livePageviews(days), accounts(days), coins(days), traffic(), liveNumbers(), toolPageviews(), useCounts()]);
+        const [pv, livePv, acc, coin, tr, liveN, tpv, uses, vis] = await Promise.all([pageviews(days), livePageviews(days), accounts(days), coins(days), traffic(), liveNumbers(), toolPageviews(), useCounts(), visitorsBySite(days)]);
         let services = null;
         try {
             const rows = statusRows().filter((r) => r.exposure && r.exposure.state === 'live');
@@ -275,6 +304,7 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
                 ...(use ? { uses_24h: use.u24, uses_7d: use.u7, uses_prev_7d: use.uPrev } : {}),
                 daily: isLive ? null : window.map((d) => ({ day: d, n: e ? e.daily.get(d) || 0 : 0 })),
                 ...(isLive && livePv ? { unique_visitors: livePv.visitors, signed_in_people: livePv.people } : {}),
+                ...(!isLive && vis && vis.has(s.id) ? { unique_visitors: vis.get(s.id) } : {}),
                 traffic_24h: t || null,
             };
         }).sort((a, b) => (b.pageviews || 0) - (a.pageviews || 0) || a.name.localeCompare(b.name));
@@ -305,6 +335,26 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
             });
         }
         tools.sort((a, b) => (b.opens_7d || 0) - (a.opens_7d || 0) || String(a.name).localeCompare(String(b.name)));
+        // Email (plan §AB.38; the owner: "email stuff should be on openvibe.report as well"): what the network sent, by kind
+        // and by day, sent or failed. Counts only, never an address, a subject or a person.
+        let email = null;
+        try {
+            const rows = await db.prepare(`SELECT email_type, status, substr(created_at, 1, 10) AS day, count(*) AS n FROM email_delivery_log
+                WHERE created_at >= ? GROUP BY email_type, status, substr(created_at, 1, 10)`).all(`${window[0]} 00:00:00`);
+            const kinds = new Map();
+            const byDay = new Map(window.map((d) => [d, { day: d, sent: 0, failed: 0 }]));
+            let sent = 0, failed = 0;
+            for (const r of rows) {
+                const n = Number(r.n) || 0, ok = r.status === 'sent';
+                const label = emailKind(r.email_type);
+                const k = kinds.get(label) || { kind: label, sent: 0, failed: 0 };
+                if (ok) { k.sent += n; sent += n; } else { k.failed += n; failed += n; }
+                kinds.set(label, k);
+                const d = byDay.get(r.day);
+                if (d) { if (ok) d.sent += n; else d.failed += n; }
+            }
+            email = { sent, failed, by_kind: [...kinds.values()].sort((a, b) => (b.sent + b.failed) - (a.sent + a.failed) || a.kind.localeCompare(b.kind)), daily: [...byDay.values()] };
+        } catch { email = null; }
         // Network-wide page views per day: every navbar site's beacon (Live counts its own; its days are not split out).
         const daily = window.map((d) => ({ day: d, n: [...(pv ? pv.values() : [])].reduce((a, e) => a + (e.daily.get(d) || 0), 0) }));
         const pvTotal = sites.reduce((a, s) => a + (s.pageviews || 0), 0);
@@ -322,6 +372,7 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
             busiest_pages_24h: tr ? tr.top : null,
             sites,
             ...(tools.length ? { tools } : {}),
+            ...(email ? { email } : {}),
         };
     }
     /** The numbers for a window, held TTL_MS; one computation at a time. `refresh` (the boot warm-up, just before the
@@ -394,8 +445,12 @@ function bars(points, label, unit = '') {
 <details class="os-table"><summary>Every day</summary><table><thead><tr><th>Day</th><th>${esc(label)}</th></tr></thead><tbody>${points.slice().reverse().map((p) => `<tr><td>${esc(p.day)}</td><td>${exact(p.n)}</td></tr>`).join('')}</tbody></table></details></figure>`;
 }
 /** A site's mark, drawn on the server and styled by the inlined icon CSS: complete on the first paint, no spinning ring. */
-const mark = (name, size, cls) => `<span class="ov-icon ${cls}" data-fx="none" style="--ovi-size:${size}px">${icons.svg(name, size)}</span>`;
-const pill = (pct, days) => (pct == null ? '' : `<span class="os-pill ${pct > 0 ? 'is-up' : pct < 0 ? 'is-down' : 'is-flat'}" title="Against the ${days} days before">${pct > 0 ? '▲' : pct < 0 ? '▼' : '–'} ${Math.abs(pct)}%</span>`);
+// data-icon and data-ovi name it: the page's icon script re-draws every .ov-icon by its data-icon, and one without a
+// name became the OpenVibe "V" on every site (the owner's /stats shot, 11-15).
+const mark = (name, size, cls) => `<span class="ov-icon ${cls}" data-icon="${esc(name)}" data-ovi="${esc(name)}" data-fx="none" style="--ovi-size:${size}px">${icons.svg(name, size)}</span>`;
+// A change of 1,000 % or more reads as a multiple ("▲ 109×", not "▲ 10773%": the owner's shot of /stats, 11-15).
+const pillWords = (pct) => (pct >= 1000 ? `${Math.round(pct / 100 + 1)}×` : `${Math.abs(pct)}%`);
+const pill = (pct, days) => (pct == null ? '' : `<span class="os-pill ${pct > 0 ? 'is-up' : pct < 0 ? 'is-down' : 'is-flat'}" title="${pct >= 1000 ? `${Math.round(pct / 100 + 1)} times the ${days} days before` : `Against the ${days} days before`}">${pct > 0 ? '▲' : pct < 0 ? '▼' : '–'} ${pillWords(pct)}</span>`);
 const tile = (label, value, sub, extra = '') => `<div class="os-tile"><span class="os-tile-l">${esc(label)}</span><b class="os-tile-v">${value}</b>${sub ? `<span class="os-tile-s">${sub}</span>` : ''}${extra}</div>`;
 
 function render(data, days, { releaseId } = {}) {
@@ -554,4 +609,4 @@ const CSS = `
 .os-sites{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.os-pre{display:none}.os-site{padding:10px;gap:6px;border-radius:14px}.os-site-name small,.os-site-l{display:none}.os-site-name b{font-size:.86rem}.os-site-n{font-size:1.15rem}.os-site-meta{grid-template-columns:1fr 1fr;padding-top:6px}.os-site-meta div:nth-child(n+3){display:none}.os-site-meta dt{font-size:.75rem}.os-site-meta dd{font-size:.8rem}.os-site-own{height:26px;font-size:.7rem}.os-site .os-spark{height:26px}.os-axis span:nth-child(2){display:none}}
 `;
 
-module.exports = { createOpenStats, render, sparkline, bars, windowOf };
+module.exports = { createOpenStats, render, sparkline, bars, windowOf, pill };

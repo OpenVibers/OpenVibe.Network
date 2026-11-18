@@ -223,7 +223,8 @@ let hasAccounts = false;
 function setPrimaryExtrasVisible(visible) {
     const display = visible ? '' : 'none';
     document.querySelectorAll('.login-card > .divider').forEach(d => d.style.display = display);
-    const anonBtn = document.querySelector('.anon-btn');
+    // By id: the passkey button wears .anon-btn too and comes first, so a class lookup hid it instead.
+    const anonBtn = document.getElementById('anon-btn');
     if (anonBtn) anonBtn.style.display = display;
 }
 
@@ -233,6 +234,10 @@ function setActivePanel(panelId, { showTabs = true, activeTab = null, showExtras
     document.getElementById('auth-tabs').style.display = showTabs ? '' : 'none';
     document.getElementById(panelId).classList.add('active');
     setPrimaryExtrasVisible(showExtras);
+    // The provider buttons belong to signing in and making an account, not to a reset, an app's permissions or the
+    // saved-accounts chooser (which has its own "Use another account").
+    const providers = document.getElementById('signin-providers');
+    if (providers) providers.hidden = !(panelId === 'panel-login' || panelId === 'panel-register');
     if (activeTab) {
         const buttons = document.querySelectorAll('.tab-bar button');
         const idx = activeTab === 'register' ? 1 : 0;
@@ -359,7 +364,7 @@ function renderChooser() {
                 <div class="detail">${escapeHtml(account.username)}${account.email ? ' · ' + escapeHtml(account.email) : ''}</div>
             </div>
             <span class="arrow" aria-hidden="true"><i data-ov-icon="arrow-right"></i></span>
-            <button class="remove-btn" title="Remove this saved account" onclick="event.stopPropagation(); removeAccount(${account.id})"><i class="fa-solid fa-xmark"></i></button>
+            <button class="remove-btn" title="Remove this saved account" onclick="event.stopPropagation(); removeAccount(${account.id})"><i data-ov-icon="close" aria-hidden="true"></i></button>
         `;
         const img = item.querySelector('.avatar img');
         if (img) img.addEventListener('error', () => { img.parentElement.innerHTML = `<span class="avatar-initial">${initial}</span>`; }, { once: true });
@@ -661,7 +666,7 @@ async function continueAsAccount(account, validToken) {
 function togglePw(btn) {
     const input = btn.previousElementSibling;
     input.type = input.type === 'password' ? 'text' : 'password';
-    btn.innerHTML = input.type === 'password' ? '<i class="fa-solid fa-eye" aria-hidden="true"></i>' : '<i class="fa-solid fa-eye-slash" aria-hidden="true"></i>';
+    btn.innerHTML = input.type === 'password' ? '<i data-ov-icon="eye" aria-hidden="true"></i>' : '<i data-ov-icon="eye-off" aria-hidden="true"></i>';
     btn.setAttribute('aria-label', input.type === 'password' ? 'Show password' : 'Hide password');
 }
 
@@ -943,7 +948,7 @@ async function handleForgotPassword(e) {
     } catch (err) {
         showMsg('forgot-msg', err.message, 'error');
     } finally {
-        btn.innerHTML = 'Send Reset Link <i class="fa-solid fa-envelope"></i>';
+        btn.innerHTML = 'Send Reset Link <i data-ov-icon="mail" aria-hidden="true"></i>';
         btn.classList.remove('loading');
     }
 }
@@ -987,7 +992,7 @@ async function handleResetPassword(e) {
     } catch (err) {
         showMsg('reset-msg', err.message, 'error');
     } finally {
-        btn.innerHTML = 'Reset Password <i class="fa-solid fa-lock"></i>';
+        btn.innerHTML = 'Reset Password <i data-ov-icon="lock" aria-hidden="true"></i>';
         btn.classList.remove('loading');
     }
 }
@@ -1009,14 +1014,95 @@ async function continueAnonymous() {
     }
 }
 
+// ── Sign-in apps (plan §AB.20) ───────────────────────────────
+// The buttons themselves are in the server's HTML (server/auth/providers/page.js), so the page is indexable. This asks
+// for the same list again: a provider the owner switched on since the cached page, an app's authorize query that each
+// button must carry back, and the refusals (?error=) the callback redirects here with.
+let signInProviders = null;
+const PROVIDER_GLYPH = {
+    google: { brand: 'google' }, discord: { brand: 'discord' }, twitch: { brand: 'twitch' }, github: { brand: 'github' },
+    apple: { brand: 'apple' }, steam: { brand: 'steam' }, kick: { brand: 'kick' }, x: { brand: 'x' },
+    facebook: { brand: 'facebook' }, microsoft: { icon: 'window' }, roblox: { icon: 'game' },
+};
+function providerGlyph(id) {
+    const g = PROVIDER_GLYPH[id] || { icon: 'globe' };
+    return g.brand ? `<i data-ov-brand="${g.brand}" aria-hidden="true"></i>` : `<i data-ov-icon="${g.icon}" aria-hidden="true"></i>`;
+}
+function providerStartUrl(id) {
+    const u = new URL('/api/auth/connect/' + encodeURIComponent(id), window.location.origin);
+    if (isOAuth) u.searchParams.set('app', window.location.search.replace(/^\?/, ''));
+    else {
+        const back = params.get('return');
+        if (back) u.searchParams.set('return', back);
+        if (params.get('everywhere') === '1') u.searchParams.set('everywhere', '1');
+    }
+    return u.toString();
+}
+function renderProviderButtons(list) {
+    const el = document.getElementById('signin-providers');
+    if (!el) return;
+    if (!list.length) { el.remove(); return; }
+    const names = list.map(p => p.name);
+    const sentence = names.length === 1 ? names[0] : names.length === 2 ? `${names[0]} and ${names[1]}`
+        : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+    // The same markup as the server's (server/auth/providers/page.js): one provider says "Sign in with Steam"; two
+    // or more sit two to a row and show their names, the full words kept for screen readers.
+    const many = list.length > 1;
+    const button = (p) => `<a class="provider-btn" href="${escapeHtml(providerStartUrl(p.id))}" data-provider="${escapeHtml(p.id)}" rel="nofollow"${many ? ` aria-label="Sign in with ${escapeHtml(p.name)}"` : ''}>${providerGlyph(p.id)}<span>${many ? '' : 'Sign in with '}${escapeHtml(p.name)}</span></a>`;
+    el.innerHTML = `<h2 class="providers-head" id="providers-head">Sign in to OpenVibe with ${escapeHtml(sentence)}</h2>
+        <div class="provider-list">${list.map(button).join('')}</div>
+        <p class="providers-note">A first sign-in makes a new OpenVibe account; a provider already linked signs you straight in.</p>
+        <div class="divider providers-or"><span>or use a username</span></div>`;
+}
+const PROVIDER_ERRORS = {
+    state_mismatch: 'That sign-in link was not the one this browser started. Please try again.',
+    state_expired: 'That sign-in took too long (more than ten minutes) or was already used. Please try again.',
+    email_taken: 'This email has an OpenVibe account: sign in to it, then link',
+    banned: 'This account cannot sign in.',
+    account_deleted: 'This account no longer exists.',
+    session_gone: 'Your session ended before the link finished. Sign in and try again.',
+    mfa_unavailable: 'Two-factor sign-in cannot be checked right now. Sign in with your password instead.',
+    provider_access_denied: 'You cancelled on the provider’s page. No account was created.',
+};
+const PROVIDER_NAMES = { google: 'Google', discord: 'Discord', steam: 'Steam', twitch: 'Twitch', github: 'GitHub', apple: 'Apple', microsoft: 'Microsoft', kick: 'Kick', x: 'X', roblox: 'Roblox', facebook: 'Facebook' };
+function showProviderError() {
+    const code = params.get('error');
+    if (!code || !/^(state_|email_taken|banned|account_deleted|session_gone|mfa_unavailable|provider_|openid_|id_token_)/.test(code)) return false;
+    const provider = params.get('provider') || '';
+    const name = PROVIDER_NAMES[provider] || 'that app';
+    let text;
+    if (code === 'email_taken') {
+        // The provider verified this address before the redirect; it is the person's own, and this sentence is the
+        // whole point (ADR-029: never link or merge by email automatically).
+        const email = params.get('email') || '';
+        text = `${email ? escapeHtml(email) + ' already has' : 'This email has'} an OpenVibe account: sign in to it below, then link ${escapeHtml(name)} from your account page.`;
+    } else if (code.startsWith('provider_')) {
+        text = PROVIDER_ERRORS[code] || `${escapeHtml(name)} could not finish the sign-in. Please try again.`;
+    } else if (code.startsWith('id_token') || code.startsWith('openid_')) {
+        text = `${escapeHtml(name)} answered in a way this site does not trust, so nothing was signed in. Please try again.`;
+    } else {
+        text = PROVIDER_ERRORS[code] || 'That sign-in did not finish. Please try again.';
+    }
+    showAuthForm('login');
+    showMsg('login-msg', text, 'error');
+    return true;
+}
+function loadSignInProviders() {
+    return fetch(`${API_BASE}/api/auth/connect`, { credentials: 'same-origin' })
+        .then(r => (r.ok ? r.json() : null))
+        .then((d) => { signInProviders = d && Array.isArray(d.providers) ? d.providers : null; if (signInProviders) renderProviderButtons(signInProviders); return signInProviders; })
+        .catch(() => { signInProviders = []; return signInProviders; });
+}
+
 // ── Page Init ───────────────────────────────────────────────
 (function init() {
+    loadSignInProviders();
     const accounts = getSavedAccounts();
     hasAccounts = accounts.length > 0;
     const resetToken = params.get('token');
 
     // A return into a page that only makes sense signed in (the machines hub): anonymous mode would
-    // only land on a sign-in wall, so Continue Anonymously — and the divider above it — stays hidden.
+    // only land on a sign-in wall, so Continue as a guest — and the divider above it — stays hidden.
     if (isSignedInOnlyReturn(params.get('return'))) {
         const anon = document.getElementById('anon-btn');
         if (anon) {
@@ -1052,6 +1138,9 @@ async function continueAnonymous() {
         }
         return;
     }
+
+    // A refusal from a provider comes back here with ?error=: say what happened and show the password form.
+    if (showProviderError()) return;
 
     // Direct link to the create-account tab (e.g. landing page CTA)
     if (params.get('tab') === 'register') {
@@ -1117,6 +1206,32 @@ async function continueAnonymous() {
     }
 })();
 
+// ── Back from a provider (plan §AB.20) ─────────────────────
+// A provider sign-in set this browser's session before the callback redirected here. The page reads the session
+// token (the ov_token cookie is readable; the provider's callback set it) and continues exactly as a password
+// sign-in would for an app: its consent, then its code.
+async function adoptSignedInProvider() {
+    const cookie = (document.cookie.match(/(?:^|; )ov_token=([^;]*)/) || [])[1];
+    if (!cookie) return false;
+    const token = decodeURIComponent(cookie);
+    try {
+        const res = await fetch(API_BASE + '/api/auth/me', { headers: { Authorization: 'Bearer ' + token } });
+        if (!res.ok) return false;
+        const data = await res.json();
+        if (!data || !data.user) return false;
+        setAuthCookie(token);
+        localStorage.setItem('ov_token', token);
+        saveAccount(data.user, token);
+        return await finishSignIn({ token, user: data.user });
+    } catch { return false; }
+}
+// A provider's callback with an app's query comes back with signed_in=1: continue for that app without another click.
+if (params.get('signed_in') === '1' && isOAuth) {
+    params.delete('signed_in');
+    window.history.replaceState({}, '', window.location.pathname + (params.toString() ? '?' + params.toString() : ''));
+    adoptSignedInProvider();
+}
+
 // Pending sign-in lives only in the server's short-lived HttpOnly cookie.
 function showMfaChallenge() {
     networkPasskeys.library().then(lib => lib.WebAuthnAbortService.cancelCeremony()).catch(() => {});
@@ -1169,7 +1284,7 @@ if (window.PublicKeyCredential) {
     PublicKeyCredential.isConditionalMediationAvailable?.().then(available => { if (available) signInWithPasskey(true); }).catch(() => {});
 }
 
-// Pages that only make sense signed in (the machines hub): Continue Anonymously would only land on a
+// Pages that only make sense signed in (the machines hub): Continue as a guest would only land on a
 // sign-in wall, so the button (and its divider) stays hidden when the return targets one of them.
 function isSignedInOnlyReturn(raw) {
     const s = String(raw || '');

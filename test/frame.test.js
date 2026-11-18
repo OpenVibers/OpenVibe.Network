@@ -40,7 +40,7 @@ assert.strictEqual(svc.ranking().at, null, 'cold start: no use counted yet (the 
 let p = svc.payloadFor('openvibe.media');
 // Email (OpenVibe.Mail) joins the cold order after Chat once its manifest is in the pinned Contracts release; until then
 // the test still follows what the installed manifests say.
-const COLD_ORDER = ['live', 'tools', 'space', 'community', 'games', 'network', 'chat', 'mail', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'git', 'search', 'run', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'casino', 'tours', 'shoes', 'connect', 'computer', 'lock', 'image', 'compare', 'directory'];
+const COLD_ORDER = ['live', 'tools', 'space', 'community', 'games', 'network', 'chat', 'mail', 'services', 'blog', 'wiki', 'news', 'reviews', 'tips', 'vip', 'trade', 'host', 'deals', 'coupons', 'stream', 'media-hub', 'bot', 'codes', 'actor', 'food', 'help', 'work', 'quest', 'rent', 'watch', 'inventory', 'events', 'git', 'search', 'run', 'zone', 'domains', 'report', 'design', 'today', 'surf', 'meme', 'vision', 'exchange', 'fun', 'cam', 'casino', 'tours', 'shoes', 'connect', 'computer', 'lock', 'image', 'compare', 'directory', 'expert', 'markets', 'finance'];
 assert.deepEqual(p.nav.filter(n => !n.of).map(n => n.id), COLD_ORDER, 'cold start follows the base order');
 assert.ok(!p.nav.some(n => n.id === 'play'), 'Play is part of Games, not a menu entry of its own');
 assert.ok(!p.nav.some(n => ['media', 'homes', 'bench', 'website'].includes(n.id)), 'merged sections and the domain-only Website are not tiles');
@@ -59,10 +59,13 @@ const at = (id) => p.nav.findIndex(n => n.id === id);
 assert.ok(at('pics') === at('media-hub') + 1 && at('download') === at('media-hub') + 2, 'Pics and Download follow their site');
 assert.deepStrictEqual([p.nav[at('media-hub')].icon, p.nav[at('media-hub')].group, p.nav[at('tools')].group], ['video', 'watch', 'tools'], 'Video draws the video icon (there is no media-hub icon)');
 assert.deepStrictEqual(['actor', 'bot', 'run', 'zone', 'codes'].map((id) => p.nav[at(id)].group), ['make', 'make', 'build', 'build', 'make'], 'robots and coding agents make with AI; compute and storage are for developers');
-// Every tile is in exactly one group, each group has at most seven tiles, and the merged sections still answer.
+// The three doors of 2026-11-13: Expert with the agents you make, Markets and Finance with the shops and the money.
+assert.deepStrictEqual(['expert', 'markets', 'finance'].map((id) => p.nav[at(id)].group), ['make', 'shop', 'shop'], 'the doors sit with the places they belong to');
+assert.deepStrictEqual(['expert', 'markets', 'finance'].map((id) => p.nav[at(id)].url), ['https://openvibe.expert/', 'https://openvibe.markets/', 'https://openvibe.finance/'], 'a door is its own domain');
+// Every tile is in exactly one group, each group has at most nine tiles, and the merged sections still answer.
 [['games', 'play'], ['connect', 'make'], ['image', 'tools'], ['quest', 'play'], ['inventory', 'play'], ['watch', 'build'], ['download', 'watch'], ['search', 'read'], ['chat', 'talk'], ['mail', 'talk'], ['domains', 'tools'], ['report', 'read'], ['design', 'tools'], ['today', 'read'], ['surf', 'play'], ['meme', 'play'], ['vision', 'read'], ['exchange', 'build'], ['fun', 'play'], ['cam', 'watch'], ['casino', 'play'], ['tours', 'watch'], ['shoes', 'shop']]
     .filter(([id]) => at(id) >= 0).forEach(([id, group]) => assert.strictEqual(p.nav[at(id)].group, group, `${id} is in ${group}`));
-assert.strictEqual(p.nav.length, 57 + p.nav.filter((n) => n.id === 'link').length, '55 open sites plus Pics and Download (and Link, Network\'s, 11-14); Compare joins with Contracts 0.409.0');
+assert.strictEqual(p.nav.length, 60 + p.nav.filter((n) => n.id === 'link').length, '58 open sites plus Pics and Download (and Link, Network\'s, 11-14); the three doors of 2026-11-13 joined them');
 assert.deepStrictEqual([p.nav[at('stream')].name, p.nav[at('pics')].name], ['Restream', 'Pics'], 'OpenRestream is "Restream" among the menu\'s short names (owner, 2026-10-28)');
 assert.strictEqual(p.nav.find(n => n.id === 'space').url, 'https://openvibe.space/', 'Space keeps its own home (the forum returned to Community, 0.118.0)');
 assert.strictEqual(p.nav.find(n => n.id === 'community').url, 'https://openvibe.community/', 'Community: the forum, pastes and Pulse');

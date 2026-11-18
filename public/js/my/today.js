@@ -20,6 +20,9 @@ const TD_SITES = {
     design: ['Design', 'fa-palette', 'https://openvibe.design'], report: ['Report', 'fa-chart-column', 'https://openvibe.report'],
     'media-hub': ['Video', 'fa-play', 'https://openvibe.video'], video: ['Video', 'fa-play', 'https://openvibe.video'],
     download: ['Download', 'fa-folder', 'https://openvibe.download'], cam: ['Cam', 'fa-camera', 'https://openvibe.cam'],
+    // The three doors of 2026-11-13: their own services come later, their domains are the network's own.
+    expert: ['Expert', 'fa-user-secret', 'https://openvibe.expert'], markets: ['Markets', 'fa-tags', 'https://openvibe.markets'],
+    finance: ['Finance', 'fa-wallet', 'https://openvibe.finance'],
 };
 // What to try next, most used across the network first, each with the reason it is worth a look.
 const TD_TRY = [
@@ -102,7 +105,8 @@ function renderActions(unread) {
     const acts = [
         streamer ? ['Go live', 'fa-tower-broadcast', 'https://openvibe.live/broadcast', 'live'] : ['Watch live', 'fa-circle-play', 'https://openvibe.live/', 'live'],
         ['Messages', 'fa-comment-dots', 'https://openvibe.chat/messages', 'chat', dock('chats')],
-        ['Ask Vibe', 'fa-wand-magic-sparkles', 'https://openvibe.chat/', 'vibe', dock('vibe')],
+        // Your agent (11-15, the owner: "use the actor … instead of vibe character"): Ask Actor, the menu's Vibe door.
+        ['Ask Actor', 'fa-wand-magic-sparkles', 'https://openvibe.chat/vibe', 'vibe', dock('vibe')],
         ['Your files', 'fa-folder', 'https://openvibe.download/files', 'files'],
         ['Codes', 'fa-code', 'https://openvibe.codes/', 'codes'],
         ['Wallet', 'fa-wallet', '/wallet', 'wallet'],
@@ -278,7 +282,8 @@ function renderContinue(hist) {
     const box = document.getElementById('td-continue');
     const list = document.getElementById('td-continue-list');
     const seen = new Set();
-    const items = ((hist && hist.items) || []).filter((it) => { const u = tdSafeUrl(it.url); if (!u || seen.has(u)) return false; seen.add(u); return true; }).slice(0, 10);
+    // A search is not a place to continue (plan §AB.34: searches are kept for the menu's "Recent searches").
+    const items = ((hist && hist.items) || []).filter((it) => { const u = tdSafeUrl(it.url); if (!u || it.type === 'search' || seen.has(u)) return false; seen.add(u); return true; }).slice(0, 10);
     list.replaceChildren(...items.map((it) => {
         const site = TD_SITES[it.service] || [it.service_label || 'OpenVibe', 'fa-globe'];
         const icon = /^fa-[a-z0-9-]+$/.test(String(it.icon || '')) ? it.icon : site[1];

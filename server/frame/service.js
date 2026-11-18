@@ -32,10 +32,12 @@ const express = require('express');
 const crypto = require('crypto');
 const { SITES, LISTED, LISTED_SITES, siteForHost, GROUPS, groupOf, PRODUCTS, MERGED_PRODUCTS, ICON_ALIAS, MENU_LINE, MENU_NAME, fullName } = require('./sites');
 const { createMenuCards } = require('./menu-cards');
+const { createVisitors, declined } = require('./visitors');
 const { createFrameChoices } = require('./choices');
 const { createFrameAsk } = require('./ask');
 const { createFrameCaption } = require('./caption');
 const { createFrameCodeSearch } = require('./code-search');
+const { createFrameTools } = require('./tools');
 const { read: readCommands } = require('./commands');
 const { createFrameMentions } = require('./mentions');
 const { createFrameRuns } = require('./runs');
@@ -195,6 +197,8 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     const load = async (k) => { try { const r = await db.prepare('SELECT value, updated_at FROM frame_cache WHERE key = ?').get(k); return r ? { value: JSON.parse(r.value), at: Date.parse(r.updated_at + 'Z') || 0 } : null; } catch { return null; } };
     const save = async (k, v) => await db.prepare('INSERT INTO frame_cache (key, value, updated_at) VALUES (?, ?, ov_now()) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = ov_now()').run(k, JSON.stringify(v));
 
+    // Distinct visitors per site and day for the open stats and Report (11-16): a daily-salted hash, rolled into counts.
+    const visitors = createVisitors({ db, now, load, save });
     const savedRank = await load('rank') || {};
     let rank = savedRank.value || { scores: {}, tools: [] };
     let rankedAt = savedRank.value ? savedRank.at || null : null;
@@ -731,7 +735,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     }
     const qCursor = (v) => (/^[A-Za-z0-9._~=-]{1,300}$/.test(String(v || '')) ? String(v) : '');
     const qLimit = (v, max) => String(Math.min(Math.max(parseInt(v, 10) || 20, 1), max));
-    router.options(['/feed', '/feed/search', '/feed/examples', '/wall', '/status', '/posts', '/attachments'], (req, res) => {
+    router.options(['/feed', '/feed/search', '/feed/examples', '/feed/sites', '/wall', '/status', '/posts', '/attachments'], (req, res) => {
         res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Max-Age': '600' });
         res.status(204).end();
     });
@@ -780,6 +784,66 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     });
     router.post('/posts', express.json({ limit: '8kb' }), (req, res) => sendOn(req, res, '/api/v1/posts', JSON.stringify(req.body || {}), 'application/json'));
 
+    // ── Comments in the menu (plan §AA.21; the owner: "it shouldn't bring you to a new page … seamless, like Facebook or
+    // Twitter … but you can also go to the actual forum post … replies"). Every site's connect-src reaches openvibe.network,
+    // not openvibe.community, so the feed's comment sheet goes through here to Community's /api/v1/comments with the
+    // person's own Bearer (reads also signed out). Ids are checked before they reach a path; Community keeps its rules.
+    //   POST /api/frame/comments/resolve                { ref: { service, type, id } } → the thread (get-or-create)
+    //   GET  /api/frame/comments/threads/:id            ?after=&sort=&limit=&parent= → the thread and a page of comments
+    //   POST /api/frame/comments/threads/:id/comments   { message, parent_id? } → the comment (signed in)
+    //   POST /api/frame/comments/:commentId/votes       { value: 1|-1|0 } (signed in)
+    const THREAD_ID = /^cth_[A-Za-z0-9_-]{22}$/;
+    const COMMENT_ID = /^[A-Za-z0-9_-]{1,64}$/;
+    const REF_PART = /^[a-z][a-z0-9-]{0,39}$/;
+    const commentsCall = async (req, res, method, path, body, { needAuth = false } = {}) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '';
+        if (needAuth && !auth) return res.status(401).send('{"error":"Sign in to reply","code":"comments.sign_in"}');
+        try {
+            const r = await fetch(new URL(path, svcUrl('community', 'http://127.0.0.1:4200')).href, {
+                method, redirect: 'error', signal: AbortSignal.timeout(15000),
+                headers: { Accept: 'application/json', ...(auth ? { Authorization: auth } : {}), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+                body: body === undefined ? undefined : JSON.stringify(body),
+            });
+            const text = await r.text();
+            return res.status(r.status).send(text.slice(0, 256 * 1024));
+        } catch { return res.status(502).send('{"error":"Community did not answer","code":"comments.unavailable"}'); }
+    };
+    router.options(['/comments/resolve', '/comments/threads/:id', '/comments/threads/:id/comments', '/comments/:commentId/votes'], (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Authorization, Content-Type', 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Max-Age': '600' });
+        res.status(204).end();
+    });
+    router.post('/comments/resolve', express.json({ limit: '4kb' }), (req, res) => {
+        const ref = req.body && req.body.ref;
+        const id = ref && String(ref.id || '');
+        if (!ref || !REF_PART.test(String(ref.service || '')) || !REF_PART.test(String(ref.type || '')) || !/^[A-Za-z0-9._:~-]{1,160}$/.test(id)) {
+            res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' });
+            return res.status(400).json({ error: 'ref must be { service, type, id }', code: 'comments.ref_invalid' });
+        }
+        return commentsCall(req, res, 'POST', '/api/v1/comments/threads/resolve', { ref: { service: String(ref.service), type: String(ref.type), id } });
+    });
+    router.get('/comments/threads/:id', (req, res) => {
+        if (!THREAD_ID.test(req.params.id)) { res.set({ 'Access-Control-Allow-Origin': '*' }); return res.status(404).json({ error: 'No such thread', code: 'comments.not_found' }); }
+        const q = new URLSearchParams();
+        if (req.query.after && /^[A-Za-z0-9._~=-]{1,300}$/.test(String(req.query.after))) q.set('after', String(req.query.after));
+        if (['old', 'new', 'top'].includes(String(req.query.sort || ''))) q.set('sort', String(req.query.sort));
+        if (req.query.limit) q.set('limit', qLimit(req.query.limit, 50));
+        if (req.query.parent && COMMENT_ID.test(String(req.query.parent))) q.set('parent', String(req.query.parent));
+        return commentsCall(req, res, 'GET', `/api/v1/comments/threads/${req.params.id}${q.toString() ? `?${q}` : ''}`);
+    });
+    router.post('/comments/threads/:id/comments', express.json({ limit: '24kb' }), (req, res) => {
+        if (!THREAD_ID.test(req.params.id)) { res.set({ 'Access-Control-Allow-Origin': '*' }); return res.status(404).json({ error: 'No such thread', code: 'comments.not_found' }); }
+        const b = req.body && typeof req.body === 'object' ? req.body : {};
+        const out = { message: String(b.message || '').slice(0, 10000) };
+        if (b.parent_id != null && COMMENT_ID.test(String(b.parent_id))) out.parent_id = b.parent_id;
+        return commentsCall(req, res, 'POST', `/api/v1/comments/threads/${req.params.id}/comments`, out, { needAuth: true });
+    });
+    router.post('/comments/:commentId/votes', express.json({ limit: '1kb' }), (req, res) => {
+        if (!COMMENT_ID.test(req.params.commentId)) { res.set({ 'Access-Control-Allow-Origin': '*' }); return res.status(404).json({ error: 'No such comment', code: 'comments.not_found' }); }
+        const value = [1, -1, 0].includes(Number(req.body && req.body.value)) ? Number(req.body.value) : 0;
+        return commentsCall(req, res, 'POST', `/api/v1/comments/${req.params.commentId}/votes`, { value }, { needAuth: true });
+    });
+
     // The feed is Network's own (server/feed/api.js, feed.item@1) since 11-12: the same handler Community's
     // /api/v1/feed proxies, so the menu and Pulse return the same ids. The old relay stays only for a
     // Frame built without it (a unit test), never in the server.
@@ -793,6 +857,8 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         q: qWords(req.query.q),
     })));
     router.get('/feed/examples', (req, res, next) => (feed ? feed.handleExamples(req, res, next) : relay(req, res, '/api/v1/feed/examples', {})));
+    // Each site's live line for the card heads (plan §AB.46), from the same feed.
+    router.get('/feed/sites', (req, res, next) => (feed && feed.handleSites ? feed.handleSites(req, res, next) : res.json({ sites: {} })));
     router.get('/wall', (req, res, next) => (feed ? feed.handleWall(req, res, next) : relay(req, res, '/api/v1/pulse', {
         limit: qLimit(req.query.limit, 50), after: qCursor(req.query.after), cursor: qCursor(req.query.cursor),
         for: req.query.for === 'me' ? 'me' : '', origin: ['user', 'ai', 'system', 'all'].includes(String(req.query.origin || '')) ? String(req.query.origin) : '',
@@ -918,7 +984,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     const dockAuth = (req) => (/^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/.test(String(req.get('authorization') || '')) ? req.get('authorization') : '');
     const DOCK_ID = /^[A-Za-z0-9._~:-]{1,160}$/;
     const dockId = (v) => (DOCK_ID.test(String(v || '')) ? String(v) : '');
-    function dockRelay(service, method, upstream, { image = false, maxBytes = 64 * 1024 } = {}) {
+    function dockRelay(service, method, upstream, { image = false, maxBytes = 64 * 1024, timeoutMs = 15000 } = {}) {
         const upstreamPath = typeof upstream === 'function' ? upstream : () => upstream;
         const fallback = service === 'codes' ? 'http://127.0.0.1:4900' : 'http://127.0.0.1:4950';
         return async (req, res) => {
@@ -928,7 +994,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             const path = upstreamPath(req);
             if (!path) return res.status(404).json({ error: 'not found' });
             const headers = { Accept: image ? 'image/jpeg, image/webp' : 'application/json', Authorization: auth };
-            const init = { method, headers, redirect: 'manual', signal: AbortSignal.timeout(15000) };
+            const init = { method, headers, redirect: 'manual', signal: AbortSignal.timeout(timeoutMs) };
             if (method !== 'GET') { headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(req.body || {}); }
             try {
                 const r = await fetch(new URL(path, svcUrl(service, fallback)).href, init);
@@ -973,9 +1039,20 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     for (const what of ['takeover', 'giveback']) router.post(`/tasks/:id/${what}`, dockJson, dockRelay('actor', 'POST', (req) => (dockId(req.params.id) ? `/api/v1/tasks/${encodeURIComponent(req.params.id)}/${what}` : null)));
     // OpenVibe.Actor's block at the top of the tab: your Actor, its first ask, and one line to tell it something.
     router.get('/actor', dockRelay('actor', 'GET', '/api/v1/me/actor'));
+    // Your Actor's name and face, changed in the menu itself (the owner, 11-15: editing your Actor "should be integrated
+    // in the menu itself"): Actor checks what may change ({ name }, { avatar: { blob: { hue, shape } } | { media_id } }).
+    router.patch('/actor', dockJson, dockRelay('actor', 'PATCH', '/api/v1/me/actor'));
     // 2026-11-13: your agents' faces for the menu's stack behind your picture (Actor #475: face, state, step, asks),
     // through the Frame because every site's connect-src allows openvibe.network and refuses openvibe.actor.
     router.get('/actor/faces', dockRelay('actor', 'GET', '/api/v1/me/agents/faces'));
+    // Your Actor's pictures (2026-11-16, the owner: "an avatar generator … on the image models configured in the admin"):
+    // the ones you have and the styles, three new ones drawn by OpenVibe.AI as you (on your allowance; a minute at
+    // most), and wearing one (Actor checks it is yours; POST here so the preflight stays GET, POST, PATCH, DELETE).
+    router.get('/actor/pictures', dockRelay('actor', 'GET', '/api/v1/me/faces'));
+    router.post('/actor/pictures/generate', dockJson, dockRelay('actor', 'POST', '/api/v1/me/faces/generate', { timeoutMs: 90000 }));
+    router.post('/actor/face', dockJson, dockRelay('actor', 'PUT', '/api/v1/agents/actor/face'));
+    // A new agent from the menu's strip (2026-11-16, the owner: "add new actors in the UI"): a name and what it does.
+    router.post('/actor/agents', dockJson, dockRelay('actor', 'POST', '/api/v1/me/agents'));
     for (const what of ['pause', 'resume', 'tell']) router.post(`/actor/${what}`, dockJson, dockRelay('actor', 'POST', `/api/v1/me/actor/${what}`));
     for (const what of ['answer', 'decline']) router.post(`/actor/asks/:id/${what}`, dockJson, dockRelay('actor', 'POST', (req) => (dockId(req.params.id) ? `/api/v1/me/actor/asks/${encodeURIComponent(req.params.id)}/${what}` : null)));
     // One owner's agent sheet on any site. Actor checks ownership and capabilities; the relay accepts only its
@@ -1045,8 +1122,16 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // Frame Runs (agent-engine.md §3): every run on OpenVibe (Vibe's chats, Codes' tasks, Actor's tasks) in one shape
     // under one address, /api/frame/runs/<product>:<id>. The product-specific relays above stay until the menu has
     // moved to these routes, then go in one cut.
-    const frameRuns = createFrameRuns({ svcUrl, personOf, now });
+    // Group conversations (plan §AD.19): people and agents in one thread; each agent's turn runs through the runs below on
+    // the account of the person whose message started the round (server/frame/groups.js). A group is a run too.
+    // The check before a room's reviewers: OpenVibe.Design's page audit of the hand-over's links (server/frame/room-check.js).
+    const roomCheck = require('./room-check').createRoomCheck({ designUrl: config && config.designUrl });
+    const frameGroups = require('./groups').createFrameGroups({ db, personOf, frameUrl: `http://127.0.0.1:${(config && config.port) || 4000}/api/frame`, log: console, check: roomCheck });
+    const frameRuns = createFrameRuns({ svcUrl, personOf, now, extra: { group: frameGroups.adapter } });
     router.use('/runs', frameRuns.router);
+    router.use('/groups', frameGroups.router);
+    // The composer's Tools (Shared 4.284.0): openvibe.tools through the Frame, which every site's CSP allows.
+    router.use(createFrameTools({ toolsUrl: svcUrl('tools', 'http://127.0.0.1:4001'), now }));
 
     // GET /api/frame/suggest?q=&owner=&limit= — the navbar's magnifier (openvibe-shared search.js): OpenVibe.Search's
     // suggestions, asked through Network because every site's connect-src already lets the navbar reach
@@ -1074,6 +1159,46 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
             suggested.set(key, { at: Date.now(), body });
         }
         res.send(body);
+    });
+
+    // GET /api/frame/trending?site=&limit= and POST /api/frame/searched — trending searches on every search box (plan
+    // 2026-11-13 §AD.13 (1); openvibe-shared ov-trending.js): OpenVibe.Search's GET /api/v1/trending (kept 60 s) and its
+    // beacon, asked through Network for the same connect-src reason as /suggest. The beacon goes on with the browser's own
+    // Origin (Search counts only the network's own sites), its address, user agent, Do Not Track and Global Privacy
+    // Control; it is always 204 and Search not answering loses one count, never an error.
+    const trendingKept = new Map();
+    router.get('/trending', async (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=60', 'Content-Type': 'application/json; charset=utf-8' });
+        const site = /^[a-z0-9.-]{3,120}$/.test(String(req.query.site || '').toLowerCase()) ? String(req.query.site).toLowerCase() : '';
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 8, 1), 20);
+        const key = `${site}|${limit}`;
+        const kept = trendingKept.get(key);
+        if (kept && Date.now() - kept.at < 60_000) return res.send(kept.body);
+        const u = new URL('/api/v1/trending', svcUrl('search', 'http://127.0.0.1:4710'));
+        if (site) u.searchParams.set('site', site);
+        u.searchParams.set('limit', String(limit));
+        const d = await getJson(u.href);
+        const body = JSON.stringify({ site: (d && d.site) || null, trending: d && Array.isArray(d.trending) ? d.trending.slice(0, limit) : [] });
+        if (d) {
+            if (trendingKept.size >= 500) trendingKept.clear();
+            trendingKept.set(key, { at: Date.now(), body });
+        }
+        res.send(body);
+    });
+    router.post('/searched', express.text({ type: ['text/plain', 'application/json'], limit: '2kb' }), (req, res) => {
+        res.set({ 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store' });
+        res.status(204).end();
+        let b = req.body;
+        if (typeof b === 'string') { try { b = JSON.parse(b); } catch { b = null; } }
+        if (!b || typeof b !== 'object' || typeof b.q !== 'string') return;
+        const headers = { 'Content-Type': 'application/json', 'User-Agent': String(req.get('user-agent') || '').slice(0, 200) };
+        if (req.ip) headers['X-Forwarded-For'] = req.ip;
+        if (req.get('origin')) headers.Origin = req.get('origin');
+        if (req.get('dnt')) headers.DNT = req.get('dnt');
+        if (req.get('sec-gpc')) headers['Sec-GPC'] = req.get('sec-gpc');
+        fetch(new URL('/api/v1/searched', svcUrl('search', 'http://127.0.0.1:4710')).href, {
+            method: 'POST', headers, body: JSON.stringify({ q: b.q.slice(0, 200), ...(typeof b.site === 'string' ? { site: b.site.slice(0, 120) } : {}) }), redirect: 'error', signal: AbortSignal.timeout(5000),
+        }).catch(() => {});
     });
 
     // GET /api/frame/query?q=&scopes=&freshness=&depth=&limit=&owner=&type= — the navbar's full results (openvibe-shared
@@ -1126,8 +1251,69 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         const auth = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? String(req.headers.authorization) : '';
         const got = await choices.get(task, { token: auth.slice(7), signedIn: Boolean(auth) });
         if (got.error) { res.set('Cache-Control', 'no-store'); return res.status(400).json({ error: got.detail, code: 'frame.task_invalid' }); }
+        // 2026-11-15: an ETag on every answer (a repeat costs a 304), and a person's answer may be used for 30 s and then
+        // shown while the browser asks again (the composer also keeps its own copy, openvibe-shared 4.261.0).
+        const body = JSON.stringify(got.body);
+        const etag = `W/"${require('crypto').createHash('sha256').update(body).digest('base64url').slice(0, 27)}"`;
+        res.set('ETag', etag);
+        res.set('Cache-Control', got.cache ? 'public, max-age=60, stale-while-revalidate=600' : 'private, max-age=30, stale-while-revalidate=600');
+        if (String(req.headers['if-none-match'] || '') === etag) return res.status(304).end();
+        res.send(body);
+    });
+
+    // GET /api/frame/run-options — an agent's box: who does a run (your Actor, Codes, a coding harness) and where it runs
+    // (OpenVibe, your computers through Link). The model is /choices'. The person's token: their own lists, never kept;
+    // signed out: the short lists, kept a minute (server/frame/run-options.js).
+    const runOptions = require('./run-options').createRunOptions({
+        svcUrl, log: console,
+        bot: privateKey && issuer && config.services && config.services.bot && config.services.bot.internalUrl
+            ? require('../registry/machines').createBotClient({ baseUrl: config.services.bot.internalUrl, privateKey, issuer }) : null,
+    });
+    router.get('/run-options', async (req, res) => {
+        res.set({ 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization, Origin' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? String(req.headers.authorization) : '';
+        let subject = null;
+        if (auth) { const user = await personOf(req).catch(() => null); subject = user && (user.subject_id || user.subject || null); }
+        const got = await runOptions.get({ auth, subject });
         res.set('Cache-Control', got.cache ? 'public, max-age=60' : 'private, no-store');
         res.send(JSON.stringify(got.body));
+    });
+
+    // GET /api/frame/resources — everything an answer can run on, for the person (plan §AD.17; server/frame/resources.js):
+    // their free AI left, their keys' names and states, which services may use them, their Balance. As them, never kept.
+    // Its road reads the person's computers the way the run options do (one lookup: run-options.computers).
+    const resources = require('./resources').createResources({ svcUrl, computers: (subject) => runOptions.computers(subject), fleet: (subject) => runOptions.machines(subject), log: console });
+    router.get('/resources', async (req, res) => {
+        res.set({ 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization, Origin', 'Cache-Control': 'private, no-store' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? String(req.headers.authorization) : '';
+        let subject = null;
+        if (auth) { const user = await personOf(req).catch(() => null); subject = user && (user.subject_id || user.subject || null); }
+        const got = await resources.get({ auth, subject });
+        res.status(got.status).send(JSON.stringify(got.body));
+    });
+
+    // GET /api/frame/usage?days= — what the person's answers used (Actor's /api/v1/me/usage, as them; server/frame/usage.js).
+    const usage = require('./usage').createUsage({ svcUrl, log: console });
+    router.get('/usage', async (req, res) => {
+        res.set({ 'Content-Type': 'application/json; charset=utf-8', Vary: 'Authorization, Origin', 'Cache-Control': 'private, no-store' });
+        const auth = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? String(req.headers.authorization) : '';
+        const got = await usage.get({ auth, days: req.query.days });
+        res.status(got.status).send(JSON.stringify(got.body));
+    });
+
+    // POST /api/frame/speech — answers read aloud in an OpenVibe voice (Shared 4.308.0 ov-speak.js; server/frame/speech.js):
+    // AI's /v1/audio/speech on behalf of the signed-in person, whose allowance pays.
+    const speech = privateKey && issuer ? require('./speech').createSpeech({ privateKey, issuer, aiUrl: aiUrl || 'http://127.0.0.1:4700', log: console }) : null;
+    router.post('/speech', express.json({ limit: '8kb' }), async (req, res) => {
+        res.set({ 'Cache-Control': 'private, no-store', Vary: 'Authorization, Origin' });
+        const user = /^Bearer [A-Za-z0-9._~+/=-]{20,4096}$/.test(String(req.headers.authorization || '')) ? await personOf(req).catch(() => null) : null;
+        const subject = user && (user.subject_id || user.subject || null);
+        if (!subject) return res.status(401).json({ error: 'Sign in to hear OpenVibe voices' });
+        if (!speech) return res.status(503).json({ error: 'OpenVibe voices are not set up here' });
+        const b = req.body && typeof req.body === 'object' ? req.body : {};
+        const out = await speech.speak({ subject, text: b.text, voice: b.voice, speed: b.speed });
+        if (out.audio) { res.set('Content-Type', out.type); return res.status(200).send(out.audio); }
+        return res.status(out.status).json({ error: out.error });
     });
 
     // GET /api/frame/commands?site=<host>&q= — the composer's slash commands (composer-post-ask-do.md, R3):
@@ -1230,6 +1416,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
                 if (/^(1|true)$/.test(String(req.query.in || ''))) seen.forgetGuest(req.ip, ua, now());
                 else seen.seenGuest(req.ip, ua, now(), (siteForHost(host) || {}).id || (known ? 'tools' : null));
                 await bump.run(host);
+                await visitors.seen({ ip: req.ip, ua, host, dnt: declined(req) }).catch(() => {});
             }
         } catch { /* counting must never fail a page */ }
         res.status(204).end();

@@ -19,7 +19,7 @@ const INSTALL_LINE = `curl -fsSL ${SITE}/install | sh`;
 const DOES = [
     { icon: 'code', title: 'Run your agents and code on your machine', body: 'Codes starts a coding task from any browser and this machine runs it, as an unprivileged user in a sandbox.', href: 'https://openvibe.codes/run', cta: 'OpenVibe.Codes' },
     { icon: 'spark', title: 'Offer your models or your GPU and earn credits', body: 'Exchange lists what your machine serves; you choose the models, the hours, the price and who may use it.', href: 'https://openvibe.exchange/sell', cta: 'OpenVibe.Exchange' },
-    { icon: 'game', title: 'Drive robots', body: 'Bot drives what you approve, at the level you set, with a kill switch on the machine and a deadline on every command.', href: 'https://openvibe.bot', cta: 'OpenVibe.Bot' },
+    { icon: 'game', title: 'Drive robots', body: 'Bot drives what you approve, at the level you set, with a Stop on the machine and a deadline on every command.', href: 'https://openvibe.bot', cta: 'OpenVibe.Bot' },
     { icon: 'live', title: 'Stream an agent\u2019s desk', body: 'Live carries your machine\u2019s screen to a channel, private until you choose: under a second behind, with a curtain that hides secret screens.', href: 'https://openvibe.live/docs/agent-streams', cta: 'Agent streams on OpenVibe.Live' },
     { icon: 'lock', title: 'Keep your memory, read-only', body: 'The collectors read what your coding tools remember: local, redacted, and never uploaded unless you say so.', href: `${DOCS}/memory.md`, cta: 'The memory docs' },
 ];
@@ -29,7 +29,7 @@ const NEVER = [
     'It cannot reach your computer without your pairing: nobody drives it, reads it or runs a command on it until you approved the machine.',
     'Nothing runs that you did not turn on: no task, no camera, no driver and no upload starts on its own.',
     'It opens no port to the internet: it connects out, so it works behind any home router. On your own network it takes a transfer from your other machines only after they prove they are yours.',
-    'It keeps a local kill switch: one command stops everything it drives, and it stays stopped.',
+    'It keeps a local Stop: one command stops everything it drives, and it stays stopped.',
 ];
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -284,8 +284,8 @@ const CSS = `
 .np-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
 .np-does{padding:16px;border-radius:16px;background:var(--bg-card,#0f1729);border:1px solid var(--border,#1f2d47);display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:14px;row-gap:4px;align-content:start}
 .np-does>*{grid-column:2}
-.np-does-ic{grid-column:1!important;grid-row:1/span 3;display:grid;place-items:center;width:42px;height:42px;border-radius:12px;color:var(--accent-light,var(--accent,#60a5fa));background:color-mix(in srgb,var(--accent,#3b82f6) 14%,transparent)}
-.np-does-ic svg{width:21px;height:21px}
+.np-does-ic{grid-column:1!important;grid-row:1/span 3;display:grid;place-items:center;width:42px;height:42px;color:var(--accent-light,var(--accent,#60a5fa))}
+.np-does-ic svg{width:26px;height:26px}
 .np-does h3{margin:1px 0 0;font-size:1rem;line-height:1.35}
 .np-does p{margin:0;color:var(--text-secondary,#96a7c2);font-size:.92rem;line-height:1.55}
 .np-does-go{margin-top:6px!important}
@@ -317,8 +317,8 @@ const CSS = `
 .np-card-h p{grid-column:1/-1;margin:0;color:var(--text-secondary,#96a7c2);font-size:.9rem;line-height:1.55}
 @media (min-width:760px){.np-panels{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:'m b' 's b'}#machines{grid-area:m}#browsing{grid-area:b}#send{grid-area:s}}
 .np-card .np-fine{margin:0}
-.np-ic{display:grid;place-items:center;flex:none;width:40px;height:40px;border-radius:12px;color:var(--accent-light,var(--accent,#60a5fa));background:color-mix(in srgb,var(--accent,#3b82f6) 13%,transparent)}
-.np-ic svg{width:20px;height:20px}
+.np-ic{display:grid;place-items:center;flex:none;width:40px;height:40px;color:var(--accent-light,var(--accent,#60a5fa))}
+.np-ic svg{width:24px;height:24px}
 .np-ic--sm{width:32px;height:32px;border-radius:10px}
 .np-ic--sm svg{width:17px;height:17px}
 .np-card .np-send{max-width:none;padding:0;border:0;background:none;gap:10px}

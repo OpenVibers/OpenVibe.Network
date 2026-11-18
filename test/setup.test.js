@@ -145,7 +145,15 @@ const marker = (v) => ({ redacted: true, fingerprint: fp(v) });
         r = await ownerCall('GET', '/api/admin/setup');
         assert.strictEqual(r.status, 200, r.text);
         const keys = r.body.rows.filter((x) => x.kind === 'key').map((x) => x.id).sort();
-        assert.deepStrictEqual(keys, ['ai/ai.gpus/monthly_cap', 'ai/ai.gpus/vast.key', 'chat/chat.apps/slack_client_id', 'chat/chat.apps/telegram_bot_token'], 'every field with x-owner-input, and only those');
+        // Network's own sign-in rows (plan §AB.20) are in the same checklist: one per provider field, its switch, and
+        // the master switch.
+        const signIn = require('../server/auth/providers/presets');
+        const expectSignIn = ['network/network.signin/signin_switch'];
+        for (const p of signIn.PROVIDERS) {
+            for (const f of signIn.fieldsOf(p)) expectSignIn.push(`network/network.signin/${p.id}.${f}`);
+            expectSignIn.push(`network/network.signin/${p.id}.enabled`);
+        }
+        assert.deepStrictEqual(keys, ['ai/ai.gpus/monthly_cap', 'ai/ai.gpus/vast.key', 'chat/chat.apps/slack_client_id', 'chat/chat.apps/telegram_bot_token', ...expectSignIn].sort(), 'every field with x-owner-input, and only those');
         const tasks = r.body.rows.filter((x) => x.kind === 'task').map((x) => x.key).sort();
         assert.deepStrictEqual(tasks, ['csam_scanning', 'dmca_agent', 'dnssec_records', 'ncmec_registration', 'provider_topup', 'public_suffix_list']);
         const rank = { needed: 0, not_working: 1, connected: 2, optional: 3 };

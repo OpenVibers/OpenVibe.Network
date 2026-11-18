@@ -63,7 +63,12 @@ function checklist(statusRows = []) {
         items: a.items.map((it) => {
             const st = it.service ? byId.get(it.service) : null;
             const hasConsole = it.where.some((w) => w.kind === 'tab' || w.kind === 'url');
-            return { ...it, console: hasConsole, status: st ? (st.status || (st.runtime && st.runtime.status) || 'unknown') : 'unknown' };
+            // The status words are the status page's own: up, degraded, down, not-running, unknown
+            // (server/status/routes.js). The reason says why, so a row that was not checked can say so
+            // instead of looking broken (the panel asked for "ready", which no service ever answers).
+            const status = st ? (st.status || (st.runtime && st.runtime.status) || 'unknown') : 'unknown';
+            const reason = st ? (st.reason || (st.runtime && st.runtime.reason) || null) : null;
+            return { ...it, console: hasConsole, status, status_reason: reason, checked_at: st ? (st.checked_at || null) : null };
         }),
     }));
 }

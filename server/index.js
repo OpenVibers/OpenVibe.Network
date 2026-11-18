@@ -521,6 +521,31 @@ app.post('/mcp', rateLimit({ windowMs: 60_000, max: 600 }), require('./connect/m
         return signals;
     },
 }));
+// All of OpenVibe in two tools (plan §AD.26): https://connect.openvibe.network/mcp/all, search and execute over the
+// person's own apps and OpenVibe's public MCP servers (CONNECT_MCP_ALL_SERVERS: prefix=url,…).
+app.post('/mcp/all', rateLimit({ windowMs: 60_000, max: 300 }), require('./connect/mcp').createMcpHandler({
+    codeMode: require('./connect/mcp-all').createCodeMode({
+        servers: String(process.env.CONNECT_MCP_ALL_SERVERS || 'tools=https://openvibe.tools/mcp,design=https://openvibe.design/mcp,vision=https://openvibe.vision/mcp')
+            .split(',').map((x) => { const [prefix, url] = x.split('='); return { prefix: String(prefix || '').trim(), url: String(url || '').trim() }; }),
+        log: console,
+        // OpenVibe Design and Vision as the person, for a caller with a grant in them (./connect/first-party.js).
+        firstParty: require('./connect/first-party').createFirstParty({
+            db, privateKey, issuer: config.jwt.issuer, approvals: require('./connect/approvals'), writeLog: connectGateway.writeLog, log: console,
+        }),
+    }),
+    db, config, gateway: connectGateway, publicKey, issuer: config.jwt.issuer,
+    publicPage: async (handle) => {
+        const found = await publicProfiles.find(handle);
+        if (!found) return null;
+        if (found.moved) return { moved_to: found.moved };
+        return await publicProfiles.pageOf(found.user);
+    },
+    myTrust: async (subject) => {
+        const signals = await require('./identity/trust').trustSignals(db, String(subject || ''));
+        if (!signals) throw Object.assign(new Error('No trust signals are available for this account.'), { status: 404 });
+        return signals;
+    },
+}));
 // Staff capabilities and the staff list (WS-D task 4; services need network.staff.read).
 app.use('/api/v1/staff', require('./admin/staff-api').createStaffApi({ db, requireAuth, guard: require('./identity/principals').guard }));
 // Username history (WS-B task 6): who holds a name now, so sites redirect /@old → /@new and pick up a
@@ -677,6 +702,12 @@ const notifyAccountData = async (userId, n) => await notificationService.create(
     app.use('/internal', machineInternal.internal);
 }
 app.get('/internal/blocks', require('./identity/principals').guard('network.blocks.read'), require('./identity/blocks').internalHandler(db));
+// The person's mutual friends as subjects only (network.friend-subjects@1, Contracts 0.431.0): a service
+// holding network.friends.read (Chat's contacts) asks for the person it is acting for.
+app.get('/internal/friends', require('./identity/principals').guard('network.friends.read'), require('./identity/friends').internalHandler(db));
+// Setup done by your agent (plan §AB.44): OpenVibe.Actor saves the key(s) of the one Setup row a live grant names, once.
+app.post('/internal/setup/grants/:id/save', require('./identity/principals').guard('network.setup.grant.save'),
+    ...createAdminRoutes.setupGrantsOf(db, notificationService).internalHandler());
 // Platform mutes and friendships (ask 287): a person's own lists and the changes the card's
 // actions make. Services read them through the internal routes once Contracts names their
 // capabilities; until then the person's own routes are the complete surface.
@@ -844,6 +875,8 @@ app.get('/api/brand', (_req, res) => res.json(BRAND));
 
 // Auth routes (SSO provider)
 app.use('/api/auth', authRoutes);
+// The shared person card's address (openvibe-shared user-card.js asks /api/users/:id/card on every site).
+app.get('/api/users/:id/card', rateLimit({ windowMs: 60_000, max: 240 }), authRoutes.cardAlias);
 // Plan §Z.2: who is looking, for apps (the same model as the shared navbar's OV.viewer()).
 app.get('/api/v1/viewer', rateLimit({ windowMs: 60_000, max: 240 }), authRoutes.viewerHandler);
 
@@ -858,8 +891,21 @@ if (qrSignin.enabled) {
 // Email verification (status / resend / consume)
 app.use('/api/auth', require('./auth/email-verify').routes(requireAuth));
 
-// Discord account linking (OAuth2 flow)
-app.use('/api/auth/discord', requireAuth, require('./auth/discord-link'));
+// Sign in with anything (plan §AB.20): one provider layer for Google, Discord, Steam, Twitch, GitHub, Apple,
+// Microsoft, Kick, X, Roblox and Facebook. GET /api/auth/connect lists what is switched on; /connect/:id starts a
+// sign-in (no session) or a link (mode=link, session); /connect/:id/callback is the provider's answer. The old
+// /api/auth/discord/link and /api/auth/discord/callback keep working as aliases of the Discord flow, and
+// /api/auth/discord/status is kept for the account page's existing calls.
+{
+    const signIn = require('./auth/providers/routes').createRouter({
+        requireAuth, signToken: authRoutes.signToken, config,
+    });
+    app.locals.signIn = signIn;
+    app.use('/api/auth/connect', signIn.router);
+    // The old Discord paths (an app registration and the account page already point at them): the same two flows under
+    // their old names, /link needing the session it always needed. Their callback path is the one the old app lists.
+    app.use('/api/auth/discord', signIn.discordAlias);
+}
 app.use('/chat-apps', require('./chat-apps/links').pageRouter(requireAuth));
 // The account page's chat-app list and removal (the person's own links; no token is returned).
 app.use('/api/v1/me/chat-apps', rateLimit({ windowMs: 60_000, max: 60 }), require('./chat-apps/links').userRouter(requireAuth));
@@ -1088,7 +1134,12 @@ app.use('/api/admin/grants', requireAuth, require('./identity/grants-admin').rou
 // Community theme review queue (WS-E task 2): submissions stay private until an admin approves them.
 app.use('/api/admin/themes', requireAuth, requireAdmin, require('./themes/routes').reviewRouter());
 // Operator parity checklist (WS-D task 5): where each operator job is done now, with each service's readiness.
+// The hosting plan (plan §AD.18): the admin panel's Hosting tab.
+app.use('/api/admin/hosting-plan', requireAuth, requireAdmin, require('./admin/hosting-plan').router());
 app.use('/api/admin/operator-checklist', requireAuth, requireAdmin, require('./admin/operator-checklist').router({ statusRows: () => require('./status/routes').rows(ecosystem) }));
+// The Storage tab's cloud scan: Network asks OpenVibe.Media itself, with Network's own service token and the
+// owner's usr_ in X-OV-Subject (server/admin/storage.js).
+app.use('/api/admin/storage', requireAuth, requireAdmin, require('./admin/storage').router({ selfToken, services: config.services }));
 // The account merge endpoint is gone. Hide its former staff path before the broad admin guard so callers get 404.
 app.use('/api/admin/account-merges', (_req, res) => res.status(404).json({ error: 'Not found' }));
 app.use('/api/admin', createAdminRoutes(db, notificationService, emailService, requireAuth));
@@ -1308,8 +1359,16 @@ app.get('/api/auth/return-origins', (req, res) => {
     res.json({ origins: [...buildAllowedOriginsSet()].filter((o) => o.startsWith('https://')).sort() });
 });
 
-app.get(['/login', '/forgot-password', '/reset-password'], (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'public', 'login.html'));
+app.get(['/login', '/forgot-password', '/reset-password'], async (req, res, next) => {
+    // The sign-in page carries its provider buttons in the HTML, so it stays indexable (plan §AB.20).
+    try {
+        // Only the sign-in view carries the buttons: /forgot-password and /reset-password are the same file, and a
+        // reset page that says "sign in with Google" would be a trap.
+        const { html } = await require('./auth/providers/page').signInPage({ db: app.locals.db, baseUrl: config.baseUrl, providers: req.path === '/login' });
+        // A minute of shared caching: the provider list changes only when the owner sets a key, and the page stays
+        // indexable (no private, no no-store).
+        res.type('html').set('Cache-Control', cache.htmlHeaders({ maxAge: 60 })).send(html);
+    } catch (err) { next(err); }
 });
 
 // The publication reviewer queue: a server-rendered staff page (openvibe-shared/kit) before the

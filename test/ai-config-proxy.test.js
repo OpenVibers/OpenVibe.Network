@@ -116,6 +116,16 @@ function summary(service, namespace, extra = {}) {
         const computeRequest = run.seen.find((request) => request.url === '/internal/config/compute-status');
         assert.ok(computeRequest && computeRequest.headers['x-ov-subject']);
 
+        // What is left on the AI provider accounts (plan §AB.21): AI's live read, owner only, numbers and words, never a key.
+        ai.routes['GET /api/v1/admin/console/provider-balances'] = { providers: [
+            { provider: 'deepseek', name: 'DeepSeek', currency: 'USD', balance: 12.5, gift: 10, paid: 2.5, state: 'read', note: null, checked_at: '2026-11-14T15:00:00Z', key: 'sk-should-never-pass' },
+            { provider: 'kimi', name: 'Moonshot (Kimi)', currency: 'USD', balance: null, gift: null, paid: null, state: 'no_key', note: 'No key yet: add it in Setup' }] };
+        assert.strictEqual((await call('staff', 'GET', '/api/admin/ai/config/balances')).status, 403, 'a plain admin never reads the balances');
+        const bal = await ownerCall('GET', '/api/admin/ai/config/balances');
+        assert.strictEqual(bal.status, 200, bal.text);
+        assert.deepStrictEqual(bal.body.providers.map((p) => [p.provider, p.balance, p.gift, p.state]), [['deepseek', 12.5, 10, 'read'], ['kimi', null, null, 'no_key']]);
+        assert.ok(!JSON.stringify(bal.body).includes('sk-should-never-pass'), 'only the fields it names pass');
+
         // ── Only the owner: a user and a plain admin are refused, and nothing reaches a service ──
         let r = await call('alice', 'GET', '/api/admin/ai/config/services');
         assert.strictEqual(r.status, 403, 'a user never gets the owner settings');
@@ -126,7 +136,9 @@ function summary(service, namespace, extra = {}) {
         // ── GET /services: the seventeen services and their operator-set internal URLs ──
         r = await ownerCall('GET', '/api/admin/ai/config/services');
         assert.strictEqual(r.status, 200, r.text);
-        assert.deepStrictEqual(r.body.services.map((s) => s.service), ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor', 'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run']);
+        // `network` is last: its own settings (network.signin, plan §AB.20) answer in process rather than over a hop.
+        assert.deepStrictEqual(r.body.services.map((s) => s.service), ['ai', 'billing', 'services', 'watch', 'report', 'host', 'codes', 'actor', 'chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run', 'mail', 'network']);
+        assert.strictEqual(r.body.services.find((s) => s.service === 'network').name, 'OpenVibe.Network');
         assert.strictEqual(r.body.services.find((s) => s.service === 'deals').name, 'OpenVibe.Deals');
         assert.strictEqual(r.body.services.find((s) => s.service === 'deals').capability, 'deals.config.manage');
         assert.strictEqual(r.body.services.find((s) => s.service === 'ai').internal_url, ai.url);
@@ -250,12 +262,13 @@ function summary(service, namespace, extra = {}) {
 
         // ── The grants: nine config.manage capabilities for Network, ai.provider.manage, and Host's usage read ──
         const has = (client, cap, aud) => principals.DEFAULT_GRANTS.some((g) => g[0] === client && g[1] === cap && g[2] === aud);
-        for (const svc of ['ai', 'billing', 'services', 'watch', 'bench', 'report', 'host', 'codes', 'actor']) {
+        for (const svc of ['ai', 'billing', 'services', 'watch', 'report', 'host', 'codes', 'actor']) {
             assert.ok(has('network', `${svc}.config.manage`, `openvibe.${svc}`), `Network holds ${svc}.config.manage`);
         }
         // The eight Setup services: Network holds each grant as soon as the pinned Contracts (0.308.0) knows it.
         const { capabilities, version: contractsVersion } = require('openvibe-contracts');
         const setupServices = ['chat', 'connect', 'deals', 'work', 'sources', 'design', 'domains', 'media', 'run'];
+        // OpenVibe.Mail holds its owner settings too (the email group): the same proxy reaches it.
         for (const svc of setupServices) {
             const known = !!capabilities.get(`${svc}.config.manage`);
             assert.strictEqual(has('network', `${svc}.config.manage`, `openvibe.${svc}`), known, `Network holds ${svc}.config.manage exactly when Contracts knows it`);

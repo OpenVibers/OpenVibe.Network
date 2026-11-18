@@ -102,6 +102,7 @@ async function loadBans() {
                     </tr>
                 `).join('')}</tbody>
             </table>`;
+        adminTableCards(c);
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
 }
 
@@ -267,21 +268,38 @@ async function replayDeliveries(sub, ids) {
     try { const r = await api('/api/admin/events/replay', { method: 'POST', body: { subscription_id: sub, event_ids: eventIds } }); alert(`Queued ${r.queued}`); loadDeliveries(); }
     catch (err) { alert(err.message || 'Replay failed'); }
 }
+// The status words the status page uses (server/status/routes.js): up, degraded, down, not-running, unknown.
+// The panel used to ask for "ready", a word the status service never returns, so every row said the status was
+// unavailable (2026-11-14, the owner's phone).
+const CHECKLIST_STATUS = {
+    up: 'Ready to use.',
+    degraded: 'Working with a problem; check the linked service.',
+    down: 'Unavailable; check the linked service.',
+    'not-running': 'Not running on this host.',
+    unknown: 'Not checked.',
+};
+
 async function loadOperatorChecklist() {
     const c = document.getElementById('checklist-content');
     let areas = [];
     try { areas = (await api('/api/admin/operator-checklist')).areas || []; } catch (err) { c.textContent = 'Could not load: ' + err.message; return; }
     c.replaceChildren();
-    const colour = { ready: 'var(--success, #3ee6b0)', degraded: 'var(--warning, #f5a524)', down: 'var(--danger, #ef4444)' };
+    const colour = { up: 'var(--success, #3ee6b0)', degraded: 'var(--warning, #f5a524)', down: 'var(--danger, #ef4444)', 'not-running': 'var(--text-muted, #888)', unknown: 'var(--text-muted, #888)' };
     for (const a of areas) {
-        const h = document.createElement('h3'); h.textContent = a.area; h.style.margin = '14px 0 6px'; c.appendChild(h);
+        const h = document.createElement('h3'); h.textContent = a.area; h.className = 'checklist-area'; c.appendChild(h);
         for (const it of a.items) {
             const row = document.createElement('div');
-            row.style.cssText = 'display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--border)';
-            const dot = document.createElement('span'); dot.title = (it.service || '') + ': ' + it.status;
-            dot.style.cssText = 'width:10px;height:10px;border-radius:50%;margin-top:6px;flex:none'; dot.style.background = colour[it.status] || 'var(--text-muted, #888)';
-            const name = document.createElement('strong'); name.textContent = it.item + ': ' + ({ready:'Ready to use.',degraded:'Working with a problem; check the linked service.',down:'Unavailable; check the linked service.'}[it.status] || 'Status unavailable.'); name.style.minWidth = '260px';
-            const places = document.createElement('div'); places.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center';
+            row.className = 'checklist-row';
+            const dot = document.createElement('span'); dot.className = 'checklist-dot';
+            dot.title = (it.service || '') + ': ' + (it.status || 'unknown');
+            dot.style.background = colour[it.status] || 'var(--text-muted, #888)';
+            const name = document.createElement('strong'); name.className = 'checklist-name';
+            const word = CHECKLIST_STATUS[it.status] || CHECKLIST_STATUS.unknown;
+            // A service the status service has not answered for says so, and why.
+            let why = (it.status === 'unknown' || it.status === 'not-running') ? String(it.status_reason || '').trim() : '';
+            if (/^not checked/i.test(why)) why = '';   // the word already says it
+            name.textContent = it.item + ': ' + word + (why ? ' ' + why : '');
+            const places = document.createElement('div'); places.className = 'checklist-places';
             for (const w of it.where) {
                 let el;
                 if (w.kind === 'tab') { el = document.createElement('button'); el.type = 'button'; el.className = 'btn'; el.textContent = 'Open ' + w.tab; el.onclick = () => showTab(w.tab, null); }
@@ -290,7 +308,7 @@ async function loadOperatorChecklist() {
                 places.appendChild(el);
                 if (w.note) { const n = document.createElement('span'); n.className = 'muted'; n.textContent = '(' + w.note + ')'; places.appendChild(n); }
             }
-            if (!it.console) { const gap = document.createElement('span'); gap.className = 'muted'; gap.textContent = 'No settings page yet; use the listed command or API.'; gap.style.color = 'var(--warning, #f5a524)'; places.appendChild(gap); }
+            if (!it.console) { const gap = document.createElement('span'); gap.className = 'checklist-gap'; gap.textContent = 'No settings page yet; use the listed command or API.'; places.appendChild(gap); }
             row.append(dot, name, places);
             c.appendChild(row);
         }
@@ -383,9 +401,12 @@ async function loadModLog(reset) {
                 <td style="font-size:11px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.reason || '')}">${esc(e.reason || '-')}</td>
             </tr>`).join('');
         if (reset) {
-            c.innerHTML = items.length ? `<table class="admin-table"><thead><tr><th>When</th><th>Service</th><th>Action</th><th>By</th><th>Target</th><th>Reason</th></tr></thead><tbody id="modlog-rows">${rowsHtml}</tbody></table>` : '<p class="muted">No staff actions match these filters. Clear the filters or return after staff activity.</p>';
+            c.innerHTML = items.length ? `<table class="admin-table" data-title-col="2"><thead><tr><th>When</th><th>Service</th><th>Action</th><th>By</th><th>Target</th><th>Reason</th></tr></thead><tbody id="modlog-rows">${rowsHtml}</tbody></table>` : '<p class="muted">No staff actions match these filters. Clear the filters or return after staff activity.</p>';
+            adminTableCards(c);
         } else {
-            document.getElementById('modlog-rows')?.insertAdjacentHTML('beforeend', rowsHtml);
+            const rows = document.getElementById('modlog-rows');
+            rows?.insertAdjacentHTML('beforeend', rowsHtml);
+            if (rows) adminTableCards(rows);
         }
         _modlogNext = data.next || null;
         more.hidden = !_modlogNext;
@@ -403,7 +424,7 @@ async function loadAudit() {
         const entries = data.entries || [];
         if (!entries.length) { c.innerHTML = '<p class="muted">No administrative changes recorded here. Return after a settings or account change.</p>'; pager.innerHTML = ''; return; }
         c.innerHTML = `
-            <table class="admin-table">
+            <table class="admin-table" data-title-col="2">
                 <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
                 <tbody>${entries.map(e => `
                     <tr>
@@ -414,6 +435,7 @@ async function loadAudit() {
                     </tr>
                 `).join('')}</tbody>
             </table>`;
+        adminTableCards(c);
 
         const hasMore = entries.length >= 50;
         pager.innerHTML = `
@@ -422,4 +444,73 @@ async function loadAudit() {
             <button class="btn btn-sm btn-outline" ${!hasMore?'disabled':''} onclick="auditOffset+=50;loadAudit()"><i class="fa-solid fa-chevron-right"></i></button>
         `;
     } catch (e) { c.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; pager.innerHTML = ''; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Flagged speech (Live GET /api/mod/transcript-flags through the /api/admin/streamer-mod proxy)
+// A transcribed window whose words read as one of OpenVibe.AI's hard-floor lines: the recording and the moment, never
+// the words. Staff open it there, act with the usual tools, and mark it cleared (nothing wrong) or handled.
+// ═══════════════════════════════════════════════════════════════
+const FLAG_LINES = { minors: 'Minor, sexual', non_consensual: 'Non-consensual', mass_harm: 'Mass harm' };
+const FLAG_FILTERS = [['open', 'Open'], ['handled', 'Handled'], ['cleared', 'Nothing wrong'], ['all', 'All']];
+let flaggedSpeechStatus = 'open';
+
+function flagMoment(sec) {
+    const s = Math.max(0, Number(sec) || 0);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+    return (h ? `${h}:${String(m).padStart(2, '0')}` : String(m)) + ':' + String(r).padStart(2, '0');
+}
+
+async function loadFlaggedSpeech(status) {
+    if (status) flaggedSpeechStatus = status;
+    const c = document.getElementById('flagged-speech-content');
+    const bar = document.getElementById('flagged-speech-filter');
+    if (!c) return;
+    c.innerHTML = '<div class="loading">Loading...</div>';
+    try {
+        const data = await api(`/api/admin/streamer-mod/transcript-flags?status=${encodeURIComponent(flaggedSpeechStatus)}&limit=100`);
+        const flags = data.flags || [];
+        const open = Number(data.open) || 0;
+        if (bar) {
+            bar.innerHTML = FLAG_FILTERS.map(([s, label]) => `<button type="button" role="tab" aria-selected="${s === flaggedSpeechStatus}" class="${s === flaggedSpeechStatus ? 'active' : ''}" onclick="loadFlaggedSpeech('${s}')">${esc(label)}${s === 'open' ? ` (${open})` : ''}</button>`).join('');
+        }
+        if (!flags.length) {
+            c.innerHTML = `<p class="muted">${flaggedSpeechStatus === 'open' ? 'Nothing is waiting. A flagged moment appears here as soon as a recording is transcribed.' : 'None here.'}</p>`;
+            return;
+        }
+        const liveBase = 'https://openvibe.live';
+        const who = (ch) => (ch && ch.username
+            ? `<a class="ban-who" href="https://openvibe.network/@${encodeURIComponent(ch.username)}" data-ov-user="${esc(ch.username)}">@${esc(ch.username)}</a>`
+            : '<span class="ban-who muted">A channel</span>');
+        const where = (f) => {
+            const what = f.kind === 'clip' ? 'Clip' : f.kind === 'vod' ? 'Recording' : 'A recording';
+            const label = `${what} at ${flagMoment(f.start_sec)}`;
+            return f.url && /^\/[^/]/.test(f.url)
+                ? `<a class="flag-at" href="${esc(liveBase + f.url)}" target="_blank" rel="noopener"><i class="fa-solid fa-play"></i> ${esc(label)}</a>`
+                : `<span class="flag-at muted">${esc(label)}${f.path ? ` <code>${esc(f.path)}</code>` : ''}</span>`;
+        };
+        const settled = (f) => (f.status === 'open' ? '' : ` · ${f.status === 'handled' ? 'Handled' : 'Nothing wrong'}${f.reviewed_by ? ` by @${esc(f.reviewed_by)}` : ''}${f.reviewed_at ? ` ${esc(timeAgo(f.reviewed_at.replace(' ', 'T') + (/Z$/.test(f.reviewed_at) ? '' : 'Z')))}` : ''}`);
+        const acts = (f) => (f.status === 'open'
+            ? `<button type="button" class="btn btn-sm btn-outline" onclick="markFlaggedSpeech(${Number(f.id)},'cleared')"><i class="fa-solid fa-check"></i> Nothing wrong</button>
+               <button type="button" class="btn btn-sm btn-primary" onclick="markFlaggedSpeech(${Number(f.id)},'handled')"><i class="fa-solid fa-gavel"></i> Handled</button>`
+            : `<button type="button" class="btn btn-sm btn-outline" onclick="markFlaggedSpeech(${Number(f.id)},'open')"><i class="fa-solid fa-rotate-left"></i> Reopen</button>`);
+        c.innerHTML = `<ul class="ban-list">${flags.map((f) => `
+            <li class="ban-card">
+                <div class="ban-top">${who(f.channel)}<span class="ban-len flag-line ${f.status === 'open' ? '' : 'is-settled'}">${esc(FLAG_LINES[f.rule] || f.rule)}</span></div>
+                ${where(f)}
+                <div class="ban-meta muted">Flagged ${esc(timeAgo(String(f.created_at || '').replace(' ', 'T') + (/Z$/.test(f.created_at || '') ? '' : 'Z')))}${settled(f)}</div>
+                <div class="flag-act">${acts(f)}</div>
+            </li>`).join('')}</ul>`;
+        if (window.OVUser && typeof window.OVUser.bind === 'function') { try { window.OVUser.bind(c); } catch (e) { /* the card is optional */ } }
+    } catch (e) {
+        c.innerHTML = `<p class="muted">${e && e.status === 403 ? 'Moderators and admins only.' : 'Live did not answer: ' + esc(e.message)}</p>`;
+    }
+}
+
+async function markFlaggedSpeech(id, status) {
+    try {
+        await api(`/api/admin/streamer-mod/transcript-flags/${Number(id)}`, { method: 'POST', body: { status } });
+        toast(status === 'open' ? 'Back in the queue' : status === 'handled' ? 'Marked handled' : 'Marked nothing wrong', 'success');
+        loadFlaggedSpeech();
+    } catch (e) { toast(e.message, 'error'); }
 }

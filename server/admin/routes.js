@@ -170,6 +170,19 @@ async function refreshServiceByKey(req, key) {
     return await refreshService(req, serviceName);
 }
 
+/** One setup-grants instance per process: the owner's routes here and Actor's save route (server/index.js) share it. */
+let setupGrants = null;
+function setupGrantsOf(db, notificationService) {
+    if (!setupGrants) {
+        const proxyMod = require('./ai-config-proxy');
+        setupGrants = require('./setup-grants').createSetupGrants({
+            db, proxy: proxyMod.createAiConfigProxy({ db, notificationService }), isFresh: proxyMod.isFresh,
+            actorUrl: (() => { try { const c = require('../config'); return (c.services && c.services.actor && c.services.actor.internalUrl) || ''; } catch { return ''; } })(),
+        });
+    }
+    return setupGrants;
+}
+
 function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     const siteConfig = require('./site-config');
 
@@ -974,12 +987,15 @@ function createAdminRoutes(db, notificationService, emailService, requireAuth) {
     router.use('/guide', requireOwner, express.json({ limit: '16kb' }), require('./guide').createGuideRoutes());
     // The owner's Setup tab (server/admin/setup.js): every key and account only the owner can give, from every service's
     // config namespaces, plus Network's own to-dos. Owner only; saving goes through the proxy above.
+    // Setup done by your agent (plan §AB.44, server/admin/setup-grants.js): the owner's one-time grants for one row.
+    router.use('/setup/grants', requireOwner, setupGrantsOf(db, notificationService).ownerRouter());
     router.use('/setup', requireOwner, require('./setup').createSetupRoutes({ db }));
 
     return router;
 };
 
 module.exports = createAdminRoutes;
+module.exports.setupGrantsOf = setupGrantsOf;
 module.exports._getServiceRefreshInfo = getServiceRefreshInfo;
 module.exports._refreshService = refreshService;
 module.exports._refreshServiceByKey = refreshServiceByKey;

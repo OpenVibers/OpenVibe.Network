@@ -148,7 +148,41 @@ const CSS = `
 .st-up{color:var(--success-text, var(--success,#22c55e))}.st-degraded{color:var(--warning-text, var(--warning,#f59e0b))}.st-down{color:var(--live-red-text, var(--live-red,#ef4444))}.st-not-running,.st-unknown{color:var(--text-muted,#7386a3)}
 .st ul.chk{margin:4px 0 0;padding:0;list-style:none;font-size:12.5px}.st ul.chk li{margin:1px 0}
 .st section{margin-top:40px}.st dl{display:grid;grid-template-columns:minmax(160px,240px) 1fr;gap:6px 16px;font-size:14px}.st dt{font-weight:600}.st dd{margin:0;color:var(--text-secondary,#96a7c2)}
-@media (max-width:720px){.st table,.st tbody,.st tr,.st td{display:block}.st thead{display:none}.st tr{border-bottom:1px solid var(--border,#1f2d47);padding:8px 0}.st td{border:0;padding:4px 0}.st dl{grid-template-columns:1fr}}`;
+@media (max-width:720px){.st table,.st tbody,.st tr,.st td{display:block}.st thead{display:none}.st tr{border-bottom:1px solid var(--border,#1f2d47);padding:8px 0}.st td{border:0;padding:4px 0}.st dl{grid-template-columns:1fr}}
+.st{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.st-banner{display:flex;align-items:center;gap:14px;margin:6px 0 16px;padding:16px 18px;border-radius:18px;border:1px solid var(--border,#1f2d47);background:var(--bg-secondary,#101828)}
+.st-banner b{display:block;font-size:18px}.st-banner small{display:block;margin-top:2px;color:var(--text-muted,#7386a3);font-size:13px}
+.st-banner.st-k-up{border-color:color-mix(in srgb,var(--success,#22c55e) 40%,transparent);background:color-mix(in srgb,var(--success,#22c55e) 8%,var(--bg-secondary,#101828))}
+.st-banner.st-k-degraded{border-color:color-mix(in srgb,var(--warning,#f59e0b) 45%,transparent);background:color-mix(in srgb,var(--warning,#f59e0b) 8%,var(--bg-secondary,#101828))}
+.st-banner.st-k-down{border-color:color-mix(in srgb,var(--live-red,#ef4444) 45%,transparent);background:color-mix(in srgb,var(--live-red,#ef4444) 8%,var(--bg-secondary,#101828))}
+.st-dot{flex:none;width:12px;height:12px;border-radius:50%;background:var(--text-muted,#7386a3);box-shadow:0 0 0 4px color-mix(in srgb,currentColor 0%,transparent)}
+.st-k-up .st-dot{background:var(--success,#22c55e);box-shadow:0 0 0 4px color-mix(in srgb,var(--success,#22c55e) 18%,transparent)}
+.st-k-degraded .st-dot{background:var(--warning,#f59e0b);box-shadow:0 0 0 4px color-mix(in srgb,var(--warning,#f59e0b) 18%,transparent)}
+.st-k-down .st-dot{background:var(--live-red,#ef4444);box-shadow:0 0 0 4px color-mix(in srgb,var(--live-red,#ef4444) 20%,transparent);animation:st-pulse 1.6s ease-in-out infinite}
+@keyframes st-pulse{50%{box-shadow:0 0 0 calc(8px * var(--ov-move,1)) color-mix(in srgb,var(--live-red,#ef4444) 0%,transparent)}}
+.st-filters{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;margin:0 0 14px;padding:2px 0}
+.st-filters::-webkit-scrollbar{display:none}
+.st-f{position:relative;flex:none;cursor:pointer}.st-f input{position:absolute;opacity:0;pointer-events:none}
+.st-f span{display:inline-flex;align-items:center;min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--border,#1f2d47);font-size:13.5px;font-weight:650;color:var(--text-secondary,#96a7c2);transition:background-color .18s,color .18s}
+.st-f input:checked+span{background:var(--accent,#3b82f6);border-color:transparent;color:#fff}
+.st-f input:focus-visible+span{outline:2px solid var(--accent,#3b82f6);outline-offset:2px}
+.st-cards{list-style:none;margin:0 0 20px;padding:0;display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr))}
+.st-card{min-width:0;padding:14px 16px;border-radius:16px;border:1px solid var(--border,#1f2d47);background:var(--bg-secondary,#101828);animation:st-in .35s cubic-bezier(.2,.8,.2,1) both}
+@keyframes st-in{from{opacity:0;transform:translateY(calc(6px * var(--ov-move,1)))}}
+.st-card.st-k-down{border-color:color-mix(in srgb,var(--live-red,#ef4444) 45%,transparent)}.st-card.st-k-degraded{border-color:color-mix(in srgb,var(--warning,#f59e0b) 40%,transparent)}
+.st-card-top{display:flex;align-items:center;gap:10px;min-width:0}.st-card-top b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15.5px}
+.st-card .st-b{flex:0 1 auto;min-width:0;max-width:58%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+.st-where,.st-facts{margin:6px 0 0;font-size:13px;color:var(--text-secondary,#96a7c2);overflow-wrap:anywhere}
+.st-where a{color:var(--accent,#3b82f6);text-decoration:none}.st-facts code{font-size:12px}
+.st-more{margin-top:8px}.st-more summary{cursor:pointer;font-size:13px;font-weight:650;color:var(--text-muted,#7386a3);min-height:44px;display:flex;align-items:center}
+.st-more p{margin:6px 0;font-size:13px;color:var(--text-secondary,#96a7c2);overflow-wrap:anywhere}.st-id{color:var(--text-muted,#7386a3)!important}
+.st-how{margin:4px 0 24px}.st-how summary{cursor:pointer;font-weight:650;color:var(--text-secondary,#96a7c2);min-height:40px;display:flex;align-items:center}
+.st:has(input[name="st-show"][value="up"]:checked) .st-card:not([data-status="up"]),
+.st:has(input[name="st-show"][value="degraded"]:checked) .st-card:not([data-status="degraded"]),
+.st:has(input[name="st-show"][value="down"]:checked) .st-card:not([data-status="down"]),
+.st:has(input[name="st-show"][value="not-running"]:checked) .st-card:not([data-status="not-running"]),
+.st:has(input[name="st-show"][value="unknown"]:checked) .st-card:not([data-status="unknown"]){display:none}
+html[data-ov-motion=off] .st-card,html[data-ov-motion=off] .st-k-down .st-dot{animation:none}`;
 
 function checksList(ready) {
     if (!ready || !ready.checks) return '';
@@ -175,15 +209,52 @@ function incidentsSection(incidents) {
     }).join('')}<p><a href="/api/v1/status/incidents">History (JSON)</a></p></section>`;
 }
 
+/** How long ago, in a few words ("20 s ago", "4 min ago"), for a person; the exact time stays in datetime. */
+function ago(iso, nowMs) {
+    const t = Date.parse(String(iso || ''));
+    if (!Number.isFinite(t)) return '';
+    const s = Math.max(0, Math.round((nowMs - t) / 1000));
+    return s < 60 ? `${s} s ago` : s < 3600 ? `${Math.round(s / 60)} min ago` : s < 86400 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} d ago`;
+}
+const ORDER = { down: 0, degraded: 1, unknown: 2, up: 3, 'not-running': 4 };
+
+/** One service as a card (2026-11-15, the owner's phone shot: the table ran off the screen with huge gaps): its state
+ *  and name, where it answers, its release and when it was checked; the readiness checks and notes fold under it. */
+function serviceCard(r, nowMs) {
+    const word = r.status === 'not-running' ? r.label : LABEL[r.status] + (String(r.label || '').endsWith('(loopback only)') ? ' · loopback only' : '');
+    const where = r.origin ? `<a href="${esc(r.origin)}" rel="noopener">${esc(r.origin.replace(/^https:\/\//, ''))}</a>` : r.planned_origin ? `<span>${esc(r.planned_origin.replace(/^https:\/\//, ''))} reserved</span>` : '<span>no public address</span>';
+    const facts = [
+        r.release ? `<code>${esc(r.release.release)}</code>` : '',
+        r.checked_at ? `checked <time datetime="${esc(r.checked_at)}">${esc(ago(r.checked_at, nowMs) || r.checked_at)}</time>` : 'not checked yet',
+        r.latency_ms != null ? `${esc(r.latency_ms)} ms` : '',
+    ].filter(Boolean).join(' · ');
+    const more = [
+        r.stale ? `<p>Last seen ${esc(r.last_status)}.</p>` : '',
+        r.basis === 'health' ? '<p>Liveness only (no readiness endpoint).</p>' : '',
+        r.reason && r.status !== 'not-running' ? `<p>${esc(r.reason)}</p>` : '',
+        checksList(r.ready),
+        r.release ? `<p>Release <code>${esc(r.release.release)}</code>${r.release.booted_at ? `, booted <time datetime="${esc(r.release.booted_at)}">${esc(r.release.booted_at)}</time>` : ''}.</p>${mainNote(r.main)}` : r.status === 'not-running' ? '' : `<p>Release ${esc(r.release_error ? `unknown (${r.release_error})` : 'unknown')}.</p>`,
+        r.exposure ? `<p>${esc(r.exposure.label)}${r.exposure.note ? `: ${esc(r.exposure.note)}` : ''}</p>` : '',
+        `<p class="st-id">${esc(r.id)} · manifest ${esc(r.manifest_status)}</p>`,
+    ].filter(Boolean).join('');
+    return `<li class="st-card st-k-${esc(r.status)}" id="svc-${esc(r.id)}" data-status="${esc(r.status)}">
+<div class="st-card-top"><span class="st-dot" aria-hidden="true"></span><b>${esc(r.name)}</b><span class="st-b st-${esc(r.status)}">${esc(word)}</span></div>
+<p class="st-where">${where}</p>
+<p class="st-facts">${facts}</p>
+<details class="st-more"><summary>Details</summary>${more}</details>
+</li>`;
+}
+
 function renderPage(list, slo, generatedAt, devPath = null, toolsJob = null, healthSince = null, incidents = null, releaseId = '') {
     const counts = summary(list);
-    const tr = list.map((r) => `<tr id="svc-${esc(r.id)}">
-<td><b>${esc(r.name)}</b><small>${esc(r.id)} · manifest: ${esc(r.manifest_status)}</small></td>
-<td>${exposureCell(r)}</td>
-<td><span class="st-b st-${esc(r.status)}">${esc(r.status === 'not-running' ? r.label : LABEL[r.status] + (r.label.endsWith('(loopback only)') ? ' · loopback only' : ''))}</span>${r.stale ? `<small>last seen ${esc(r.last_status)}</small>` : ''}${r.basis === 'health' ? '<small>liveness only (no readiness endpoint)</small>' : ''}${r.reason && r.status !== 'not-running' ? `<small>${esc(r.reason)}</small>` : ''}${checksList(r.ready)}</td>
-<td>${r.release ? `<code>${esc(r.release.release)}</code>${r.release.booted_at ? `<small>booted ${esc(r.release.booted_at)}</small>` : ''}${mainNote(r.main)}` : `<small>${r.status === 'not-running' ? '—' : esc(r.release_error ? `unknown (${r.release_error})` : 'unknown')}</small>`}</td>
-<td>${r.checked_at ? `<time datetime="${esc(r.checked_at)}">${esc(r.checked_at)}</time>` : '<small>not checked yet</small>'}${r.latency_ms != null ? `<small>${esc(r.latency_ms)} ms</small>` : ''}</td>
-</tr>`).join('\n');
+    const nowMs = Date.parse(generatedAt) || Date.now();
+    const sorted = [...list].sort((a, b) => (ORDER[a.status] ?? 9) - (ORDER[b.status] ?? 9) || String(a.name).localeCompare(String(b.name)));
+    const trouble = counts.down + counts.degraded;
+    const banner = counts.down ? { tone: 'down', words: `${counts.down} down${counts.degraded ? `, ${counts.degraded} degraded` : ''}` }
+        : counts.degraded ? { tone: 'degraded', words: `${counts.degraded} degraded, everything else up` }
+            : { tone: 'up', words: 'Everything is up' };
+    const cards = sorted.map((r) => serviceCard(r, nowMs)).join('\n');
+    const filters = [['all', `All ${list.length}`], ...STATES.filter((st) => counts[st]).map((st) => [st, `${LABEL[st]} ${counts[st]}`])];
     const sloRows = slo.categories.map((c) => `<dt>${esc(c.name)}</dt><dd>${esc(c.sli)} <br><small>Proposed: ${esc(Object.entries(c.proposed_target).map(([k, v]) => `${k.replace(/_/g, ' ')} ${v}`).join('; '))} · priority: ${esc(c.priority)} · ${esc(c.measurement_status || (c.measured_by.length ? 'measured' : 'not instrumented'))}</small></dd>`).join('\n');
     return `<!DOCTYPE html>
 <html lang="en">
@@ -211,15 +282,15 @@ ${CSS}
 ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links: [{ label: 'Status', href: '/status' }] })}
 <main class="st" id="main">
 <h1>Service status</h1>
+<div class="st-banner st-k-${banner.tone}"><span class="st-dot" aria-hidden="true"></span><div><b>${esc(banner.words)}</b><small>${list.length} services · checked every ${esc(slo.pollSeconds || 60)} s · page made <time datetime="${esc(generatedAt)}">${esc(generatedAt.slice(11, 16))} UTC</time></small></div></div>
 ${incidentsSection(incidents)}
-<p class="lede">What Network observed when it last checked each service: its readiness endpoint (named checks, required or optional), its deployed release, and when. A service that has not been checked, or whose last check is out of date, shows as <b>unknown</b>. Placeholders, libraries and repositories show as not running. <b>Where</b> says whether the public domain serves the service itself (live), or the service runs on this host's loopback only while its domain still serves a placeholder page (internal). Page generated <time datetime="${esc(generatedAt)}">${esc(generatedAt)}</time>; checks run about every ${esc(Math.round(slo.pollSeconds || 60))} seconds. JSON: <a href="/api/v1/status"><code>/api/v1/status</code></a>.</p>
-<ul class="st-sum">${STATES.map((s) => `<li class="st-${s}">${esc(LABEL[s])}: ${counts[s]}</li>`).join('')}</ul>
-<div class="st-table"><table>
-<thead><tr><th>Service</th><th>Where</th><th>Status</th><th>Release</th><th>Checked</th></tr></thead>
-<tbody>
-${tr}
-</tbody>
-</table></div>
+<div class="st-filters" role="radiogroup" aria-label="Show">${filters.map(([id, words], i) => `<label class="st-f"><input type="radio" name="st-show" value="${esc(id)}"${i === 0 ? ' checked' : ''}><span>${esc(words)}</span></label>`).join('')}</div>
+<ul class="st-cards" aria-label="Services">
+${cards}
+</ul>
+<details class="st-how"><summary>How this page works</summary>
+<p class="lede">What Network observed when it last checked each service: its readiness endpoint (named checks, required or optional), its deployed release, and when. A service that has not been checked, or whose last check is out of date, shows as <b>unknown</b>. Placeholders, libraries and repositories show as not running. Where says whether the public domain serves the service itself, or the service runs on this host's loopback only while its domain still serves a placeholder. JSON: <a href="/api/v1/status"><code>/api/v1/status</code></a>.</p>
+</details>
 <section aria-labelledby="h-release-health"><h2 id="h-release-health">Release health</h2>
 ${releaseHealthSection(list, healthSince || generatedAt)}
 </section>

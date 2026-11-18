@@ -107,6 +107,41 @@ It may not approve an action, send a message, change the account, spend, or call
 that token. The refresh token lives 30 days, rotates on every use and is revoked by the extension's
 Sign out, by the account page's **Signed-in apps** section (`/my`), or by signing out everywhere.
 
+## Signing in with other apps (the first wave)
+
+People can sign in to OpenVibe with an account they already have. The first wave is Google, Discord, Twitch, GitHub,
+Microsoft, Apple, Kick, X, Roblox, Facebook and Steam; the owner sets each one up under **Sign-in apps** in the admin
+Setup tab, and only a switched-on provider with its keys set is drawn on `/login`.
+
+- **Protocols.** OIDC providers (Google, Discord, Twitch, Microsoft, Apple, Roblox, Facebook) use discovery, `state`,
+  PKCE S256 and a `nonce`; the `id_token` is checked for signature, `iss` (Microsoft's `{tenantid}` is resolved from the
+  token's own `tid`, never compared to `common`), `aud`, `exp`/`iat` and the nonce, and `alg: none`/`HS*` is refused.
+  OAuth 2.0 providers (GitHub, Kick, X) use PKCE and a profile endpoint; GitHub's address is taken from
+  `/user/emails` (primary and verified), while Kick and X addresses are never proof. Steam uses OpenID 2.0, and its
+  assertion is verified server-side with `check_authentication` against the pinned endpoint.
+- **State lives in the database** (`signin_states`, migration 0083): the SHA-256 of the cookie's value, one row per
+  started flow, ten minutes, deleted as it is read (a replay finds nothing). The PKCE verifier and the nonce are sealed
+  in that row, and the browser carries the state in the host-only `__Host-ov_signin` cookie. No process-local map.
+- **Accounts, safe by default.** A linked identity signs its person in. A new identity makes a **new account** (username
+  from the provider's name, made unique; `password_hash = '!provider'`, the sentinel for "no password"; the provider's
+  picture; the address only when the provider verified it). A **verified email that matches an existing account never
+  links or merges**: the person is sent back to `/login` with "This email has an OpenVibe account: sign in to it, then
+  link <provider>" (ADR-029).
+- **Linking** from the account page (`/my`, **Ways to sign in**) uses `GET /api/auth/connect/<id>?mode=link`, and
+  `DELETE /api/auth/connect/<id>/link` removes one — unless it is the last way in (no password, no passkey, no second
+  app), which answers `409 last_way_in`. `GET /api/auth/connect/apps/status` lists each app's link state for the page.
+- Every start, sign-in, link, unlink and refusal is an audit row (`signin_*`), with no token, code or secret in it.
+
+The old Discord link-only flow keeps its paths: `/api/auth/discord/link` and `/api/auth/discord/callback` are an alias
+of the same flow, so an existing Discord app registration keeps working.
+
+Owner rows live in the `network.signin` namespace, one `<provider>.<field>` per input (the client id, the secret, and
+Apple's Services ID/Team ID/Key ID/private key), a `<provider>.enabled` switch, and `signin_switch` for all of them at
+once. Each row's description carries the exact redirect URI to copy into that provider's app
+(`https://openvibe.network/api/auth/connect/<provider>/callback`), and the secret rows are sealed by the config vault.
+
+`test/signin-providers.test.js` covers it with recorded provider answers (no network).
+
 ## Signing out
 
 A site's **Sign out** ends that site's session and keeps the browser from signing back in quietly (`ov_sso_hint=guest`).

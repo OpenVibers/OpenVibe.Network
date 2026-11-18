@@ -144,6 +144,7 @@ async function loadUser() {
             loadLabelPrefs();
             loadNotifPrefs(); loadQuietHours();
             loadLinked();
+            loadSignInMethods();
             loadSessions();
             loadMfaSettings();
             loadPasskeySettings();
@@ -221,7 +222,8 @@ function renderHeader(user) {
     badges.innerHTML = user.is_anon
         ? `<span class="badge badge-anon">anonymous</span>`
         : (user.role && user.role !== 'user' ? `<span class="badge badge-${user.role}">${user.role.replace(/_/g, ' ')}</span>` : '');
-    if (user.anon_number) badges.innerHTML += `<span class="badge badge-anon">Anon #${user.anon_number}</span>`;
+    // A number is an anonymous identity's (11-15: "ANON #58" sat under the owner's own name): only an anonymous session shows it.
+    if (user.anon_number && user.is_anon) badges.innerHTML += `<span class="badge badge-anon">Anon #${user.anon_number}</span>`;
     // The hero wears your profile colour, and its actions know whether you stream (today.js may have drawn them first).
     const hero = document.getElementById('page-header');
     if (hero && /^#[0-9a-f]{6}$/i.test(String(user.profile_color || ''))) hero.style.setProperty('--me', user.profile_color);
@@ -289,7 +291,44 @@ function renderAccountId(user) {
         } catch (err) { msg.textContent = err.message || 'That did not work'; }
         save.disabled = clear.disabled = false;
     };
-    save.addEventListener('click', () => { if (src.value.trim()) apply('PUT', { source: src.value.trim() }); else msg.textContent = 'Paste a link first.'; });
+    save.addEventListener('click', () => { if (src.value.trim()) apply('PUT', { source: src.value.trim() }); else msg.textContent = 'Paste a link first, or choose a photo.'; });
+    // A photo from the phone or computer (11-17: "Why can't I change my photo … Just shows a M": the card took only a
+    // pasted link). It is made smaller here (1024 px, JPEG: a phone's photo, even HEIC where the browser reads it),
+    // stored as the person on openvibe.media (Frame POST /runs/files, as a session's files are), then made the avatar
+    // like any link: Media copies it into the person's own 512 px avatar object.
+    const pick = document.getElementById('avatar-pick'), file = document.getElementById('avatar-file'), face = document.getElementById('avatar-face');
+    const shrink = async (f) => {
+        if (f.size <= 1.5 * 1024 * 1024 && /^image\/(jpeg|png|webp|gif)$/.test(f.type)) return f;
+        try {
+            const bmp = await createImageBitmap(f);
+            const k = Math.min(1, 1024 / Math.max(bmp.width, bmp.height));
+            const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+            c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+            const out = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.9));
+            return out || f;
+        } catch { return f; }
+    };
+    const choose = () => { if (!pick.disabled) file.click(); };
+    if (pick && file) {
+        pick.addEventListener('click', choose);
+        if (face) face.addEventListener('click', choose);
+        file.addEventListener('change', async () => {
+            const f = file.files && file.files[0]; file.value = '';
+            if (!f) return;
+            if (!/^image\//.test(f.type || '')) { msg.textContent = 'Choose a picture: a photo, PNG, JPEG, WebP or GIF.'; return; }
+            pick.disabled = save.disabled = clear.disabled = true; msg.textContent = 'Uploading your photo…';
+            try {
+                const pic = await shrink(f);
+                if (pic.size > 10 * 1024 * 1024) throw new Error('That photo is over 10 MB: choose a smaller one.');
+                const up = await apiFetch('/api/frame/runs/files', { method: 'POST', headers: { 'Content-Type': pic.type || f.type, 'X-Filename': encodeURIComponent(f.name || 'photo.jpg') }, body: pic });
+                const id = up && up.file && String(up.file.id || '');
+                if (!/^med_[A-Za-z0-9]+$/.test(id)) throw new Error('That photo did not upload. Try again.');
+                const link = up.file.url && /^https:\/\/openvibe\.media\//.test(up.file.url) ? up.file.url : `https://openvibe.media/o/${id}`;
+                await apply('PUT', { source: link });
+            } catch (err) { msg.textContent = (err && err.message) || 'That photo did not upload. Try again.'; }
+            pick.disabled = save.disabled = clear.disabled = false;
+        });
+    }
     clear.addEventListener('click', () => apply('DELETE'));
     src.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save.click(); } });
     document.addEventListener('ov:account-ready', paint); setTimeout(paint, 1500);

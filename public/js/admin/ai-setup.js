@@ -9,6 +9,7 @@ let aiSetupState = null;
 let aiSetupStep = 'start';
 let aiSetupChoice = {};      // step id -> { provider, model }
 let aiSetupBusy = false;
+let aiSetupModels = null;    // the models that can answer a decision (OpenVibe.AI's list)
 
 const AI_SETUP_DEFAULT = 'defaults';
 // 2026-11-12 (the owner: "finish the guided easy step by step setup for owners"): the setup opens on a Start page (what
@@ -16,6 +17,16 @@ const AI_SETUP_DEFAULT = 'defaults';
 // is ready, what is left, a test of every ready job).
 const AI_SETUP_START = 'start';
 const AI_SETUP_DONE = 'done';
+// 2026-11-16 (plan §AD.15, "guided setup that saves defaults"): "Set this up for me" proposes every task kind's model
+// and a safe monthly cap from the keys already saved; the owner reads it, and "Use these" saves them all.
+const AI_SETUP_PLAN = 'plan';
+const AI_SETUP_CAP_FLOOR = 5;     // a kind with no cap gets at least $5 a month
+// "Let the agent do it" (plan §AD.15): what the agent is asked, with this page as its context. It proposes; the owner
+// approves anything that costs money.
+const AI_SETUP_AGENT_TASK = 'Set up OpenVibe.AI from this page: for each task kind pick the cheapest working model among '
+    + 'the providers that already have a key, give each kind with no cap a monthly cap of twice its last 30 days (at least $'
+    + AI_SETUP_CAP_FLOOR + '), and leave every provider without a key off. Say what you would change and why, and ask me '
+    + 'before anything that costs money or saves a setting.';
 const AI_SETUP_LINKS = {
     altare: 'https://altare.gg/console', gemini: 'https://aistudio.google.com/api-keys', machines: 'https://openvibe.link/machines',
     openaiCredits: 'https://developers.openai.com/api/docs/guides/chatgpt-api-credits', credits: 'https://openvibe.exchange/console/providers',
@@ -34,6 +45,35 @@ function aiSetupShortPrice(price) {
     return price.text || 'price not published';
 }
 
+/** The kinds of decision the owner may set a model for (OpenVibe.AI names them). */
+const AI_SETUP_DECISION_NAMES = {
+    routing: 'Routing a request',
+    moderation: 'Checking a post or a message',
+    grading: 'Grading an answer',
+    tool_choice: 'Choosing the next tool',
+    other: 'Any other question',
+};
+
+/** One model in a sentence: its name, its price, its measured speed and whether its answers are calibrated. */
+function aiSetupModelLabel(m) {
+    const price = m.price_in_per_mtok == null
+        ? 'free'
+        : '$' + Number(m.price_in_per_mtok).toFixed(4) + ' in · $' + Number(m.price_out_per_mtok == null ? 0 : m.price_out_per_mtok).toFixed(4) + ' out per 1M tokens';
+    const speed = m.speed_p50_ms == null ? 'speed not measured yet' : Math.round(Number(m.speed_p50_ms)) + ' ms';
+    return (m.name || m.id) + ' · ' + price + ' · ' + speed + ' · ' + (m.calibrated ? 'calibrated' : 'estimated');
+}
+
+/** The models that can answer a decision, read once from OpenVibe.AI. */
+async function loadAiSetupModels() {
+    if (aiSetupModels) return aiSetupModels;
+    try {
+        const out = await api('/api/admin/ai/setup/decisions/models');
+        aiSetupModels = (out && out.models) || [];
+    } catch (err) { aiSetupModels = []; }
+    return aiSetupModels;
+}
+
+
 function aiSetupStepById(id) {
     return (aiSetupState && aiSetupState.steps || []).find((s) => s.id === id) || null;
 }
@@ -41,11 +81,58 @@ function aiSetupStepById(id) {
 function aiSetupSelected(step) {
     const chosen = aiSetupChoice[step.id];
     if (chosen) {
-        const all = [step.recommended, ...(step.alternatives || [])];
+        const all = [step.recommended, ...(step.alternatives || []), ...(step.options || [])];
         const hit = all.find((o) => o.provider === chosen.provider && o.model === chosen.model);
         if (hit) return hit;
     }
     return step.recommended;
+}
+
+/** The Decisions step's own table: the model that answers each kind, the one to ask when unsure, and how sure is enough. */
+function aiSetupDecisionsHtml() {
+    const values = (aiSetupState && aiSetupState.decisions) || {};
+    const kinds = (aiSetupState && aiSetupState.decision_kinds) || Object.keys(AI_SETUP_DECISION_NAMES);
+    const models = aiSetupModels || [];
+    const options = (current) => {
+        const auto = '<option value="" ' + (!current ? 'selected' : '') + '>OpenVibe picks the best offer</option>';
+        return auto + models.map((m) => '<option value="' + esc(m.id) + '" ' + (current === m.id ? 'selected' : '') + '>' + esc(aiSetupModelLabel(m)) + (m.available ? '' : ' — not available now') + '</option>').join('');
+    };
+    const rows = kinds.map((kind) => {
+        const v = values[kind] || {};
+        const ladder = (v.ladder || [])[0] || '';
+        const threshold = Number(v.threshold == null ? 0.75 : v.threshold);
+        return '<tr>'
+            + '<td data-label="Kind"><strong>' + esc(AI_SETUP_DECISION_NAMES[kind] || kind) + '</strong><div class="muted setup-route">' + esc(kind) + '</div></td>'
+            + '<td data-label="The model that answers"><select aria-label="The model that answers ' + esc(kind) + '" onchange="saveAiSetupDecision(\'' + esc(kind) + '\',\'default_model\',this.value)">' + options(v.default_model || '') + '</select></td>'
+            + '<td data-label="Asked when unsure"><select aria-label="The model asked when the answer is unsure for ' + esc(kind) + '" onchange="saveAiSetupDecision(\'' + esc(kind) + '\',\'ladder\',this.value)">' + options(ladder) + '</select></td>'
+            + '<td data-label="How sure is enough"><input type="number" min="0" max="1" step="0.05" value="' + threshold + '" aria-label="How sure an answer must be for ' + esc(kind) + '" onchange="saveAiSetupDecision(\'' + esc(kind) + '\',\'threshold\',this.value)"></td>'
+            + '</tr>';
+    }).join('');
+    if (!rows) return '';
+    return '<section class="setup-decisions" aria-label="Which model answers a decision">'
+        + '<h4>Which model answers</h4>'
+        + '<p class="muted">One model per kind of question, with its price, its measured speed and whether its answers are calibrated. A model whose answer is not sure enough is asked again of the next one.</p>'
+        + '<div class="setup-table-wrap"><table class="setup-table"><thead><tr><th>Kind</th><th>The model that answers</th><th>Asked when unsure</th><th>How sure is enough</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+        + '<p class="setup-help">“OpenVibe picks” is today’s order: Google’s Decisions API first when its key is there, the cheapest structured model after it. The confidence runs from 0 to 1; 0.75 is the default.</p>'
+        + '</section>';
+}
+
+/** Save one kind's decision setting: the model, the model to ask when unsure, or the confidence. */
+async function saveAiSetupDecision(kind, field, value) {
+    const body = {};
+    if (field === 'default_model') body.default_model = value || null;
+    else if (field === 'ladder') body.ladder = value ? [value] : [];
+    else if (field === 'threshold') {
+        const t = Number(value);
+        if (!Number.isFinite(t) || t < 0 || t > 1) { toast('The confidence is a number from 0 to 1', 'error'); return; }
+        body.threshold = t;
+    } else return;
+    try {
+        await api('/api/admin/ai/setup/decisions/' + encodeURIComponent(kind), { method: 'PUT', body });
+        toast('Saved for ' + (AI_SETUP_DECISION_NAMES[kind] || kind));
+        aiSetupState = null;
+        await loadAiSetup(true);
+    } catch (err) { toast(err.message || 'The setting was not saved', 'error'); }
 }
 
 function aiSetupIsChoice(step, offer) {
@@ -61,7 +148,7 @@ async function loadAiSetup(force) {
     try {
         aiSetupState = await api('/api/admin/ai/setup');
         if (!aiSetupState || !Array.isArray(aiSetupState.steps)) throw new Error('OpenVibe.AI did not answer with the setup');
-        if (!aiSetupState.steps.some((s) => s.id === aiSetupStep) && ![AI_SETUP_DEFAULT, AI_SETUP_START, AI_SETUP_DONE].includes(aiSetupStep)) aiSetupStep = AI_SETUP_START;
+        if (!aiSetupState.steps.some((s) => s.id === aiSetupStep) && ![AI_SETUP_DEFAULT, AI_SETUP_START, AI_SETUP_DONE, AI_SETUP_PROVIDERS, AI_SETUP_FREE, AI_SETUP_MACHINES].includes(aiSetupStep)) aiSetupStep = AI_SETUP_START;
         renderAiSetup();
     } catch (err) {
         main.innerHTML = `<div class="setup-error"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
@@ -75,8 +162,12 @@ function renderAiSetup() {
     renderAiSetupStepper();
     renderAiSetupProgress();
     if (aiSetupStep === AI_SETUP_DEFAULT) renderAiSetupDefaults();
+    else if (aiSetupStep === AI_SETUP_PROVIDERS) renderAiSetupProviders();
+    else if (aiSetupStep === AI_SETUP_FREE) renderAiSetupFree();
+    else if (aiSetupStep === AI_SETUP_MACHINES) renderAiSetupMachines();
     else if (aiSetupStep === AI_SETUP_START) renderAiSetupStart();
     else if (aiSetupStep === AI_SETUP_DONE) renderAiSetupDone();
+    else if (aiSetupStep === AI_SETUP_PLAN) renderAiSetupPlan();
     else renderAiSetupStep();
 }
 
@@ -86,15 +177,27 @@ function renderAiSetupStepper() {
     const start = `<button class="setup-step defaults ${aiSetupStep === AI_SETUP_START ? 'active' : ''}" onclick="selectAiSetupStep('${AI_SETUP_START}')" aria-current="${aiSetupStep === AI_SETUP_START ? 'step' : 'false'}">
         <span class="setup-step-dot" aria-hidden="true"><i class="fa-solid fa-flag"></i></span>
         <span class="setup-step-text"><span class="setup-step-name">Start</span><span class="setup-step-state">Free and granted first</span></span>
+    </button>
+    <button class="setup-step defaults ${aiSetupStep === AI_SETUP_PROVIDERS ? 'active' : ''}" onclick="selectAiSetupStep('${AI_SETUP_PROVIDERS}')" aria-current="${aiSetupStep === AI_SETUP_PROVIDERS ? 'step' : 'false'}">
+        <span class="setup-step-dot" aria-hidden="true"><i class="fa-solid fa-key"></i></span>
+        <span class="setup-step-text"><span class="setup-step-name">Providers and keys</span><span class="setup-step-state">${aiSetupProviderList ? aiSetupProviderList.filter((p) => p.status === 'active').length + ' of ' + aiSetupProviderList.length + ' on' : 'Every provider'}</span></span>
     </button>`;
     const rows = aiSetupState.steps.map((s, i) => {
         const active = aiSetupStep === s.id;
         const state = s.ready ? 'ready' : s.state;
         return `<button class="setup-step ${esc(state)} ${active ? 'active' : ''}" onclick="selectAiSetupStep('${esc(s.id)}')" aria-current="${active ? 'step' : 'false'}">
             <span class="setup-step-dot" aria-hidden="true">${s.ready ? '<i class="fa-solid fa-check"></i>' : (i + 1)}</span>
-            <span class="setup-step-text"><span class="setup-step-name">${esc(s.name)}</span><span class="setup-step-state">${esc(AI_SETUP_STATE_WORD[state] || state)}</span></span>
+            <span class="setup-step-text"><span class="setup-step-name">${esc(aiSetupStepName(s))}</span><span class="setup-step-state">${esc(AI_SETUP_STATE_WORD[state] || state)}</span></span>
         </button>`;
     });
+    rows.push(`<button class="setup-step defaults ${aiSetupStep === AI_SETUP_FREE ? 'active' : ''}" onclick="selectAiSetupStep('${AI_SETUP_FREE}')" aria-current="${aiSetupStep === AI_SETUP_FREE ? 'step' : 'false'}">
+        <span class="setup-step-dot" aria-hidden="true"><i class="fa-solid fa-gift"></i></span>
+        <span class="setup-step-text"><span class="setup-step-name">Free use and budgets</span><span class="setup-step-state">What people get free</span></span>
+    </button>`);
+    rows.push(`<button class="setup-step defaults ${aiSetupStep === AI_SETUP_MACHINES ? 'active' : ''}" onclick="selectAiSetupStep('${AI_SETUP_MACHINES}')" aria-current="${aiSetupStep === AI_SETUP_MACHINES ? 'step' : 'false'}">
+        <span class="setup-step-dot" aria-hidden="true"><i class="fa-solid fa-microchip"></i></span>
+        <span class="setup-step-text"><span class="setup-step-name">Machines and GPUs</span><span class="setup-step-state">Where AI and agents run</span></span>
+    </button>`);
     rows.push(`<button class="setup-step defaults ${aiSetupStep === AI_SETUP_DEFAULT ? 'active' : ''}" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')" aria-current="${aiSetupStep === AI_SETUP_DEFAULT ? 'step' : 'false'}">
         <span class="setup-step-dot" aria-hidden="true"><i class="fa-solid fa-sliders"></i></span>
         <span class="setup-step-text"><span class="setup-step-name">Defaults</span><span class="setup-step-state">Models, spend and caps</span></span>
@@ -143,7 +246,7 @@ function skipAiSetupStep() {
 async function aiSetupChoose(stepId, provider, model) {
     aiSetupChoice[stepId] = { provider, model };
     const step = aiSetupStepById(stepId);
-    const offer = step && [step.recommended, ...(step.alternatives || [])].find((o) => o.provider === provider && o.model === model);
+    const offer = step && [step.recommended, ...(step.alternatives || []), ...(step.options || [])].find((o) => o.provider === provider && o.model === model);
     renderAiSetup();
     const card = document.getElementById('setup-main');
     if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -166,21 +269,29 @@ function renderAiSetupStep() {
     const step = aiSetupStepById(aiSetupStep) || (aiSetupState.steps[0] || null);
     const main = document.getElementById('setup-main');
     if (!step || !main) return;
+    // The Decisions step picks a model out of the list of the models that can answer one: it is read once.
+    if (step.id === 'decide' && !aiSetupModels) {
+        main.innerHTML = '<div class="loading">Loading the models that can answer…</div>';
+        loadAiSetupModels().then(() => renderAiSetup());
+        return;
+    }
     const selected = aiSetupSelected(step);
     const index = aiSetupState.steps.findIndex((s) => s.id === step.id);
     const state = step.ready ? 'ready' : step.state;
     const page = aiSetupKeyPage(selected);
-    const keyless = selected.keyless || (selected.provider === 'stt' || selected.provider === 'local' || selected.provider === 'whisper');
+    const keyless = selected.keyless || ['stt', 'local', 'whisper', 'openvibe', 'searxng', 'shared'].includes(selected.provider);
     const hint = (step.key_hint && step.key_hint.last4) || (selected.key_hint && selected.key_hint.last4);
     const configured = selected.configured;
     const alternatives = (step.alternatives || []).filter((o) => !aiSetupIsChoice(step, o));
+    // Coding agents: every harness and the computers coding runs on, read once.
+    if (step.id === 'code' && !aiSetupAgents) loadAiSetupAgents().then(() => { if (aiSetupStep === 'code') renderAiSetup(); });
 
     main.innerHTML = `
         <article class="setup-card" aria-labelledby="setup-step-title">
             <header class="setup-card-head">
                 <div>
                     <span class="setup-kicker">Step ${index + 1} of ${aiSetupState.steps.length}</span>
-                    <h3 id="setup-step-title">${esc(step.name)}</h3>
+                    <h3 id="setup-step-title">${esc(aiSetupStepName(step))}</h3>
                     <p class="setup-what">${esc(step.what)}</p>
                     <p class="setup-uses"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> ${esc(step.uses)}</p>
                 </div>
@@ -190,7 +301,7 @@ function renderAiSetupStep() {
             <section class="setup-rec" aria-label="Recommended provider">
                 <div class="setup-rec-main">
                     <div class="setup-rec-top"><span class="setup-rec-flag"><i class="fa-solid fa-star" aria-hidden="true"></i> ${aiSetupIsChoice(step, step.recommended) ? 'Recommended' : 'Chosen'}</span>
-                        ${selected.configured ? '<span class="setup-pill ok"><i class="fa-solid fa-check" aria-hidden="true"></i> Key saved</span>' : '<span class="setup-pill todo">Key needed</span>'}</div>
+                        ${keyless ? '<span class="setup-pill ok">No key needed</span>' : selected.configured ? '<span class="setup-pill ok"><i class="fa-solid fa-check" aria-hidden="true"></i> Key saved</span>' : '<span class="setup-pill todo">Key needed</span>'}</div>
                     <h4>${esc(selected.provider_name)}<span class="setup-model"> · ${esc(selected.label || selected.model)}</span></h4>
                     <p class="setup-why">${esc(step.recommended.why || selected.why || '')}</p>
                     ${selected.note ? `<p class="setup-note">${esc(selected.note)}</p>` : ''}
@@ -215,6 +326,12 @@ function renderAiSetupStep() {
                     </div>`).join('')}
                 </div>
             </details>` : ''}
+
+            ${aiSetupEveryModelHtml(step)}
+
+            ${step.id === 'code' ? aiSetupAgentsHtml() : ''}
+
+            ${step.id === 'decide' ? aiSetupDecisionsHtml() : ''}
 
             <section class="setup-do">
                 <div class="setup-do-head"><span class="setup-num">1</span><div><h4>Get a key</h4>
@@ -364,12 +481,14 @@ function renderAiSetupStart() {
                 </div>
                 <div class="setup-start-card">
                     <h3><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> One tap</h3>
-                    <p class="muted">Fills every job with its recommended model. You still paste each provider's key once, in its step.</p>
+                    <p class="muted">Proposes a model for every job from the keys you have saved, and a safe monthly cap for each. You read it, then save it all. Keys stay yours: paste each once, in its step.</p>
+                    <button class="btn btn-primary btn-sm" onclick="selectAiSetupStep('${AI_SETUP_PLAN}')"><i data-ov-icon="wand" aria-hidden="true"></i> Set this up for me</button>
                     <button class="btn btn-outline btn-sm" onclick="applyAiSetupRecommended()">Use the recommended set</button>
                 </div>
             </section>
             <footer class="setup-card-foot">
-                <button class="btn btn-primary" onclick="selectAiSetupStep('${esc(first.id)}')">Start with ${esc(first.name)} <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
+                <button class="btn btn-outline" onclick="selectAiSetupStep('${esc(first.id)}')">Start with ${esc(aiSetupStepName(first))}</button>
+                <button class="btn btn-primary" onclick="selectAiSetupStep('${AI_SETUP_PROVIDERS}')">Providers and keys <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
             </footer>
         </article>`;
 }
@@ -456,7 +575,7 @@ function renderAiSetupDefaults() {
             <div><span class="setup-kicker">Last step</span><h3>Defaults</h3>
                 <p class="setup-what">Every task kind, the model it uses, and what it has cost.</p>
                 <p class="setup-uses"><i class="fa-solid fa-coins" aria-hidden="true"></i> Estimated monthly is the last 30 days of real calls at their own prices; spend this month is what has been used so far.</p></div>
-            <button class="btn btn-primary" onclick="applyAiSetupRecommended()"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Use the recommended set</button>
+            <button class="btn btn-primary" onclick="selectAiSetupStep('${AI_SETUP_PLAN}')"><i data-ov-icon="wand" aria-hidden="true"></i> Set this up for me</button>
         </header>
         <div class="setup-table-wrap">
             <table class="setup-table">
@@ -497,6 +616,112 @@ async function saveAiSetupCap(kind, value) {
     }
 }
 
+/** A safe monthly cap for a kind with none: twice its last 30 days at real prices, at least $5, in whole dollars. */
+function aiSetupSafeCap(d) {
+    const est = Number(d && d.estimated_month_usd) || 0;
+    return Math.max(AI_SETUP_CAP_FLOOR, Math.ceil(est * 2));
+}
+
+/**
+ * What "Set this up for me" proposes for each task kind:
+ *   - the model: the recommended one when its provider has a key, else the first option whose provider has one, else
+ *     the recommended one, waiting for its key (it is not saved until the key is there);
+ *   - the cap: one already set is kept; a kind with none gets a safe one (aiSetupSafeCap).
+ * Nothing is saved here.
+ */
+function aiSetupPlan() {
+    if (!aiSetupState) return [];
+    return (aiSetupState.defaults || []).map((d) => {
+        const opts = d.options || [];
+        const rec = opts.find((o) => o.recommended) || null;
+        const pick = rec && rec.configured ? rec : (opts.find((o) => o.configured) || rec);
+        const keyNeeded = !!(pick && !pick.configured);
+        const same = !!(pick && d.current && d.current.provider === pick.provider && d.current.model === pick.model);
+        const capKept = Number(d.cap_usd) > 0;
+        return {
+            kind: d.id, name: d.name, pick, keyNeeded,
+            saveModel: !!pick && !keyNeeded && !same,
+            cap: capKept ? Number(d.cap_usd) : aiSetupSafeCap(d), capKept,
+            estimate: Number(d.estimated_month_usd) || 0,
+        };
+    });
+}
+
+function renderAiSetupPlan() {
+    const main = document.getElementById('setup-main');
+    if (!main || !aiSetupState) return;
+    const plan = aiSetupPlan();
+    const waiting = plan.filter((x) => x.keyNeeded);
+    const rows = plan.map((x) => {
+        const model = !x.pick ? '<span class="muted">OpenVibe picks the best offer</span>'
+            : `${esc(x.pick.provider_name || x.pick.provider)} · ${esc(x.pick.label || x.pick.model)}${x.pick.recommended ? ' <span class="setup-plan-tag">recommended</span>' : ''}`;
+        const who = x.pick ? esc(x.pick.provider_name || x.pick.provider) : '';
+        // A provider with no key to paste (a model on a machine, whisper.cpp) is turned on, not keyed.
+        const state = x.keyNeeded ? `<span class="setup-plan-state todo">${x.pick.keyless ? `Turn on ${who} first` : `Needs a key from ${who}`}</span>`
+            : x.saveModel ? '<span class="setup-plan-state ok">Will be saved</span>' : '<span class="setup-plan-state">Already set</span>';
+        const cap = x.capKept ? `${aiSetupMoney(x.cap)} <span class="muted">(yours, kept)</span>` : `${aiSetupMoney(x.cap)} <span class="muted">(new; ${x.estimate ? `about ${aiSetupMoney(x.estimate)} a month now` : 'nothing spent in 30 days'})</span>`;
+        // One wrapper per cell: on a phone each cell is a label and its content side by side.
+        return `<tr><td data-label="Task kind"><strong>${esc(x.name)}</strong></td><td data-label="Model"><div>${model}<div>${state}</div></div></td><td data-label="Monthly cap"><div>${cap}</div></td></tr>`;
+    }).join('');
+    const changes = plan.filter((x) => x.saveModel).length + plan.filter((x) => !x.capKept).length;
+    main.innerHTML = `<article class="setup-card setup-plan" aria-labelledby="setup-plan-title">
+        <header class="setup-card-head">
+            <div><span class="setup-kicker">Set this up for me</span><h3 id="setup-plan-title">Here is what I would set</h3>
+                <p class="setup-what">A model for every job from the keys you have saved, and a monthly cap for each job that has none: twice its last 30 days, at least $${AI_SETUP_CAP_FLOOR}. Nothing is saved until you say so, and nothing here spends money.</p></div>
+        </header>
+        <div class="setup-table-wrap">
+            <table class="setup-table">
+                <thead><tr><th>Task kind</th><th>Model</th><th>Monthly cap</th></tr></thead>
+                <tbody>${rows || '<tr><td colspan="3" class="muted">No task kinds yet.</td></tr>'}</tbody>
+            </table>
+        </div>
+        ${waiting.length ? `<p class="setup-help">${waiting.length === 1 ? 'One job waits' : waiting.length + ' jobs wait'} for a provider: paste its key, or turn it on, in Providers and keys, then come back. The plan picks it up.</p>` : ''}
+        <footer class="setup-card-foot">
+            <button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_START}')">Back</button>
+            <div class="setup-foot-next">
+                ${waiting.length ? `<button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_PROVIDERS}')">Providers and keys</button>` : ''}
+                <button class="btn btn-outline" id="setup-plan-agent" data-ov-agent="Let the agent do it" data-ov-agent-context="page" data-ov-agent-approve="first"
+                    data-ov-agent-task="${esc(AI_SETUP_AGENT_TASK)}">Let the agent do it</button>
+                <button class="btn btn-primary" id="setup-plan-apply" onclick="applyAiSetupPlan()" ${changes ? '' : 'disabled'}>${changes ? 'Use these' : 'Nothing to change'}</button>
+            </div>
+        </footer>
+    </article>`;
+}
+
+/** "Use these": each proposed model and each new cap, one save at a time; then what was saved and what waits. */
+async function applyAiSetupPlan() {
+    if (aiSetupBusy || !aiSetupState) return;
+    const plan = aiSetupPlan();
+    const btn = document.getElementById('setup-plan-apply');
+    aiSetupBusy = true;
+    if (btn) btn.disabled = true;
+    let models = 0, caps = 0;
+    const failed = [];
+    try {
+        for (const x of plan) {
+            if (x.saveModel) {
+                try { await api(`/api/admin/ai/setup/routes/${encodeURIComponent(x.kind)}`, { method: 'PUT', body: { provider: x.pick.provider, model: x.pick.model } }); models++; }
+                catch (err) { failed.push(`${x.name}: ${err.message || 'the model was not saved'}`); }
+            }
+            if (!x.capKept) {
+                try { await api(`/api/admin/ai/setup/caps/${encodeURIComponent(x.kind)}`, { method: 'PUT', body: { cap_usd: x.cap } }); caps++; }
+                catch (err) { failed.push(`${x.name}: ${err.message || 'the cap was not saved'}`); }
+            }
+        }
+        const waiting = plan.filter((x) => x.keyNeeded).length;
+        const said = [`${models} model${models === 1 ? '' : 's'} and ${caps} cap${caps === 1 ? '' : 's'} saved`];
+        if (waiting) said.push(`${waiting} wait${waiting === 1 ? 's' : ''} for a key`);
+        if (failed.length) said.push(`${failed.length} not saved (${failed[0]})`);
+        toast(said.join('; '), failed.length ? 'warning' : undefined);
+        aiSetupState = null;
+        await loadAiSetup(true);
+        selectAiSetupStep(waiting ? AI_SETUP_PROVIDERS : AI_SETUP_DONE);
+    } finally {
+        aiSetupBusy = false;
+        if (btn) btn.disabled = false;
+    }
+}
+
 async function applyAiSetupRecommended() {
     if (aiSetupBusy) return;
     aiSetupBusy = true;
@@ -510,4 +735,548 @@ async function applyAiSetupRecommended() {
     } catch (err) {
         toast(err.message || 'The recommended set was not saved', 'error');
     } finally { aiSetupBusy = false; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   The AI control room's own parts (2026-11-15, plan §AD.9; the owner, step by step: "missing tons of models … can't
+   even see configuring OpenRouter key and all the other keys", "you forgot all types of models … hella platforms",
+   "missing configuration for our tons of providers and different methods", "missing all the different agents … the
+   shared … node", "needs all to be configured with OpenVibe.exchange as well"):
+     · Providers and keys: every provider OpenVibe.AI knows, grouped, with how it is reached, its key, a test, on/off,
+       what it can do, its models and the same provider on Exchange;
+     · every job lists every model that can do it, searchable, not two or three picked by hand;
+     · coding agents: every harness Codes runs, the key it runs on, and the computers coding runs on (lent to
+       everyone, never OpenVibe's own server).
+   ═══════════════════════════════════════════════════════════════ */
+const AI_SETUP_PROVIDERS = 'providers';
+const AI_SETUP_FREE = 'free';
+const AI_SETUP_MACHINES = 'machines';
+let aiSetupFree = null;               // { ns } AI's ai.exchange namespace, or { error }
+
+/** Free use and budgets (2026-11-15, plan §AD.9 step 4; the owner: "free usage for people"): the free AI each person
+ *  gets a day (AI's ai.exchange free_daily_tokens), what the server spends at most a month (the jobs' caps, changed
+ *  under Defaults), and what happens past the free part (their own key, or Credits when they are on). */
+async function loadAiSetupFree(force) {
+    if (aiSetupFree && !force) return aiSetupFree;
+    try { aiSetupFree = { ns: await api('/api/admin/ai/config/ai/ai.exchange') }; }
+    catch (err) { aiSetupFree = { error: (err && err.message) || 'OpenVibe.AI did not answer' }; }
+    return aiSetupFree;
+}
+function renderAiSetupFree() {
+    const main = document.getElementById('setup-main');
+    if (!main || !aiSetupState) return;
+    if (!aiSetupFree) { main.innerHTML = '<div class="loading">Reading what people get free…</div>'; loadAiSetupFree().then(() => { if (aiSetupStep === AI_SETUP_FREE) renderAiSetup(); }); return; }
+    const ns = aiSetupFree.ns || {};
+    const field = ns.schema && ns.schema.properties && ns.schema.properties.free_daily_tokens;
+    const pinned = Array.isArray(ns.pins) && ns.pins.includes('free_daily_tokens');
+    const tokens = ns.values && Number.isFinite(Number(ns.values.free_daily_tokens)) ? Number(ns.values.free_daily_tokens) : Number((field && field['x-example']) || 20000);
+    const credits = !!(ns.values && ns.values.credits);
+    const caps = (aiSetupState.defaults || []).filter((d) => Number(d.cap_usd) > 0);
+    const total = caps.reduce((n, d) => n + Number(d.cap_usd), 0);
+    const words = (n) => (n > 0 ? `about ${Math.round(n * 0.75).toLocaleString()} words` : 'free AI is off');
+    const free = aiSetupFree.error ? `<p class="setup-note bad">${esc(aiSetupFree.error)}</p>`
+        : !field ? '<p class="setup-note">OpenVibe.AI\'s next release adds this setting; until then the free amount is set in its settings file.</p>'
+            : `<div class="setup-free">
+                <label for="setup-free-tokens"><strong>Each person, each day</strong><span class="muted">${esc(field.description || '')}</span></label>
+                <div class="setup-free-row"><input id="setup-free-tokens" type="number" min="0" max="10000000" step="1000" value="${tokens}" ${pinned ? 'disabled' : ''} oninput="document.getElementById('setup-free-words').textContent = aiSetupFreeWords(this.value)">
+                    <span class="muted">tokens · <span id="setup-free-words">${esc(words(tokens))}</span></span>
+                    ${pinned ? '<span class="setup-pill">Set in the server\'s settings file</span>' : '<button class="btn btn-primary btn-sm" onclick="saveAiSetupFree()">Save</button>'}</div>
+            </div>`;
+    // Pictures each person may make a day (AI's picture task daily cap; the setup state's `free`, 2026-11-15).
+    const pf = aiSetupState.free || null;
+    const pictures = !pf ? '<p class="setup-note">OpenVibe.AI\'s next release adds this setting.</p>'
+        : `<div class="setup-free">
+                <label for="setup-free-pictures"><strong>Each person, each day</strong><span class="muted">The most pictures one person can make in a day, with any model. ${pf.pictures_set ? '' : `The server's default is ${esc(String(pf.pictures_default))}.`}</span></label>
+                <div class="setup-free-row"><input id="setup-free-pictures" type="number" min="0" max="1000" step="1" value="${esc(String(pf.pictures_per_day == null ? '' : pf.pictures_per_day))}">
+                    <span class="muted">pictures${Number(pf.pictures_per_day) === 0 ? ' · making pictures is off' : ''}</span>
+                    <button class="btn btn-primary btn-sm" onclick="saveAiSetupFreePictures()">Save</button></div>
+            </div>`;
+    // By rank (2026-11-16; the owner: "owner rank should be able to use more tokens per day"): each rank's share of the
+    // free daily allowance, unlimited or a factor, from AI's setup state (`allowances`).
+    const al = aiSetupState.allowances || null;
+    const byRank = !al ? '<p class="setup-note">OpenVibe.AI\'s next release adds this setting.</p>'
+        : `<div class="setup-ranks">${al.ranks.map((x) => {
+            const unl = x.factor === 'unlimited';
+            const amount = unl ? 'No daily cap (the rate limits still apply)' : `${Number(x.tokens_per_day || 0).toLocaleString()} tokens a day · ${aiSetupFreeWords(x.tokens_per_day)}`;
+            return `<div class="setup-rank-row" data-rank="${esc(x.rank)}">
+                <span class="setup-rank-name"><strong>${esc(x.label)}</strong><span class="muted" data-rank-amount>${esc(amount)}</span></span>
+                <label class="pai-switch"><input type="checkbox" role="switch" data-ov-native data-rank-unlimited ${unl ? 'checked' : ''} onchange="aiSetupRankChanged(this)"><span class="pai-track" aria-hidden="true"><span class="pai-knob"></span></span><span>Unlimited</span></label>
+                <span class="setup-rank-factor"${unl ? ' hidden' : ''}><input type="number" min="0" max="9999" step="0.5" value="${esc(String(unl ? 1 : x.factor))}" aria-label="${esc(x.label)}: times the allowance" data-rank-factor oninput="aiSetupRankChanged(this)"><span class="muted">× the allowance</span></span>
+            </div>`;
+        }).join('')}
+            <div class="setup-free-row"><span class="muted">The allowance is ${Number(al.daily_tokens || 0).toLocaleString()} tokens a day.</span><button class="btn btn-primary btn-sm" onclick="saveAiSetupRanks()">Save</button></div></div>`;
+    main.innerHTML = `<article class="setup-card">
+        <header class="setup-card-head"><div><span class="setup-kicker">For everyone</span><h3 id="setup-step-title">Free use and budgets</h3>
+            <p class="setup-what">What people get free, what the server spends at most, and what happens past it.</p></div></header>
+        <section class="setup-free-sec"><h4>Free AI</h4>${free}</section>
+        <section class="setup-free-sec"><h4>By rank</h4>${byRank}</section>
+        <section class="setup-free-sec"><h4>Pictures</h4>${pictures}</section>
+        <section class="setup-free-sec"><h4>Most the server spends a month</h4>
+            <p>${caps.length ? `<strong>${aiSetupMoney(total)}</strong> across ${caps.length} job${caps.length === 1 ? '' : 's'} with a cap.` : 'No job has a cap yet: the server spends what the jobs use.'}</p>
+            <button class="btn btn-outline btn-sm" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')">Change each job's cap</button></section>
+        <section class="setup-free-sec"><h4>Past the free part</h4>
+            <p>People use their own key${credits ? ', or their Credits (Credits are on).' : '. Credits are off, so nothing is charged.'}</p></section>
+    </article>`;
+}
+/** A rank's row as it is edited: the factor shows only when not unlimited, and the amount follows the factor. */
+function aiSetupRankChanged(el) {
+    const row = el && el.closest('.setup-rank-row');
+    if (!row || !aiSetupState || !aiSetupState.allowances) return;
+    const unl = row.querySelector('[data-rank-unlimited]').checked;
+    const factorBox = row.querySelector('.setup-rank-factor');
+    if (factorBox) factorBox.hidden = unl;
+    const f = Math.max(0, Number(row.querySelector('[data-rank-factor]').value) || 0);
+    const tokens = Math.floor(Number(aiSetupState.allowances.daily_tokens || 0) * f);
+    row.querySelector('[data-rank-amount]').textContent = unl ? 'No daily cap (the rate limits still apply)' : `${tokens.toLocaleString()} tokens a day · ${aiSetupFreeWords(tokens)}`;
+}
+async function saveAiSetupRanks() {
+    const body = {};
+    document.querySelectorAll('.setup-rank-row').forEach((row) => {
+        const unl = row.querySelector('[data-rank-unlimited]').checked;
+        body[row.dataset.rank] = unl ? 'unlimited' : Math.max(0, Math.min(9999, Number(row.querySelector('[data-rank-factor]').value) || 0));
+    });
+    try {
+        const out = await api('/api/admin/ai/setup/allowances', { method: 'PUT', body });
+        if (aiSetupState && out && out.allowances) aiSetupState.allowances = out.allowances;
+        toast('Free AI by rank saved');
+    } catch (err) { toast((err && err.message) || 'That did not save', 'error'); }
+    if (aiSetupStep === AI_SETUP_FREE) renderAiSetup();
+}
+// ── Machines and GPUs (2026-11-16) ──
+let aiSetupMachines = null;
+async function loadAiSetupMachines(force) {
+    if (aiSetupMachines && !force) return aiSetupMachines;
+    const [compute, setup] = await Promise.all([
+        api('/api/admin/ai/config/run/run.compute').catch((e) => ({ error: (e && e.message) || 'OpenVibe.Run did not answer' })),
+        api('/api/admin/setup').catch((e) => ({ error: (e && e.message) || 'The Setup checklist could not be read' })),
+    ]);
+    // The keys that rent machines and GPUs: AI's GPU marketplaces and Run's rental providers, from the Setup checklist.
+    const rows = [];
+    for (const g of (setup && setup.groups) || []) for (const r of g.rows || []) {
+        if (r.kind === 'key' && (r.namespace === 'ai.gpus' || (r.service === 'run' && /^run\.(?!compute$)/.test(String(r.namespace || ''))))) rows.push(r);
+    }
+    aiSetupMachines = { compute, keys: rows, setupError: setup && setup.error };
+    return aiSetupMachines;
+}
+function renderAiSetupMachines() {
+    const main = document.getElementById('setup-main');
+    if (!main) return;
+    if (!aiSetupMachines) { main.innerHTML = '<div class="loading">Reading the machines…</div>'; loadAiSetupMachines().then(() => { if (aiSetupStep === AI_SETUP_MACHINES) renderAiSetup(); }); return; }
+    const m = aiSetupMachines;
+    const v = (m.compute && m.compute.values) || {};
+    const pools = Object.entries(v.pools || {});
+    const KIND = { function: 'Functions', code: 'Code', browser: 'Browsers', linux: 'Linux', desktop: 'Desktops', gpu: 'GPUs' };
+    const status = m.compute && m.compute.error ? `<p class="setup-note bad">${esc(m.compute.error)}</p>`
+        : `<p><strong>${v.enabled ? 'Renting is on' : 'Renting is off'}</strong> · ${v.dry_run ? 'Dry run: prices are quoted, nothing is rented' : 'Live: machines are rented within each pool\'s limits'}</p>`;
+    const poolRows = pools.length ? `<div class="setup-machines">${pools.map(([name, pl]) => `<div class="setup-machine">
+            <span class="setup-machine-name"><strong>${esc(name)}</strong><span class="muted">${esc(KIND[pl.kind] || pl.kind || '')}${pl.gpu_mb ? ` · ${Math.round(Number(pl.gpu_mb) / 1024)} GB GPU` : ''}${pl.max_machines != null ? ` · up to ${esc(String(pl.max_machines))}` : ''}</span></span>
+            <span class="setup-machine-from">${esc((pl.providers || []).join(', ') || 'no provider yet')}</span></div>`).join('')}</div>`
+        : '<p class="setup-note">No pool yet. A pool says what kind of machine (a desktop, a browser, a GPU …), from which providers, and how many at most.</p>';
+    const STATE = { connected: ['Connected', 'ok'], needed: ['Needed', 'bad'], not_working: ['Not working', 'bad'], optional: ['Not set', 'todo'] };
+    const keyRows = m.keys.length ? `<div class="setup-machines">${m.keys.map((r) => {
+        const st = STATE[r.state] || [r.state, 'muted'];
+        return `<div class="setup-machine"><span class="setup-machine-name"><strong>${esc(r.title)}</strong><span class="muted">${esc(r.service_name || r.service)}</span></span><span class="setup-pill ${esc(st[1])}">${esc(st[0])}</span></div>`;
+    }).join('')}</div>` : `<p class="setup-note">${m.setupError ? esc(m.setupError) : 'No rental or GPU marketplace asks for a key.'}</p>`;
+    main.innerHTML = `<article class="setup-card">
+        <header class="setup-card-head"><div><span class="setup-kicker">Where AI and agents run</span><h3 id="setup-step-title">Machines and GPUs</h3>
+            <p class="setup-what">Rented machines and GPUs, your own computers, and the desktops and browsers agents use: one network of machines for models, coding agents and desktop agents.</p></div></header>
+        <section class="setup-free-sec"><h4>Rented machines and GPUs</h4>${status}${poolRows}
+            <a class="btn btn-outline btn-sm" href="https://openvibe.run/api/v1/compute" target="_blank" rel="noopener">Open the pools</a></section>
+        <section class="setup-free-sec"><h4>Keys for renting</h4>${keyRows}
+            <a class="btn btn-outline btn-sm" href="/admin#setup">Add or test keys in Setup</a></section>
+        <section class="setup-free-sec"><h4>Your own computers</h4>
+            <p>Pair a computer with OpenVibe.Link and it runs models, coding agents and desktop agents for you, and for whoever you share it with. Each person gets their own sandbox on it.</p>
+            <a class="btn btn-outline btn-sm" href="https://openvibe.link" target="_blank" rel="noopener">Pair a computer</a></section>
+        <section class="setup-free-sec"><h4>Desktop and browser agents</h4>
+            <p>Agents get their desktops and browsers on OpenVibe.Computer: the shared nodes, your own computers through Link, and rented ones from the desktop and browser pools above.</p>
+            <a class="btn btn-outline btn-sm" href="https://openvibe.computer" target="_blank" rel="noopener">Open OpenVibe.Computer</a></section>
+    </article>`;
+}
+async function saveAiSetupFreePictures() {
+    const input = document.getElementById('setup-free-pictures');
+    const n = Math.max(0, Math.min(1000, Math.round(Number(input && input.value) || 0)));
+    try {
+        const out = await api('/api/admin/ai/setup/free/pictures', { method: 'PUT', body: { per_day: n } });
+        if (aiSetupState && out && out.free) aiSetupState.free = out.free;
+        toast(n > 0 ? `Each person can make ${n} picture${n === 1 ? '' : 's'} a day` : 'Making pictures is off');
+    } catch (err) { toast((err && err.message) || 'That did not save', 'error'); }
+    if (aiSetupStep === AI_SETUP_FREE) renderAiSetup();
+}
+function aiSetupFreeWords(v) { const n = Math.max(0, Number(v) || 0); return n > 0 ? `about ${Math.round(n * 0.75).toLocaleString()} words` : 'free AI is off'; }
+async function saveAiSetupFree() {
+    const input = document.getElementById('setup-free-tokens');
+    const n = Math.max(0, Math.min(10000000, Math.round(Number(input && input.value) || 0)));
+    try {
+        await api('/api/admin/ai/config/ai/ai.exchange', { method: 'POST', body: { values: { free_daily_tokens: n }, reason: 'free AI per person per day' } });
+        toast(n > 0 ? `Each person gets ${n.toLocaleString()} tokens free a day` : 'Free AI is off');
+    } catch (err) { toast((err && err.message) || 'That did not save', 'error'); }
+    await loadAiSetupFree(true);
+    if (aiSetupStep === AI_SETUP_FREE) renderAiSetup();
+}
+const AI_SETUP_EXCHANGE = 'https://openvibe.exchange/console/providers';
+let aiSetupProviderList = null;      // OpenVibe.AI's registry, as the owner sees it
+let aiSetupProviderError = '';
+let aiSetupProviderQuery = '';
+let aiSetupProviderFilter = 'all';
+let aiSetupProviderOpen = '';
+let aiSetupModelQuery = {};          // step id -> the words in its "every model" search
+let aiSetupModelShown = {};          // step id -> how many rows are showing
+let aiSetupAgents = null;            // { harnesses, machines, error }
+
+/** What a job is called on the page: plain words, never a route or a codename. */
+const AI_SETUP_STEP_NAMES = { code: 'Coding agents', decide: 'Decisions', stt: 'Speech to text', speech: 'Voices', image: 'Pictures' };
+const aiSetupStepName = (s) => (s && (AI_SETUP_STEP_NAMES[s.id] || s.name)) || '';
+
+/** The groups providers are shown in, in order; each provider lands in the first group it fits. */
+const AI_SETUP_PROVIDER_GROUPS = [
+    { id: 'one', name: 'One key for everything', line: 'Hundreds of models from every lab through one account.', has: (p) => ['openrouter', 'nanogpt'].includes(p.key) },
+    { id: 'own', name: 'Your own machines and the shared OpenVibe computers', line: 'Models on computers you run: free per answer, private to the network.', has: (p) => ['local', 'local2', 'shared', 'whisper', 'runpod-vllm'].includes(p.key) || /^https?:\/\/(127\.|localhost|10\.|192\.168\.)/.test(String(p.base_url || '')) },
+    { id: 'labs', name: 'The labs', line: 'The companies that make the models, straight from the source.', has: (p) => ['openai', 'anthropic', 'gemini', 'xai', 'mistral', 'deepseek', 'meta', 'qwen', 'kimi', 'glm', 'minimax', 'cohere', 'perplexity', 'inception'].includes(p.key) },
+    { id: 'uncensored', name: 'Uncensored', line: 'For the adults-only tier: answers the others refuse.', has: (p) => ['refuseless', 'abliteration', 'abliteratedmodels', 'venice'].includes(p.key) },
+    { id: 'pictures', name: 'Pictures and video', line: 'Makes pictures, icons and video from words.', has: (p) => aiSetupCaps(p).some((c) => c === 'image' || c === 'video') && !aiSetupCaps(p).includes('chat') },
+    { id: 'voice', name: 'Voices and speech', line: 'Reads text aloud and writes down what people say.', has: (p) => aiSetupCaps(p).some((c) => ['speak', 'speech', 'transcribe'].includes(c)) && !aiSetupCaps(p).includes('chat') },
+    { id: 'search', name: 'Search', line: 'The current web and pictures, for answers that need today.', has: (p) => aiSetupCaps(p).some((c) => c === 'web-search' || c === 'image-search') && !aiSetupCaps(p).includes('chat') },
+    { id: 'embed', name: 'Embeddings and reranking', line: 'Finds what is alike: search, memory and recommendations.', has: (p) => aiSetupCaps(p).some((c) => c === 'embed' || c === 'rerank') && !aiSetupCaps(p).includes('chat') },
+    { id: 'fast', name: 'Fast and cheap hosts', line: 'Open models (Llama, Qwen, DeepSeek, Kimi …) served fast, often for less.', has: () => true },
+];
+/** What a provider can do, in the words the filters use. */
+const AI_SETUP_CAN = [
+    ['chat', 'Chat', (c) => c.includes('chat')], ['vision', 'Vision', (c) => c.includes('vision')],
+    ['image', 'Pictures', (c) => c.includes('image')], ['video', 'Video', (c) => c.includes('video')],
+    ['voice', 'Voices', (c) => c.includes('speak') || c.includes('speech')], ['stt', 'Speech to text', (c) => c.includes('transcribe')],
+    ['embed', 'Embeddings', (c) => c.includes('embed') || c.includes('rerank')], ['search', 'Search', (c) => c.includes('web-search') || c.includes('image-search')],
+    ['tools', 'Tools', (c) => c.includes('tools')],
+];
+const aiSetupProvName = (p) => String((p && (p.display_name || p.key)) || '').replace(/\s*\([^)]*\)\s*$/, '') || String(p && p.key || '');
+function aiSetupCaps(p) {
+    let c = p && p.capabilities;
+    if (typeof c === 'string') { try { c = JSON.parse(c); } catch (e) { c = []; } }
+    return Array.isArray(c) ? c.map(String) : [];
+}
+function aiSetupCanWords(p) {
+    const c = aiSetupCaps(p);
+    return AI_SETUP_CAN.filter(([, , has]) => has(c)).map(([id, word]) => ({ id, word }));
+}
+/** How a provider is reached, in a word: the methods the registry records. */
+function aiSetupMethod(p) {
+    const access = String(p.provider_access || '').toUpperCase();
+    if (p.billing_profile === 'subscription') return { id: 'session', word: 'Your plan (signed in)', line: 'Uses a monthly plan you are signed in to, like Claude Max or ChatGPT Pro.' };
+    if (['local', 'local2', 'shared', 'whisper', 'runpod-vllm'].includes(p.key) || /^https?:\/\/(127\.|localhost|10\.|192\.168\.)/.test(String(p.base_url || ''))) return { id: 'own', word: 'Your machine', line: 'Runs on a computer you control: no key, nothing to pay per answer.' };
+    if (p.auth_mode === 'none' || p.credentials === 'not_required') return { id: 'free', word: 'No key needed', line: 'Answers without a key.' };
+    if (access === 'AUTHORIZED_WHOLESALE') return { id: 'wholesale', word: 'Wholesale credits', line: 'Bought in bulk and resold at cost.' };
+    return { id: 'key', word: 'API key', line: 'A key from the provider\'s own site.' };
+}
+function aiSetupKeyed(p) {
+    if (p.auth_mode === 'none' || p.credentials === 'not_required') return true;
+    const ref = String(p.secret_ref || '');
+    if (p.credentials === 'missing') return false;
+    return ref.startsWith('vault:') || ref.startsWith('env:') || p.credentials === 'present' || !!(p.key_hint || p.hint);
+}
+/** Where a provider's key is made: the jobs' own key pages first, then the provider's site. */
+function aiSetupProviderKeyPage(key) {
+    for (const s of (aiSetupState && aiSetupState.steps) || []) {
+        for (const o of [s.recommended, ...(s.alternatives || []), ...(s.options || [])]) {
+            if (o && o.provider === key && o.key_page && o.key_page.url) return o.key_page;
+        }
+    }
+    return null;
+}
+/** How many models a provider has, by the jobs' lists (every registry model is in one). */
+function aiSetupProviderModels(key) {
+    const seen = new Set();
+    for (const s of (aiSetupState && aiSetupState.steps) || []) for (const o of s.options || []) if (o.provider === key) seen.add(o.model);
+    return seen.size;
+}
+
+async function loadAiSetupProviders(force) {
+    if (aiSetupProviderList && !force) return aiSetupProviderList;
+    try {
+        const out = await api('/api/admin/ai/config/providers');
+        aiSetupProviderList = ((out && out.providers) || []).filter((p) => p && p.key && p.key !== 'stub');
+        aiSetupProviderError = '';
+    } catch (err) {
+        aiSetupProviderList = aiSetupProviderList || [];
+        aiSetupProviderError = (err && err.message) || 'OpenVibe.AI did not answer';
+    }
+    return aiSetupProviderList;
+}
+
+function aiSetupProviderMatches(p) {
+    const q = aiSetupProviderQuery.trim().toLowerCase();
+    if (q && !`${p.display_name || ''} ${p.key} ${aiSetupCanWords(p).map((c) => c.word).join(' ')}`.toLowerCase().includes(q)) return false;
+    const f = aiSetupProviderFilter;
+    if (f === 'all') return true;
+    if (f === 'on') return p.status === 'active';
+    if (f === 'needs-key') return !aiSetupKeyed(p);
+    return aiSetupCanWords(p).some((c) => c.id === f);
+}
+
+function aiSetupProviderRow(p) {
+    const on = p.status === 'active';
+    const keyed = aiSetupKeyed(p);
+    const method = aiSetupMethod(p);
+    const hint = p.key_hint || p.hint || '';
+    const can = aiSetupCanWords(p);
+    const models = aiSetupProviderModels(p.key);
+    const open = aiSetupProviderOpen === p.key;
+    const state = on ? (keyed ? `<span class="setup-pill ok">On${hint ? ' · ••••' + esc(hint) : ''}</span>` : '<span class="setup-pill bad">On, key missing</span>')
+        : keyed ? '<span class="setup-pill">Off · key saved</span>' : '<span class="setup-pill todo">Key needed</span>';
+    const initial = esc(String(aiSetupProvName(p)).replace(/[^A-Za-z0-9]/g, '').slice(0, 1).toUpperCase() || '?');
+    const page = aiSetupProviderKeyPage(p.key);
+    const keyless = method.id === 'free' || method.id === 'own';
+    return `<li class="setup-prov ${on ? 'is-on' : ''} ${open ? 'is-open' : ''}" data-provider="${esc(p.key)}">
+        <button type="button" class="setup-prov-head" aria-expanded="${open}" onclick="toggleAiSetupProvider('${esc(p.key)}')">
+            <span class="setup-prov-mark" aria-hidden="true">${initial}</span>
+            <span class="setup-prov-text"><strong>${esc(aiSetupProvName(p))}</strong>
+                <span class="setup-prov-can">${can.map((c) => esc(c.word)).join(' · ') || 'Models'}${models ? ` · ${models} model${models === 1 ? '' : 's'}` : ''}</span></span>
+            <span class="setup-prov-state">${state}</span>
+        </button>
+        ${open ? `<div class="setup-prov-body">
+            <p class="setup-prov-method"><span class="setup-pill">${esc(method.word)}</span> ${esc(method.line)}</p>
+            ${keyless ? '' : `<div class="setup-key-row">
+                <input id="setup-prov-key" type="password" autocomplete="off" spellcheck="false" aria-label="${esc(p.display_name || p.key)} API key" placeholder="${keyed ? 'Paste a new key to replace it' : 'Paste the key here'}">
+                <button class="btn btn-primary" onclick="saveAiSetupProviderKey('${esc(p.key)}')"><i class="fa-solid fa-lock" aria-hidden="true"></i> Save</button>
+            </div>
+            <p class="setup-help">${hint ? `Saved, ending in <strong>${esc(hint)}</strong>. ` : ''}The key is sealed in OpenVibe.AI and never shown again.${page ? ` <a href="${esc(page.url)}" target="_blank" rel="noopener noreferrer">Get a key</a>${page.how ? ': ' + esc(page.how) : ''}` : ''}</p>`}
+            <div class="setup-prov-acts">
+                <label class="pai-switch"><input type="checkbox" role="switch" data-ov-native ${on ? 'checked' : ''} onchange="switchAiSetupProvider('${esc(p.key)}', this.checked)"><span class="pai-track" aria-hidden="true"><span class="pai-knob"></span></span><span class="pai-switch-text">${on ? 'On: OpenVibe may use it' : 'Off'}</span></label>
+                <button class="btn btn-outline btn-sm" onclick="testAiSetupProvider('${esc(p.key)}')"><i class="fa-solid fa-play" aria-hidden="true"></i> Test</button>
+                <a class="btn btn-outline btn-sm" href="${AI_SETUP_EXCHANGE}#${encodeURIComponent(p.key)}" target="_blank" rel="noopener">On OpenVibe.Exchange</a>
+                ${p.base_url ? `<code class="setup-prov-host">${esc(String(p.base_url).replace(/^https?:\/\//, '').replace(/\/.*$/, ''))}</code>` : ''}
+            </div>
+            <p class="muted" id="setup-prov-out"></p>
+        </div>` : ''}
+    </li>`;
+}
+
+function renderAiSetupProviders() {
+    const main = document.getElementById('setup-main');
+    if (!main) return;
+    if (!aiSetupProviderList) {
+        main.innerHTML = '<div class="loading">Reading every provider…</div>';
+        loadAiSetupProviders().then(() => { if (aiSetupStep === AI_SETUP_PROVIDERS) renderAiSetup(); });
+        return;
+    }
+    const list = aiSetupProviderList;
+    const on = list.filter((p) => p.status === 'active').length;
+    const filters = [['all', 'All'], ['on', 'On'], ['needs-key', 'Key needed'], ['chat', 'Chat'], ['vision', 'Vision'], ['image', 'Pictures'], ['video', 'Video'], ['voice', 'Voices'], ['stt', 'Speech to text'], ['embed', 'Embeddings'], ['search', 'Search']];
+    const shown = list.filter(aiSetupProviderMatches);
+    const groups = AI_SETUP_PROVIDER_GROUPS.map((g) => ({ g, items: [] }));
+    for (const p of shown) { const hit = groups.find((x) => x.g.has(p)); if (hit) hit.items.push(p); }
+    const order = (a, b) => (b.status === 'active') - (a.status === 'active') || String(a.display_name || a.key).localeCompare(String(b.display_name || b.key));
+    main.innerHTML = `
+        <article class="setup-card" aria-labelledby="setup-prov-title">
+            <header class="setup-card-head">
+                <div><span class="setup-kicker">Providers and keys</span>
+                    <h3 id="setup-prov-title">Every AI provider OpenVibe can use</h3>
+                    <p class="setup-what">${list.length} providers, ${on} on. Turn one on with its key, and every job below can use its models.</p>
+                    <p class="setup-uses"><i class="fa-solid fa-store" aria-hidden="true"></i> <span>The same providers, with their prices and monthly credits, are on <a href="${AI_SETUP_EXCHANGE}" target="_blank" rel="noopener">OpenVibe.Exchange</a>.</span></p></div>
+            </header>
+            ${aiSetupProviderError ? `<p class="setup-note bad">${esc(aiSetupProviderError)}</p>` : ''}
+            <div class="setup-prov-tools">
+                <input type="search" class="setup-search" placeholder="Search providers" aria-label="Search providers" value="${esc(aiSetupProviderQuery)}" oninput="aiSetupProviderQuery=this.value; renderAiSetupProviderList()">
+                <div class="setup-chips" role="tablist" aria-label="Show">${filters.map(([id, word]) => `<button type="button" role="tab" class="setup-chip ${aiSetupProviderFilter === id ? 'is-on' : ''}" aria-selected="${aiSetupProviderFilter === id}" onclick="aiSetupProviderFilter='${id}'; renderAiSetupProviders()">${esc(word)}</button>`).join('')}</div>
+            </div>
+            <div id="setup-prov-list">${groups.filter((x) => x.items.length).map((x) => `<section class="setup-prov-group" aria-label="${esc(x.g.name)}">
+                <h4>${esc(x.g.name)} <span class="muted">${x.items.length}</span></h4><p class="muted setup-prov-gline">${esc(x.g.line)}</p>
+                <ul class="setup-prov-list">${x.items.sort(order).map(aiSetupProviderRow).join('')}</ul></section>`).join('') || '<p class="muted">No provider matches.</p>'}</div>
+            <footer class="setup-card-foot">
+                <button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_START}')"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Start</button>
+                <div class="setup-foot-next"><button class="btn btn-primary" onclick="nextAiSetupNotReady()">Next: the jobs <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button></div>
+            </footer>
+        </article>`;
+}
+/** Typing in the search redraws the list only, so the field keeps its focus. */
+function renderAiSetupProviderList() {
+    const at = document.activeElement;
+    const pos = at && at.selectionStart;
+    renderAiSetupProviders();
+    const field = document.querySelector('#setup-main .setup-search');
+    if (field) { field.focus(); try { field.setSelectionRange(pos, pos); } catch (e) { /* not a text field */ } }
+}
+function toggleAiSetupProvider(key) {
+    aiSetupProviderOpen = aiSetupProviderOpen === key ? '' : key;
+    renderAiSetupProviders();
+    const row = document.querySelector(`#setup-main .setup-prov[data-provider="${CSS.escape(key)}"]`);
+    if (row && aiSetupProviderOpen) { const k = row.querySelector('#setup-prov-key'); if (k) k.focus({ preventScroll: true }); }
+}
+async function saveAiSetupProviderKey(key) {
+    const input = document.getElementById('setup-prov-key');
+    const value = String((input && input.value) || '').trim();
+    if (value.length < 8) { toast('Paste the whole key first', 'error'); if (input) input.focus(); return; }
+    try {
+        await api(`/api/admin/ai/setup/providers/${encodeURIComponent(key)}/key`, { method: 'PUT', body: { key: value } });
+        if (input) input.value = '';
+        toast('Key saved and turned on. It will never be shown in full again.');
+        await loadAiSetupProviders(true);
+        aiSetupState = null;
+        await loadAiSetup(true);
+    } catch (err) { toast(err.message || 'The key was not saved', 'error'); }
+}
+async function switchAiSetupProvider(key, on) {
+    try {
+        await api(`/api/admin/ai/config/providers/${encodeURIComponent(key)}`, { method: 'PATCH', body: { status: on ? 'active' : 'disabled' } });
+        toast(on ? 'On: OpenVibe may use it' : 'Off: OpenVibe will not use it');
+        await loadAiSetupProviders(true);
+        renderAiSetupProviders();
+    } catch (err) {
+        if (err && err.status === 403 && err.body && err.body.sign_in_url) { toast('Confirm it is you, then turn it on again', 'warning'); location.href = err.body.sign_in_url; return; }
+        toast(err.message || 'That did not change', 'error');
+        renderAiSetupProviders();
+    }
+}
+async function testAiSetupProvider(key) {
+    const out = document.getElementById('setup-prov-out');
+    if (out) out.textContent = 'Asking it one tiny thing…';
+    try {
+        const r = await api(`/api/admin/ai/setup/providers/${encodeURIComponent(key)}/test`, { method: 'POST', body: {} });
+        if (out) out.textContent = `It answered${r.model ? ' with ' + r.model : ''}${r.latency_ms ? ` in ${Math.round(r.latency_ms)} ms` : ''}${r.cost_usd != null ? `, for ${aiSetupMoney(r.cost_usd)}` : ''}.`;
+    } catch (err) { if (out) out.textContent = 'It did not answer: ' + ((err && err.message) || 'no answer'); }
+}
+
+/** Every model that can do a job, searchable: the curated choices first, then the whole registry's. */
+function aiSetupEveryModelHtml(step) {
+    const all = (step.options || []).filter((o) => o && o.provider && o.model);
+    if (all.length <= (step.alternatives || []).length + 1) return '';
+    const q = String(aiSetupModelQuery[step.id] || '').trim().toLowerCase();
+    const hits = all.filter((o) => !q || `${o.label || ''} ${o.model} ${o.provider_name || ''} ${o.provider}`.toLowerCase().includes(q))
+        .sort((a, b) => (b.configured - a.configured) || String(a.provider_name).localeCompare(String(b.provider_name)) || String(a.label || a.model).localeCompare(String(b.label || b.model)));
+    const n = aiSetupModelShown[step.id] || 40;
+    const rows = hits.slice(0, n).map((o) => `<li class="setup-model-row ${aiSetupIsChoice(step, o) ? 'is-chosen' : ''}">
+        <span class="setup-model-text"><strong>${esc(o.label || o.model)}</strong><span class="muted">${esc(aiSetupProvName({ display_name: o.provider_name, key: o.provider }))} · ${esc(aiSetupShortPrice(o.price))}</span></span>
+        ${o.configured ? '<span class="setup-pill ok">Ready</span>' : o.keyless ? '<span class="setup-pill">No key needed</span>' : '<span class="setup-pill todo">Key needed</span>'}
+        <button class="btn btn-outline btn-sm" onclick="aiSetupChoose('${esc(step.id)}','${esc(o.provider)}','${esc(o.model)}')">${aiSetupIsChoice(step, o) ? 'Chosen' : 'Choose'}</button>
+    </li>`).join('');
+    return `<details class="setup-others setup-every" ${q ? 'open' : ''}>
+        <summary><i class="fa-solid fa-chevron-right" aria-hidden="true"></i> Every model that can do this <span class="muted">${all.length}</span></summary>
+        <input type="search" class="setup-search" placeholder="Search ${all.length} models" aria-label="Search the models for ${esc(aiSetupStepName(step))}" value="${esc(aiSetupModelQuery[step.id] || '')}"
+            oninput="aiSetupModelQuery['${esc(step.id)}']=this.value; aiSetupModelShown['${esc(step.id)}']=40; renderAiSetupKeepFocus('.setup-every .setup-search')">
+        <ul class="setup-model-list">${rows || '<li class="muted">No model matches.</li>'}</ul>
+        ${hits.length > n ? `<button class="btn btn-outline btn-sm" onclick="aiSetupModelShown['${esc(step.id)}']=${n + 80}; renderAiSetupKeepFocus(null, true)">Show ${Math.min(80, hits.length - n)} more of ${hits.length}</button>` : ''}
+        <p class="setup-help">A model whose provider has no key yet is ready once its key is saved under Providers and keys.</p>
+    </details>`;
+}
+function renderAiSetupKeepFocus(selector, keepOpen) {
+    const at = document.activeElement;
+    const pos = at && at.selectionStart;
+    renderAiSetup();
+    const every = document.querySelector('#setup-main .setup-every');
+    if (every && keepOpen) every.open = true;
+    if (selector) { const f = document.querySelector('#setup-main ' + selector); if (f) { if (every) every.open = true; f.focus(); try { f.setSelectionRange(pos, pos); } catch (e) { /* not text */ } } }
+}
+
+/** Coding agents: every harness Codes runs and the key it needs, and the computers coding runs on. */
+async function loadAiSetupAgents(force) {
+    if (aiSetupAgents && !force) return aiSetupAgents;
+    const [h, m] = await Promise.all([
+        api('/api/admin/ai/setup/agents').catch((err) => ({ error: (err && err.message) || 'Codes did not answer' })),
+        api('/api/v1/machines').catch(() => ({ machines: [] })),
+    ]);
+    if (!aiSetupProviderList) await loadAiSetupProviders();
+    aiSetupAgents = { harnesses: (h && h.harnesses) || [], error: h && h.error, machines: (m && m.machines) || [] };
+    return aiSetupAgents;
+}
+/** The provider a harness's maker answers through, in OpenVibe.AI's registry. */
+const AI_SETUP_HARNESS_PROVIDER = { anthropic: 'anthropic', openai: 'openai', google: 'gemini', alibaba: 'qwen', moonshot: 'kimi', xai: 'xai', deepseek: 'deepseek', minimax: 'minimax', zhipu: 'glm', meta: 'meta', 'opencode-go': 'openrouter', aider: 'openrouter', cline: 'openrouter', kilocode: 'openrouter', langchain: 'openrouter', 'self-hosted': 'local', custom: 'openrouter' };
+function aiSetupAgentsHtml() {
+    const a = aiSetupAgents;
+    if (!a) return '<section class="setup-agents"><div class="loading">Reading the coding agents and your computers…</div></section>';
+    const provs = new Map((aiSetupProviderList || []).map((p) => [p.key, p]));
+    const seen = new Set();
+    const rows = a.harnesses.filter((h) => h && h.id && h.id !== 'openvibe-ai' && !seen.has(h.name) && seen.add(h.name)).map((h) => {
+        const pk = AI_SETUP_HARNESS_PROVIDER[h.provider] || null;
+        const p = pk ? provs.get(pk) : null;
+        const ready = p && p.status === 'active' && aiSetupKeyed(p);
+        const runsOn = p ? `${esc(p.display_name || p.key)}` : 'its maker\'s sign-in on the computer';
+        // 2026-11-15 (§AD.9 step 3): People can use it (Codes' codes.harnesses `off`), and the model it runs when nobody
+        // picks, as chips when it has more than one (`defaults`).
+        // 2026-11-15: every model the agent runs (the owner: "there's like tons"); the one it runs when nobody picks is
+        // chosen from a list with a search, its own default first.
+        const agentsOf = Array.isArray(h.models) && h.models.length ? h.models : [];
+        const cur = agentsOf.find((m) => m.id === h.default_model);
+        const models = agentsOf.length > 1 ? `<button type="button" class="setup-agent-model" aria-expanded="${aiSetupAgentOpen === h.id ? 'true' : 'false'}" onclick="toggleAiSetupAgentModels('${esc(h.id)}')">${esc(agentsOf.length)} models · <strong>${cur ? esc(cur.name || cur.id) : 'its own default'}</strong> when nobody picks</button>${aiSetupAgentOpen === h.id ? aiSetupAgentModelsHtml(h) : ''}` : '';
+        const onSwitch = `<label class="pai-switch" title="People can use it"><input type="checkbox" role="switch" data-ov-native ${h.off ? '' : 'checked'} aria-label="${esc(h.name)}: people can use it" onchange="setAiSetupAgent('${esc(h.id)}', this.checked)"><span class="pai-track" aria-hidden="true"><span class="pai-knob"></span></span></label>`;
+        return `<li class="setup-model-row${h.off ? ' is-off' : ''}"><span class="setup-model-text"><strong>${esc(h.name)}</strong><span class="muted">${h.off ? 'Turned off · ' : ''}Runs on ${runsOn}${agentsOf.length === 1 ? ' · ' + esc(agentsOf[0].name || agentsOf[0].id) : ''}${h.price && h.price.text ? ' · ' + esc(h.price.text) : ''}</span>${models}</span>${onSwitch}
+            ${p ? (ready ? '<span class="setup-pill ok">Ready</span>' : `<button class="btn btn-outline btn-sm" onclick="aiSetupProviderOpen='${esc(pk)}'; selectAiSetupStep('${AI_SETUP_PROVIDERS}')">Add the ${esc(p.display_name || pk)} key</button>`) : '<span class="setup-pill">Signs in on the computer</span>'}</li>`;
+    }).join('');
+    const machines = a.machines.map((m) => {
+        const lent = !!(m.controls && m.controls.shared_jobs);
+        const canLend = !!(m.controls && m.controls.worker && m.controls.worker.serve_others);
+        return `<li class="setup-model-row"><span class="setup-model-text"><strong>${esc(m.name || m.id)}</strong><span class="muted">${m.online ? 'Online' : 'Offline'}${m.specs_words ? ' · ' + esc(m.specs_words) : ''}</span></span>
+            <label class="pai-switch"><input type="checkbox" role="switch" data-ov-native ${lent ? 'checked' : ''} ${canLend || lent ? '' : 'disabled'} onchange="lendAiSetupMachine('${esc(m.id)}', this.checked)"><span class="pai-track" aria-hidden="true"><span class="pai-knob"></span></span><span class="pai-switch-text">${lent ? 'Shared with everyone' : canLend ? 'Yours only' : 'Yours only (update Link to share)'}</span></label></li>`;
+    }).join('');
+    return `<section class="setup-agents" aria-label="Coding agents">
+        <h4>Where coding runs</h4>
+        <p class="muted">Never on OpenVibe's own server: on a shared OpenVibe computer (one lent to everyone's coding) or on the person's own computer through OpenVibe Link.</p>
+        <ul class="setup-model-list">${machines || '<li class="muted">No computer is paired yet.</li>'}</ul>
+        <p><a class="btn btn-outline btn-sm" href="https://openvibe.link/machines" target="_blank" rel="noopener">Add a computer</a></p>
+        <h4>The coding agents people can pick <span class="muted">${seen.size}</span></h4>
+        ${a.error ? `<p class="setup-note bad">${esc(a.error)}</p>` : ''}
+        <ul class="setup-model-list">${rows}</ul>
+        <p class="setup-help">An agent runs on its maker's models: add that provider's key once under Providers and keys, or use OpenRouter for the open ones. The model below plans the work and writes code when no agent is picked.</p>
+    </section>`;
+}
+/** A model id in words ("claude-sonnet-5-5" → "Claude Sonnet 5.5"); the catalogue's own id when it has no shape. */
+function aiSetupModelWords(m) {
+    const s = String(m || '');
+    if (!/^[a-z0-9-]+$/.test(s)) return s;
+    const UP = { gpt: 'GPT', glm: 'GLM', ai: 'AI', oss: 'OSS' };
+    return s.split('-').map((w, i, all) => UP[w] ? `${UP[w]} ` : (/^\d+$/.test(w) && /^\d+$/.test(all[i + 1] || '') ? `${w}.` : /^\d+$/.test(w) && /^\d+$/.test(all[i - 1] || '') ? `${w} ` : `${w.charAt(0).toUpperCase()}${w.slice(1)} `)).join('').replace(/\. /g, '.').replace(/\s+/g, ' ').trim();
+}
+/** Codes' codes.harnesses as the page holds it: { off, defaults }. */
+function aiSetupAgentValues() {
+    const hs = (aiSetupAgents && aiSetupAgents.harnesses) || [];
+    const defaults = {};
+    for (const h of hs) if (h.default_model) defaults[h.id] = h.default_model;
+    return { off: hs.filter((h) => h.off).map((h) => h.id), defaults };
+}
+let aiSetupAgentOpen = null;          // the coding agent whose model list is open
+let aiSetupAgentQuery = '';
+function toggleAiSetupAgentModels(id) { aiSetupAgentOpen = aiSetupAgentOpen === id ? null : id; aiSetupAgentQuery = ''; renderAiSetup(); }
+/** The agent's models: a search, its own default, then every model it runs (newest first, as Codes lists them). */
+function aiSetupAgentModelsHtml(h) {
+    const q = aiSetupAgentQuery.trim().toLowerCase();
+    const list = (h.models || []).filter((m) => !q || `${m.name} ${m.id} ${m.note}`.toLowerCase().includes(q));
+    const row = (id, name, note) => `<li><button type="button" class="setup-agent-pick" role="radio" aria-checked="${(h.default_model || '') === id ? 'true' : 'false'}" onclick="setAiSetupAgentModel('${esc(h.id)}', '${esc(id)}')"><strong>${esc(name)}</strong>${note ? `<span class="muted">${esc(note)}</span>` : ''}</button></li>`;
+    return `<div class="setup-agent-models">
+        <input type="search" class="setup-agent-find" placeholder="Search ${esc(h.models.length)} models" value="${esc(aiSetupAgentQuery)}" aria-label="Search the models ${esc(h.name)} runs" oninput="aiSetupAgentQuery = this.value; const at = this.selectionStart; renderAiSetup(); const f = document.querySelector('.setup-agent-find'); if (f) { f.focus(); try { f.setSelectionRange(at, at); } catch (e) { /* */ } }">
+        <ul class="setup-agent-list" role="radiogroup" aria-label="${esc(h.name)}: the model when nobody picks">
+            ${q ? '' : row('', 'Its own default', 'the model the agent picks for itself')}
+            ${list.slice(0, 120).map((m) => row(m.id, m.name || m.id, m.note || m.id)).join('')}
+            ${list.length > 120 ? `<li class="muted">${esc(list.length - 120)} more: search to find them</li>` : ''}
+            ${q && !list.length ? `<li class="muted">No model matches “${esc(aiSetupAgentQuery)}”</li>` : ''}
+        </ul></div>`;
+}
+async function saveAiSetupAgents(values, words) {
+    try {
+        await api('/api/admin/ai/config/codes/codes.harnesses', { method: 'POST', body: { values, reason: words } });
+        toast(words);
+    } catch (err) { toast((err && err.message) || 'That did not change', 'error'); }
+    await loadAiSetupAgents(true);
+    renderAiSetup();
+}
+/** People can use this coding agent, or not (Codes refuses new work on one turned off). */
+async function setAiSetupAgent(id, on) {
+    const h = ((aiSetupAgents && aiSetupAgents.harnesses) || []).find((x) => x.id === id);
+    if (!h) return;
+    h.off = !on;
+    const v = aiSetupAgentValues();
+    await saveAiSetupAgents({ off: v.off }, on ? `${h.name} is on for everyone` : `${h.name} is turned off`);
+}
+/** The model a coding agent runs when nobody picks one ('' = its own default). */
+async function setAiSetupAgentModel(id, modelId) {
+    const h = ((aiSetupAgents && aiSetupAgents.harnesses) || []).find((x) => x.id === id);
+    if (!h || (modelId && !(h.models || []).some((m) => m.id === modelId))) return;
+    h.default_model = modelId || null;
+    const m = (h.models || []).find((x) => x.id === modelId);
+    aiSetupAgentOpen = null;
+    await saveAiSetupAgents({ defaults: aiSetupAgentValues().defaults }, modelId ? `${h.name} runs ${m.name || m.id} when nobody picks` : `${h.name} picks its own model`);
+}
+async function lendAiSetupMachine(id, on) {
+    try {
+        await api(`/api/v1/machines/${encodeURIComponent(id)}/shared-jobs`, { method: 'POST', body: { on: !!on } });
+        toast(on ? 'Shared: it runs everyone\'s coding' : 'Yours only again');
+    } catch (err) { toast(err.message || 'That did not change', 'error'); }
+    await loadAiSetupAgents(true);
+    renderAiSetup();
 }

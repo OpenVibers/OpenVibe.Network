@@ -31,6 +31,14 @@ const { createOpenStats, render } = require('../server/stats/open');
     await user.run(9006, 'ovprobe_os', 'x', at(1), 0, 0);
     await db.prepare('UPDATE users SET is_test = 1 WHERE id = 9006').run();
 
+    // Email: what was sent, by kind and day (plan §AB.38); one row older than the window never counts.
+    const mail = db.prepare('INSERT INTO email_delivery_log (email_type, recipient, subject, status, created_at) VALUES (?, ?, ?, ?, ?)');
+    await mail.run('notification:OPERATOR_ALERT', 'ops@openvibe.test', 'Disk 91%', 'sent', at(0));
+    await mail.run('notification:OPERATOR_ALERT', 'ops@openvibe.test', 'Disk 92%', 'sent', at(1));
+    await mail.run('email_verification', 'a@openvibe.test', 'Confirm', 'sent', at(1));
+    await mail.run('email_verification', 'b@openvibe.test', 'Confirm', 'failed', at(2));
+    await mail.run('password_reset', 'c@openvibe.test', 'Reset', 'sent', at(20));
+
     // Live's analytics and home numbers; Prometheus down.
     const asked = [];
     const fetchImpl = async (url, opts) => {
@@ -58,6 +66,10 @@ const { createOpenStats, render } = require('../server/stats/open');
     assert.strictEqual(d.sites[0].id, 'live', 'most visited first');
     assert.strictEqual(d.totals.pageviews, d.sites.reduce((a, s) => a + (s.pageviews || 0), 0));
     assert.strictEqual(d.accounts.new, 2, 'two new accounts this week (no guests, no banned, no test accounts)');
+    assert.deepStrictEqual([d.email.sent, d.email.failed], [3, 1], 'what was sent and what failed in the window');
+    assert.deepStrictEqual(d.email.by_kind, [{ kind: 'Email check', sent: 1, failed: 1 }, { kind: 'Operator alert', sent: 2, failed: 0 }], 'by kind, in words');
+    assert.deepStrictEqual(d.email.daily.slice(-3).map((x) => [x.sent, x.failed]), [[0, 1], [2, 0], [1, 0]], 'one point a day, oldest first');
+    assert.ok(!JSON.stringify(d.email).includes('@') && !JSON.stringify(d.email).includes('Disk'), 'never an address or a subject');
     assert.strictEqual(d.accounts.total, 3, 'a test account is not in the public account count');
     assert.strictEqual(d.accounts.daily.reduce((a, p) => a + p.n, 0), 2, 'the daily series leaves test accounts out too');
     assert.strictEqual(d.accounts.prev, 1);
@@ -83,6 +95,8 @@ const { createOpenStats, render } = require('../server/stats/open');
         assert.ok(html.includes('"@type":"Dataset"'), 'described as a dataset for search engines');
         assert.ok(stats.ttlMs === 5 * 60 * 1000, 'held five minutes (server/index.js keeps the 30-day window warm)');
         assert.ok(html.includes('<a href="/api/v1/stats?days=7">JSON</a>'));
+        // 11-15 (the owner's shot: every site's mark was the OpenVibe "V"): each mark is named, so the icon script keeps it.
+        assert.ok(/class="ov-icon os-site-icon" data-icon="live" data-ovi="live"/.test(html), 'a site mark carries its name');
         assert.ok(/<svg class="os-spark"/.test(html) && /<figure class="os-chart"><svg [^>]*role="img" aria-label="Page views, /.test(html) && html.includes('<div class="os-axis">'), 'charts drawn on the server, each with its numbers in words');
         const api = await fetch(`${base}/api/v1/stats?days=7`);
         assert.strictEqual(api.headers.get('access-control-allow-origin'), '*', 'open to every site and agent');
@@ -109,6 +123,10 @@ const { createOpenStats, render } = require('../server/stats/open');
     }
     // Nothing answered yet: the page still renders, saying so.
     assert.ok(render(null, 30).includes('The numbers are being gathered'));
+    // A change of 1,000 % or more reads as a multiple (the owner's shot of /stats, 11-15: "10773%").
+    const { pill } = require('../server/stats/open');
+    assert.ok(pill(10773, 7).includes('▲ 109×') && pill(10773, 7).includes('109 times the 7 days before'), 'a big rise is a multiple');
+    assert.ok(pill(-50, 7).includes('▼ 50%') && pill(240, 7).includes('▲ 240%'), 'an ordinary change stays a percentage');
     console.log('open stats: all checks passed');
     process.exit(0);
 })().catch((e) => { console.error(e); process.exit(1); });

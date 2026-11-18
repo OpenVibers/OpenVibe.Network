@@ -85,8 +85,8 @@ assert.match(CSS, /@media \(min-width:1000px\)\{[\s\S]*\.settings\{display:grid;
     // The hero's actions (11-07): one tap to what you do most; Go live for a streamer, the count on Notifications.
     p.sandbox.renderActions({ count: 3 });
     const acts = p.ids['me-acts'];
-    assert.deepStrictEqual(acts.children.map((a) => a.children[1].textContent), ['Go live', 'Messages', 'Ask Vibe', 'Your files', 'Codes', 'Wallet', 'Notifications', 'Settings']);
-    assert.deepStrictEqual(links(acts).slice(0, 5), ['https://openvibe.live/broadcast', 'https://openvibe.chat/messages', 'https://openvibe.chat/', 'https://openvibe.download/files', 'https://openvibe.codes/'], 'every action is a real link first');
+    assert.deepStrictEqual(acts.children.map((a) => a.children[1].textContent), ['Go live', 'Messages', 'Ask Actor', 'Your files', 'Codes', 'Wallet', 'Notifications', 'Settings']);
+    assert.deepStrictEqual(links(acts).slice(0, 5), ['https://openvibe.live/broadcast', 'https://openvibe.chat/messages', 'https://openvibe.chat/vibe', 'https://openvibe.download/files', 'https://openvibe.codes/'], 'every action is a real link first');
     assert.match(acts.textContent, /Notifications3/, 'the unread count on Notifications');
     p.sandbox.currentUser = { role: 'user' };
     p.sandbox.renderActions({ count: 0 });
