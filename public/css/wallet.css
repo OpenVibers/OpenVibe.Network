@@ -17,7 +17,7 @@ body {
 a { color: var(--accent, #3b82f6); }
 :focus-visible { outline: 2px solid var(--accent, #3b82f6); outline-offset: 2px; }
 
-.w-page { padding-top: 18px; padding-bottom: 48px; }
+.w-page { padding-top: 12px; padding-bottom: 48px; }
 .w-head { margin: 4px auto 20px; }
 .w-head h1 { margin: 0; font-size: clamp(1.7rem, 3.4vw, 2.15rem); font-weight: 800; letter-spacing: -.025em; }
 .w-head p { margin: 6px 0 0; color: var(--text-secondary, #a8b3c4); font-size: .95rem; line-height: 1.5; }
@@ -245,3 +245,7 @@ a { color: var(--accent, #3b82f6); }
 
 /* Motion off: the page does not glide. Calm keeps it. */
 html[data-ov-motion=off] *,html[data-ov-motion=off] *::before,html[data-ov-motion=off] *::after{scroll-behavior: auto !important}
+/* Design rule 201: the intro is one line on a computer, at most two on a phone. */
+@media (max-width: 640px) { .w-sheet-lede { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; } }
+/* Design rule 201 (the owner, 11-14): a page starts within 12 px of the bar, 8 px on a phone. */
+@media (max-width: 640px) { .w-page { padding-top: 8px; } }
