@@ -270,7 +270,7 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
      */
     async function checkFirst(id, subject, doneText, nx, team, policy) {
         let said = null;
-        try { said = check ? await check.run(doneText, { mayBlock: nx.mayBlock !== false }) : null; } catch (err) {
+        try { said = check ? await check.run(doneText, { mayBlock: nx.mayBlock !== false, owner: subject }) : null; } catch (err) {
             if (log.warn) log.warn(`[groups] ${id} check: ${err && (err.code || err.message)}`);
         }
         if (said && said.text) await insertMessage(id, { from: 'gate', kind: 'gate', subject, text: said.text, state: 'done', why: said.blocked ? 'the check found faults' : 'the check before the reviewers' });
