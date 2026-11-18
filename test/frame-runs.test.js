@@ -278,6 +278,15 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         assert.deepStrictEqual(seen.filter((x) => x.svc === 'codes' && x.method === 'PATCH').at(-1).body, { title: null }, 'empty gives it back its first line');
         ({ r } = await go('/actor:tsk_ACTOR1', { method: 'PATCH', body: { title: 7 } }));
         assert.strictEqual(r.status, 422);
+        // 11-18: the conversation's approval level (the session's chip) goes to Actor; a level that is not one is refused,
+        // and a product without levels says so.
+        ({ r } = await go('/actor:tsk_ACTOR1', { method: 'PATCH', body: { level: 'auto-edits' } }));
+        assert.strictEqual(r.status, 200);
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'PATCH').at(-1).body, { level: 'auto-edits' });
+        ({ r } = await go('/actor:tsk_ACTOR1', { method: 'PATCH', body: { level: 'whatever' } }));
+        assert.strictEqual(r.status, 422);
+        ({ r } = await go('/codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH', { method: 'PATCH', body: { level: 'full' } }));
+        assert.strictEqual(r.status, 409, 'Codes has no approval level here');
         ({ r } = await go('/chat:c_keys', { method: 'PATCH', body: { title: 'Keys' } }));
         assert.strictEqual(r.status, 409, 'a Chat conversation is not renamed from here yet');
         // A coding task takes the next words too (plan §AD.8): Codes queues them on the task; a model the chip changed to

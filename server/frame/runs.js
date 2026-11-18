@@ -307,6 +307,10 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
         async rename(auth, owner, id, title) {
             return actorRun(await call('actor', `/api/v1/runs/${encodeURIComponent(id)}`, { auth, method: 'PATCH', body: { title }, accept: RUN_TYPE }));
         },
+        // The conversation's approval level (agents.run@1 1.5.0; the session's chip in the box, 11-18), with a name too.
+        async setLevel(auth, owner, id, level, title) {
+            return actorRun(await call('actor', `/api/v1/runs/${encodeURIComponent(id)}`, { auth, method: 'PATCH', body: { level, ...(title !== undefined ? { title } : {}) }, accept: RUN_TYPE }));
+        },
         async stop(auth, owner, id, { reason }) { return actorRun(await call('actor', `/api/v1/runs/${encodeURIComponent(id)}/stop`, { auth, method: 'POST', body: reason ? { reason } : {}, accept: RUN_TYPE })); },
         async answer(auth, owner, id, approval, answer) { return call('actor', `/api/v1/runs/${encodeURIComponent(id)}/approvals/${encodeURIComponent(approval)}`, { auth, method: 'POST', body: { answer } }); },
     };
@@ -525,10 +529,18 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
     router.patch('/:ref', json, handle(async (req, res) => {
         const { auth, owner } = await who(req);
         const { a, id } = productFor(req.params.ref);
-        if (!a.rename) throw fail(409, 'runs.cannot_rename', `A ${a.product} run cannot be renamed from here yet`);
-        const raw = req.body ? req.body.title : undefined;
-        if (raw !== null && typeof raw !== 'string') throw fail(422, 'runs.title_needed', 'Send the new name ({ title })');
-        const title = raw == null ? null : (clip(String(raw).replace(/\s+/g, ' ').trim(), 200) || null);
+        const b = req.body && typeof req.body === 'object' ? req.body : {};
+        const hasLevel = Object.prototype.hasOwnProperty.call(b, 'level');
+        const hasTitle = Object.prototype.hasOwnProperty.call(b, 'title');
+        if (hasLevel) {
+            if (!['ask', 'auto-edits', 'approve-for-me', 'full'].includes(b.level)) throw fail(422, 'runs.level', 'level is one of ask, auto-edits, approve-for-me, full');
+            if (!a.setLevel) throw fail(409, 'runs.cannot_set_level', `A ${a.product} run has no approval level here yet`);
+        }
+        if (!hasLevel && !a.rename) throw fail(409, 'runs.cannot_rename', `A ${a.product} run cannot be renamed from here yet`);
+        const raw = hasTitle ? b.title : undefined;
+        if ((!hasLevel || hasTitle) && raw !== null && typeof raw !== 'string') throw fail(422, 'runs.title_needed', 'Send the new name ({ title })');
+        const title = raw == null ? (hasTitle ? null : undefined) : (clip(String(raw).replace(/\s+/g, ' ').trim(), 200) || null);
+        if (hasLevel) { res.json(await a.setLevel(auth, owner, id, b.level, title)); return; }
         res.json(await a.rename(auth, owner, id, title));
     }));
 
