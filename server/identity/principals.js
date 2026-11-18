@@ -460,6 +460,10 @@ const DEFAULT_GRANTS = [
     // submits each run for the person it is for (X-OV-Subject, X-OV-Project) and reads the jobs it submitted.
     ['tools', 'run.job.submit', 'openvibe.run', []],
     ['tools', 'run.job.read', 'openvibe.run', []],
+    // Actor runs a skill's sandbox tool and script_run (plan §AD.26 item 6, heavy scripts) as Run function jobs for the
+    // person it works for (X-OV-Subject, X-OV-Project), reads them, and cancels one when its task is cancelled. Until
+    // 11-18 Actor held none of these, so every skill tool it tried failed at the token endpoint.
+    ...['run.job.submit', 'run.job.read', 'run.job.cancel'].map((c) => ['actor', c, 'openvibe.run', []]),
     ['watch', 'network.project.member.read', SELF_AUDIENCE, []],
     ['run', 'network.project.member.read', SELF_AUDIENCE, []],
     ['run', 'network.notifications.push', SELF_AUDIENCE, []],
