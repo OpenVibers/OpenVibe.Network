@@ -931,6 +931,9 @@ const DEFAULT_GRANTS = [
     // OpenVibe.Design's Arena runs Vision's UI check (contracts 0.235.0 vision.ui.check, first-party). Vision 0.1.0's
     // source still labels the route's guard vision.ui_check; its service must use the contract id before Arena calls it.
     ['design', 'vision.ui.check', 'openvibe.vision', []],
+    // openvibe.markets' search by photo (plan §L.1: "photograph a thing → Vision names it → Markets finds it"): Vision's
+    // ask on a picture the person chose; Markets keeps nothing of it and limits it per address and per day.
+    ['markets', 'vision.image.ask', 'openvibe.vision', []],
     // Design publishes its icon and theme pages to OpenVibe.Search as design.index_document.* (contracts 0.275.0).
     ['design', 'events.event.publish', 'openvibe.events', []],
     // ai.generate for a pinned frame; ai.chat for one with a preference (Design #57, 10-31, L37: the chat passthrough is
