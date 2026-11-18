@@ -595,6 +595,11 @@ const DEFAULT_GRANTS = [
     ['ai', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // WS-N task 12: ovhost incident / maintenance post to the status page.
     ['host', 'network.status.incident', SELF_AUDIENCE, []],
+    // Plan §AD.21 item 6 (11-17): the release browser check runs on the shared node as a Run job, not as a full Chrome on
+    // production after every deploy. ovhost browser-watch submits it for the operator, in their checks project
+    // (X-OV-Subject + X-OV-Project, the ADR-003 delegation Run confirms with Network), and reads its report.
+    ['host', 'run.job.submit', 'openvibe.run', []],
+    ['host', 'run.job.read', 'openvibe.run', []],
     // WS-L task 4: OpenVibe.Host's scheduled Tools job proof (openvibe-toolsjob.timer, OpenVibe.Examples
     // scripts/tools-job-proof.js) submits a converter job as `probe` and finds its tools.job.* events.
     ['probe', 'tools.job.create', 'openvibe.tools', []],
