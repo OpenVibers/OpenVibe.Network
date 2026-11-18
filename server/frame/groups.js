@@ -105,6 +105,19 @@ function agentOf(a) {
     return { handle, name, config };
 }
 
+// A Codes builder in a room with reviewers works on a computer with OpenVibe Link (the person's, or a cloud desk), so a
+// page it built can be shown as a preview (Link v0.80, `openvibe-link preview`, plan §AD.25): owner-only, and the room's
+// check opens it as the person (room-check.js). Without it a builder hands over a dev server's localhost or nothing.
+const PREVIEW_HINT = 'To show a page or app you built: build it, then run `openvibe-link preview <the built folder> --detach` (dist, build or out) on the computer you work on. It prints an https address that only this room\'s person, and the room\'s check, can open, for two hours: put it in your hand-over. A localhost address or a dev server is not one. If that Link has no preview command yet, hand over the files.';
+
+/** The words for one agent's turn: the transcript, and for a Codes builder with reviewers, how to show a page. */
+function turnWords(words, member, team) {
+    let c = {};
+    try { c = typeof member.config === 'string' ? JSON.parse(member.config || '{}') : member.config || {}; } catch { c = {}; }
+    if (c.product !== 'codes' || !(team || []).some((m) => m.reviewer && m.id !== member.member_id)) return words;
+    return `${words}\n${PREVIEW_HINT}`;
+}
+
 /** What the Frame's run start reads for this agent (agents.run-start@1 as server/frame/runs.js takes it). */
 function startBody(config, text) {
     if (config.product === 'codes') {
@@ -240,7 +253,7 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
                     }
                     const files = spaceOf(await messages(id));
                     const outs = await Promise.all(batch.map(async ({ speaker, member, mseq }) => {
-                        const words = group.transcript({ history: hist, member: speaker, members: team, files });
+                        const words = turnWords(group.transcript({ history: hist, member: speaker, members: team, files }), member, team);
                         try {
                             const out = await turn(id, member, subject, auth, words);
                             await updateMessage(id, mseq, { text: out.text, files: out.files, state: 'done', run: out.run, usd: out.usd });
@@ -474,4 +487,4 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
     return { router, adapter, work, turn, agentOf, startBody, PRESETS };
 }
 
-module.exports = { createFrameGroups, agentOf, startBody, PRESETS, HARNESSES, ACTOR_ENGINES };
+module.exports = { createFrameGroups, agentOf, startBody, turnWords, PREVIEW_HINT, PRESETS, HARNESSES, ACTOR_ENGINES };

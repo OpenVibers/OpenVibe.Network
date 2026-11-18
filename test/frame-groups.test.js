@@ -10,7 +10,7 @@ const assert = require('assert');
 const http = require('http');
 const express = require('express');
 const { getDb, initDb } = require('../server/db/database');
-const { createFrameGroups, agentOf, startBody } = require('../server/frame/groups');
+const { createFrameGroups, agentOf, startBody, turnWords, PREVIEW_HINT } = require('../server/frame/groups');
 const { createFrameRuns } = require('../server/frame/runs');
 
 const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) { const v = await fn(); if (v) return v; if (Date.now() > end) throw new Error('timed out'); await new Promise((r) => setTimeout(r, 40)); } };
@@ -253,6 +253,15 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
         assert.deepStrictEqual(startBody(agentOf({ handle: 'one', product: 'actor', engine: 'model' }).config, 'hi'), { text: 'hi', kind: 'task', agent: 'actor', engine: { kind: 'model' } });
         assert.deepStrictEqual(startBody(agentOf({ handle: 'design', product: 'actor', engine: { kind: 'agent', specialist: 'design' }, reviewer: true }).config, 'hi'), { text: 'hi', kind: 'task', agent: 'actor', engine: { kind: 'agent', specialist: 'design' } });
         assert.strictEqual(agentOf({ handle: 'cr', product: 'codes', reviewer: true }).config.reviewer, undefined, 'a reviewer is an Actor role');
+        // A Codes builder with reviewers is told how to show a page it built (plan §AD.25 previews); nobody else is.
+        const row = (handle, product, extra = {}) => ({ member_id: `m_${handle}`, config: JSON.stringify({ product, ...extra }) });
+        const team = [{ id: 'm_codes', coder: true }, { id: 'm_design', reviewer: true }];
+        assert.strictEqual(turnWords('T', row('codes', 'codes'), team), `T\n${PREVIEW_HINT}`);
+        assert.match(PREVIEW_HINT, /openvibe-link preview <the built folder> --detach/);
+        assert.strictEqual(turnWords('T', row('codes', 'codes'), [{ id: 'm_codes', coder: true }]), 'T', 'no reviewers: nothing to hand over to');
+        assert.strictEqual(turnWords('T', row('codes', 'codes'), [{ id: 'm_codes', coder: true, reviewer: true }]), 'T', 'only itself');
+        assert.strictEqual(turnWords('T', row('lead', 'actor'), team), 'T', 'Actor works with no Link');
+        assert.strictEqual(turnWords('T', { member_id: 'm_x', config: '{bad' }, team), 'T', 'a broken config changes nothing');
         console.log('frame-groups: people and agents in one thread, each turn on the speaker\'s own account, a shared space, members by rank');
     } finally { server.close(); fakeServer.close(); }
     process.exit(0);
