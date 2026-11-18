@@ -189,7 +189,10 @@ async function renderPage(ctx, user) {
             }),
             kit.section({
                 title: 'For your own agents',
-                body: '<p>Point any MCP client (Claude Code, Codex, Cursor) at <code>https://connect.openvibe.network/mcp</code> with a key you make here, and it sees only the apps you granted it.</p>',
+                body: '<p>Point any MCP client (Claude Code, Codex, Cursor) at <code>https://connect.openvibe.network/mcp</code> with a key you make here, and it sees only the apps you granted it.</p>'
+                    // 11-18 (plan §AD.26): all of OpenVibe in two tools, for agents that write code better than they call tools.
+                    + '<p><b>All of OpenVibe in two tools:</b> <code>https://connect.openvibe.network/mcp/all</code> gives your agent <code>search</code> (find any tool: your apps, OpenVibe.Tools, Design and Vision) and <code>execute</code> (a short script that calls them; only its result comes back). With Claude Code:</p>'
+                    + '<pre><code>claude mcp add --transport http openvibe https://connect.openvibe.network/mcp/all --header "Authorization: Bearer YOUR_KEY"</code></pre>',
             }),
         ].join('\n');
     } else {
