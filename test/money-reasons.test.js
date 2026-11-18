@@ -25,5 +25,20 @@ const ok = (cond, msg) => { assert.ok(cond, msg); n++; };
     ok(names.get('go-live').name === 'Go live once', 'the Quest catalog names the quest');
     ok(names.get('go-live').url === 'https://openvibe.quest/quests/go-live', 'and gives its address');
 
+    // Past ten minutes the names answer at once and one read runs behind them; a failed read keeps the names (11-18).
+    const realNow = Date.now;
+    try {
+        Date.now = () => realNow() + 11 * 60_000;
+        let release; const slow = new Promise((r) => { release = r; }); let reads = 0;
+        const t0 = realNow();
+        const stale = await money.questNames(async () => { reads++; await slow; throw new Error('Quest is down'); });
+        ok(realNow() - t0 < 200 && stale.get('go-live').name === 'Go live once', 'a stale read answers at once with the names it had');
+        release(); await new Promise((r) => setTimeout(r, 20));
+        ok(reads === 1, 'one read ran behind it');
+        Date.now = () => realNow() + 22 * 60_000;
+        const kept = await money.questNames(async () => { throw new Error('still down'); });
+        ok(kept.get('go-live') && kept.get('go-live').name === 'Go live once', 'a failed read never wipes the names');
+    } finally { Date.now = realNow; }
+
     console.log(`openvibe-network money reasons: ${n} checks passed`);
 })().catch((e) => { console.error(e); process.exit(1); });
