@@ -54,7 +54,7 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         const u = new URL(req.url, 'http://x');
         if (u.pathname === '/api/v1/me/tasks') return sendJson(res, 200, { tasks: [
             { id: 'tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH', title: 'A goal bar for my sub goal', status: 'needs-you', mode: 'openvibe', repo: 'OpenVibers/OpenVibe.Live', started_at: '2026-11-12T09:00:00Z', updated_at: '2026-11-12T09:30:00Z', steps: 4, url: 'https://openvibe.codes/tasks/tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH', preview_url: null, pr_url: 'https://git.openvibe.codes/OpenVibers/OpenVibe.Live/pulls/871' },
-            { id: 'tsk_01K9R2V6M8Q4T0B7C3D5E9F2GJ', title: 'Old task', status: 'done', mode: 'repo', repo: 'me/site', started_at: '2026-11-01T09:00:00Z', updated_at: '2026-11-01T09:30:00Z', steps: 1, url: 'https://openvibe.codes/tasks/tsk_01K9R2V6M8Q4T0B7C3D5E9F2GJ', preview_url: 'https://preview.openvibe.codes/x', pr_url: null },
+            { id: 'tsk_01K9R2V6M8Q4T0B7C3D5E9F2GJ', title: 'Old task', status: 'done', mode: 'repo', repo: 'me/site', made_repo: { full_name: 'me/site', url: 'https://git.openvibe.codes/me/site' }, started_at: '2026-11-01T09:00:00Z', updated_at: '2026-11-01T09:30:00Z', steps: 1, url: 'https://openvibe.codes/tasks/tsk_01K9R2V6M8Q4T0B7C3D5E9F2GJ', preview_url: 'https://preview.openvibe.codes/x', pr_url: null },
         ] });
         if (u.pathname === '/api/v1/runs/tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH') return sendJson(res, 200, { id: 'tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH', product: 'codes', title: 'A goal bar for my sub goal', status: 'needs_you', plan: [], steps: [{ title: 'Read the overlay code', kind: 'tool', status: 'done' }, { title: 'Write the bar', status: 'running' }], sources: [], result: null, started_at: '2026-11-12T09:00:00Z', ended_at: null, cost_usd: 0.42 });
         if (u.pathname === '/api/v1/tasks' && req.method === 'POST') {
@@ -119,6 +119,8 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         assert.strictEqual(r.status, 200);
         assert.deepStrictEqual(d.partial, []);
         assert.deepStrictEqual(d.runs.map((x) => x.ref), ['codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GH', 'actor:tsk_ACTOR1', 'chat:c_keys', 'codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GJ'], 'needs you first, then newest');
+        // The repository Codes made for a task (Codes #556, codes.task-summary@1 1.1.0) is the run's repo output.
+        assert.deepStrictEqual(d.runs.find((x) => x.ref === 'codes:tsk_01K9R2V6M8Q4T0B7C3D5E9F2GJ').outputs[0], { kind: 'repo', title: 'Codes made me/site on OpenVibe Git', url: 'https://git.openvibe.codes/me/site' }, 'first, before its preview');
         assert.ok(seen.every((x) => x.auth === TOKEN), 'the person\'s own bearer reaches every product');
         const vibeRun = d.runs.find((x) => x.ref === 'chat:c_keys');
         assert.strictEqual(vibeRun.kind, 'chat');

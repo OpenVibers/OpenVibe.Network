@@ -78,6 +78,13 @@ const CODES_STATUS = { queued: 'planning', running: 'running', 'needs-you': 'wai
 /** An AG-UI run's status (agent.run@1) → the run's. */
 const AGUI_STATUS = { queued: 'planning', running: 'running', waiting: 'waiting', needs_you: 'waiting', succeeded: 'done', failed: 'failed', stopped: 'stopped', cancelled: 'stopped' };
 const CODES_TARGET = { create: 'new', openvibe: 'openvibe' };
+/** "Codes made ada/x on OpenVibe Git" as a run's output (agents.run@1 outputs, kind repo), or null. */
+function madeRepo(m) {
+    if (!m || typeof m !== 'object' || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(String(m.full_name || ''))) return null;
+    const url = /^https:\/\/[^\s]{4,500}$/.test(String(m.url || '')) ? String(m.url) : null;
+    if (!url) return null;
+    return { kind: 'repo', title: `Codes made ${m.full_name} on OpenVibe Git`, url };
+}
 
 /** When the new agent system began (the owner, 11-15: "we should clear out old conversations, since now the system works
  *  way differently"): the list starts here. Older runs stay in each product (Actor's tasks, Chat, Codes) and in the
@@ -183,6 +190,9 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
             if (status === 'waiting') run.waiting = { for: 'approval', what: 'Codes asks before it goes on' };
             if (status === 'running') run.doing = { text: 'Working on the code', glyph: 'code' };
             const outputs = [];
+            // The repository Codes made for a Code-mode task that named none (codes.task-summary@1 1.1.0, Codes #556).
+            const made = madeRepo(t.made_repo);
+            if (made) outputs.push(made);
             if (httpsUrl(t.pr_url)) outputs.push({ kind: 'pr', title: 'Pull request', url: httpsUrl(t.pr_url) });
             if (httpsUrl(t.preview_url)) outputs.push({ kind: 'page', title: 'Preview', url: httpsUrl(t.preview_url) });
             if (outputs.length) run.outputs = outputs;
@@ -200,6 +210,8 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
             };
             if (r.result && typeof r.result === 'object' && typeof r.result.summary === 'string') run.result_summary = r.result.summary.slice(0, 8000);
             if (typeof r.cost_usd === 'number') run.cost = { usd: r.cost_usd };
+            const made = madeRepo(r.made_repo);
+            if (made) run.outputs = [made];
             if (status === 'waiting') run.waiting = { for: 'approval', what: 'Codes asks before it goes on' };
             if (['done', 'failed', 'stopped'].includes(status)) run.ended_at = iso(r.ended_at) || run.updated_at;
             return run;
