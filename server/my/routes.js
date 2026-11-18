@@ -30,6 +30,7 @@ const NETWORK_HOSTS = new Set(['openvibe.network', 'www.openvibe.network']);
 const HUB_PATHS = new Set(require('../not-found').ACCOUNT_HUB_PATHS.filter((p) => !p.startsWith('/my')));
 const BOT_RE = /bot|crawl|spider|slurp|headless/i;
 const PAGE = path.join(__dirname, '..', '..', 'public', 'my.html');
+const MEMORY_PAGE = 'https://openvibe.codes/memory';
 
 /** The request's host, lowercased, without the port. */
 function hostOf(req) {
@@ -213,6 +214,9 @@ async function createMyRoutes({ db, config = require('../config'), sso, pagePath
         if (['/login', '/register', '/signup', '/sign-up', '/forgot-password', '/reset-password'].includes(p)) return loginRedirect(req, res);
         if (p === '/sso/fanout' || p === '/sso/fanout.html') return fanoutRedirect(req, res);
         if (p === '/sso/check') return res.redirect(302, `https://openvibe.network${req.originalUrl}`);
+        // openvibe.my/memory (plan §V.1, "one memory on openvibe.my"): what your assistants remember about you. The store
+        // is OpenVibe.AI's and its page is on openvibe.codes/memory today (Memory M2b); this address goes there, query kept.
+        if (p === '/memory' || p.startsWith('/memory/')) return res.redirect(302, `${MEMORY_PAGE}${p.slice('/memory'.length)}${queryOf(req)}`);
         // Pages that live on Network, not in the account hub: keep their old relative links working.
         if (['/wallet', '/sites', '/apps', '/admin'].includes(p) || p.startsWith('/admin/')) {
             return res.redirect(302, `https://openvibe.network${req.originalUrl}`);
