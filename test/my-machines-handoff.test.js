@@ -31,6 +31,14 @@ const server = http.createServer(app);
         req.on('error', reject);
     });
 
+    // openvibe.my/memory goes to the memory page (today openvibe.codes/memory), the rest of the path and query kept.
+    let m = await get('/memory');
+    assert.deepStrictEqual([m.status, m.headers.location], [302, 'https://openvibe.codes/memory']);
+    m = await get('/memory/reads?tab=reads');
+    assert.deepStrictEqual([m.status, m.headers.location], [302, 'https://openvibe.codes/memory/reads?tab=reads']);
+    m = await get('/memoryx');
+    assert.notStrictEqual(m.status, 302, 'only /memory and below');
+
     // The account hub's own /machines route stays here and serves its Machines section.
     let r = await get('/machines', 'ov_token=good-token');
     assert.strictEqual(r.status, 200, 'signed in /machines stays on the account hub');
