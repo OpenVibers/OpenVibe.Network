@@ -19,7 +19,7 @@ const runTokens = require('../server/identity/run-tokens');
     const log = console.log; console.log = () => {};
     const db = getDb();
     console.log = log;
-    for (const id of ['codes', 'vision']) {
+    for (const id of ['codes', 'vision', 'actor']) {
         await db.prepare("UPDATE oauth_clients SET client_secret = ? WHERE client_id = ?").run(`${id}-secret`, id);
     }
     await principals.ensureSchema(db);
@@ -45,6 +45,7 @@ const runTokens = require('../server/identity/run-tokens');
     await live('codes', people.revoked.id);
     await db.prepare('UPDATE oauth_tokens SET revoked = 1, revoked_reason = ? WHERE client_id = ? AND user_id = ?').run('reuse', 'codes', people.revoked.id);
     await live('vision', people.elsewhere.id);
+    await live('actor', people.owner.id);
 
     const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048, publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
     const ISSUER = 'https://openvibe.network';
@@ -174,6 +175,25 @@ const runTokens = require('../server/identity/run-tokens');
         // Another person is not affected by that person's limit.
         t = await runToken(OWNER);
         assert.strictEqual(t.status, 200, 'the limit is per service and person');
+
+        // ── Acting for a person in Connect (network.connect.act, Contracts 0.446.0; plan §L.2 Finance Experts) ──
+        assert.ok(has('actor', 'network.connect.act', 'openvibe.network') && has('codes', 'network.connect.act', 'openvibe.network'), 'Actor and Codes may act for a person in Connect');
+        const netToken = (form) => token({ client_id: 'actor', client_secret: 'actor-secret', audience: 'openvibe.network', ...form });
+        t = await netToken({ on_behalf_of: OWNER });
+        assert.strictEqual(t.status, 200, JSON.stringify(t.body));
+        const net = serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.network' });
+        assert.ok(net.ok, net.reason);
+        assert.deepStrictEqual([net.claims.sub, net.claims.on_behalf_of, net.claims.cap], ['svc:actor', OWNER, ['network.connect.act']],
+            'it names the person and carries network.connect.act alone, never Actor\'s other Network grants');
+        t = await netToken({ on_behalf_of: OWNER, scope: 'network.project.member.read' });
+        assert.deepStrictEqual([t.status, t.body.error], [400, 'invalid_scope'], 'a token naming a person at Network carries nothing else');
+        t = await netToken({ on_behalf_of: NEVER });
+        assert.strictEqual(t.body.error, 'consent_required', 'and only for a person who signed in to Actor');
+        t = await token({ client_id: 'vision', client_secret: 'vision-secret', audience: 'openvibe.network', on_behalf_of: ELSEWHERE });
+        assert.strictEqual(t.body.error, 'invalid_scope', 'a service without network.connect.act may not act for a person at Network');
+        t = await netToken({ scope: 'network.project.member.read' });
+        assert.strictEqual(t.status, 200, 'Actor\'s own service tokens are as before');
+        assert.ok(!serviceAuth.verifyServiceToken(t.body.access_token, { publicKey: keys.publicKey, issuer: ISSUER, audience: 'openvibe.network' }).claims.on_behalf_of);
 
         console.log('run-tokens: ok');
     } finally {

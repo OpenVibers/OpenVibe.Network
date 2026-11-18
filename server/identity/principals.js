@@ -26,6 +26,12 @@ const EMAIL_READ_CAPABILITY = ['identity', 'emails', 'read'].join('.');
 const MAX_RUN_TOKEN_TTL_S = 7200;
 const MIN_RUN_TOKEN_TTL_S = 60;
 const USER_RE = /^usr_[0-9A-HJKMNP-TV-Z]{26}$/;
+/**
+ * Acting for a person in Connect (Contracts 0.446.0, 11-18; plan §L.2 Finance Experts): a service Connect names (Actor,
+ * Codes) calls Connect's MCP server as the person, through the per-app grants that person gave it on the Apps page. At
+ * openvibe.network it is also the consent to mint a token naming that person, and such a token carries it alone.
+ */
+const CONNECT_ACT = 'network.connect.act';
 
 const CHAT_NAMESPACES = ['chat.preferences', 'chat.tts_defaults', 'chat.dm_settings', 'chat.presence_prefs'];
 
@@ -459,6 +465,10 @@ const DEFAULT_GRANTS = [
     ['run', 'network.notifications.push', SELF_AUDIENCE, []],
     // Actor and Media read a person's project role before a project admin's control request (contracts 0.169.0).
     ['actor', 'network.project.member.read', SELF_AUDIENCE, []],
+    // Actor's agents use the person's own apps in Connect (/mcp/all), only through the grants that person gave Actor
+    // on the Apps page (a read grant in OpenVibe Finance: an Expert reads their money). The same for Codes.
+    ['actor', CONNECT_ACT, SELF_AUDIENCE, []],
+    ['codes', CONNECT_ACT, SELF_AUDIENCE, []],
     ['media', 'network.project.member.read', SELF_AUDIENCE, []],
     // Work's agent pillar: "Ask my Actor agent" on a tracked application gives Actor a task for that person (X-OV-Subject).
     ['work', 'actor.task.create', 'openvibe.actor', []],
@@ -1195,7 +1205,7 @@ async function issueToken(db, { clientId, clientSecret, audience, scope, private
     if (!aud) return { status: 400, body: { error: 'invalid_request', error_description: 'audience is required' } };
     const grants = await grantsFor(db, client.client_id, aud);
     const wanted = scope ? String(scope).split(/\s+/).filter(Boolean) : null;
-    const chosen = wanted ? grants.filter(g => wanted.includes(g.capability)) : grants;
+    let chosen = wanted ? grants.filter(g => wanted.includes(g.capability)) : grants;
     if (wanted && wanted.some(w => !chosen.find(g => g.capability === w))) {
         return { status: 400, body: { error: 'invalid_scope', error_description: `not granted: ${wanted.filter(w => !chosen.find(g => g.capability === w)).join(' ')}` } };
     }
@@ -1207,9 +1217,16 @@ async function issueToken(db, { clientId, clientSecret, audience, scope, private
     if (onBehalfOf !== null && onBehalfOf !== undefined && onBehalfOf !== '') {
         person = String(onBehalfOf).trim();
         if (!USER_RE.test(person)) return { status: 400, body: { error: 'invalid_request', error_description: 'on_behalf_of must be a usr_ subject' } };
-        // The consent grant, at this audience: the same one that lets the service store that person's key.
-        if (!grants.find((g) => g.capability === 'ai.credential.manage')) {
+        // The consent grant, at this audience: at OpenVibe.AI the one that lets the service store that person's key;
+        // at Network, acting for them in Connect (network.connect.act), and then the token carries that alone, so a
+        // token naming a person never reaches Network's other internal routes.
+        const consentCap = aud === SELF_AUDIENCE ? CONNECT_ACT : 'ai.credential.manage';
+        if (!grants.find((g) => g.capability === consentCap)) {
             return { status: 403, body: { error: 'invalid_scope', error_description: 'not consented to act for a person' } };
+        }
+        if (aud === SELF_AUDIENCE) {
+            chosen = chosen.filter((g) => g.capability === CONNECT_ACT);
+            if (!chosen.length) return { status: 400, body: { error: 'invalid_scope', error_description: `a token naming a person at ${SELF_AUDIENCE} carries ${CONNECT_ACT} only` } };
         }
         // The person must have signed in to THIS service: a live refresh-token family of theirs for this client.
         // Without one the service may not speak for them (a compromised service could otherwise spend every
