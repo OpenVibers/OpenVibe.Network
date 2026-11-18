@@ -600,6 +600,10 @@ const DEFAULT_GRANTS = [
     // (X-OV-Subject + X-OV-Project, the ADR-003 delegation Run confirms with Network), and reads its report.
     ['host', 'run.job.submit', 'openvibe.run', []],
     ['host', 'run.job.read', 'openvibe.run', []],
+    // Plan §AD.21b item 6: Live's live-lane speech-to-text (Parakeet, 10 s segments) as a Run job on the shared node,
+    // not on production's four cores. Submit and read only, like Host's release check.
+    ['live', 'run.job.submit', 'openvibe.run', []],
+    ['live', 'run.job.read', 'openvibe.run', []],
     // WS-L task 4: OpenVibe.Host's scheduled Tools job proof (openvibe-toolsjob.timer, OpenVibe.Examples
     // scripts/tools-job-proof.js) submits a converter job as `probe` and finds its tools.job.* events.
     ['probe', 'tools.job.create', 'openvibe.tools', []],
