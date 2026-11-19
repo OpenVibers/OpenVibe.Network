@@ -241,6 +241,12 @@ const sendJson = (res, status, body) => { res.statusCode = status; res.setHeader
         q = await pick({ text: 'Fix the login on my-site', engine: { kind: 'model', model: 'openai/gpt-5.2' } });
         assert.deepStrictEqual(q, [201, 'actor'], 'an engine is Actor\'s to run');
         assert.deepStrictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body.engine, { kind: 'model', model: 'openai/gpt-5.2' });
+        // An outside agent's address goes with Actor's a2a engine (plan §AD.19, 11-19); one that is not https is dropped here.
+        q = await pick({ text: 'Ask the helper', engine: { kind: 'a2a', url: 'https://agents.example.com/helper' } });
+        assert.deepStrictEqual(q, [201, 'actor']);
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body.engine, { kind: 'a2a', url: 'https://agents.example.com/helper' });
+        await pick({ text: 'Ask the helper', engine: { kind: 'a2a', url: 'http://agents.example.com/helper' } });
+        assert.deepStrictEqual(seen.filter((x) => x.svc === 'actor' && x.method === 'POST').at(-1).body.engine, { kind: 'a2a' }, 'Actor refuses it in words');
 
         // Your Actor's conversation (Actor#517): read whole, and the next words come back as the step the thread reads.
         assert.ok(seen.some((x) => x.svc === 'actor' && x.method === 'GET' && /^\/api\/v1\/runs\?limit=\d+&conversations=1/.test(x.url)), 'the list asks Actor for conversations');

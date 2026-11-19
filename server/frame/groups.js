@@ -42,7 +42,9 @@ const HANDLE = /^[a-z][a-z0-9_-]{1,23}$/;
 const AGENT_ID = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
 const USERNAME = /^[A-Za-z0-9_.-]{2,40}$/;
 const BEARER = /^Bearer [A-Za-z0-9._~+/=-]{10,4096}$/;
-const ACTOR_ENGINES = ['agent', 'model', 'harness', 'openai-agent', 'open-model', 'decisions'];
+// a2a (11-19, plan §AD.19 "A2A for outside agents"): an outside agent at its https address, through Actor's a2a engine,
+// with the key of the person whose message started the round when they connected that agent on openvibe.actor.
+const ACTOR_ENGINES = ['agent', 'model', 'harness', 'openai-agent', 'open-model', 'decisions', 'a2a'];
 const HARNESSES = ['claude-code', 'codex', 'opencode', 'gemini', 'hermes', 'dsh', 'codebuddy-code', 'muse'];
 const SPECIALISTS = ['design'];
 const MAX_AGENTS = 8;
@@ -94,8 +96,12 @@ function agentOf(a) {
         if (kind === 'harness' && !HARNESSES.includes(harness)) throw fail(422, 'groups.harness_invalid', `A harness is one of ${HARNESSES.join(', ')}`);
         const model = typeof a.engine === 'object' && typeof a.engine.model === 'string' ? clip(a.engine.model, 120) : null;
         const specialist = typeof a.engine === 'object' && a.engine.specialist != null ? String(a.engine.specialist) : null;
+        const rawUrl = typeof a.engine === 'object' && a.engine.url != null ? String(a.engine.url) : '';
+        const url = kind === 'a2a' && rawUrl.length <= 2048 ? httpsUrl(rawUrl) : null;
+        if (kind === 'a2a' && (!url || /^https:\/\/[^/]*@/.test(url))) throw fail(422, 'groups.agent_url_invalid', 'An outside agent needs its https address (its base, or its /.well-known/agent-card.json)');
+        if (kind !== 'a2a' && rawUrl) throw fail(422, 'groups.agent_url_invalid', 'Only an outside agent (the a2a engine) takes an address');
         if (specialist && (kind !== 'agent' || !SPECIALISTS.includes(specialist))) throw fail(422, 'groups.specialist_invalid', `A specialist is one of ${SPECIALISTS.join(', ')}, on Actor's agent engine`);
-        config.engine = { kind, ...(harness ? { harness } : {}), ...(model ? { model } : {}), ...(specialist ? { specialist } : {}) };
+        config.engine = { kind, ...(harness ? { harness } : {}), ...(model ? { model } : {}), ...(specialist ? { specialist } : {}), ...(url ? { url } : {}) };
     }
     if (product === 'codes') {
         if (a.harness && a.harness !== 'auto' && !HARNESSES.includes(a.harness)) throw fail(422, 'groups.harness_invalid', `A harness is auto or one of ${HARNESSES.join(', ')}`);

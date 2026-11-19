@@ -253,6 +253,12 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
         assert.deepStrictEqual(startBody(agentOf({ handle: 'one', product: 'actor', engine: 'model' }).config, 'hi'), { text: 'hi', kind: 'task', agent: 'actor', engine: { kind: 'model' } });
         assert.deepStrictEqual(startBody(agentOf({ handle: 'design', product: 'actor', engine: { kind: 'agent', specialist: 'design' }, reviewer: true }).config, 'hi'), { text: 'hi', kind: 'task', agent: 'actor', engine: { kind: 'agent', specialist: 'design' } });
         assert.strictEqual(agentOf({ handle: 'cr', product: 'codes', reviewer: true }).config.reviewer, undefined, 'a reviewer is an Actor role');
+        // An outside agent (plan §AD.19, 11-19): Actor's a2a engine with its https address.
+        assert.deepStrictEqual(startBody(agentOf({ handle: 'helper', name: 'Helper', product: 'actor', engine: { kind: 'a2a', url: 'https://agents.example.com/helper' } }).config, 'hi'),
+            { text: 'hi', kind: 'task', agent: 'actor', engine: { kind: 'a2a', url: 'https://agents.example.com/helper' } });
+        for (const engine of [{ kind: 'a2a' }, { kind: 'a2a', url: 'http://agents.example.com' }, { kind: 'a2a', url: 'https://me:pw@agents.example.com' }, { kind: 'a2a', url: `https://a.example/${'x'.repeat(2100)}` }, { kind: 'model', url: 'https://agents.example.com' }]) {
+            assert.throws(() => agentOf({ handle: 'out', product: 'actor', engine }), (e) => e.code === 'groups.agent_url_invalid', JSON.stringify(engine).slice(0, 80));
+        }
         // A Codes builder with reviewers is told how to show a page it built (plan §AD.25 previews); nobody else is.
         const row = (handle, product, extra = {}) => ({ member_id: `m_${handle}`, config: JSON.stringify({ product, ...extra }) });
         const team = [{ id: 'm_codes', coder: true }, { id: 'm_design', reviewer: true }];
