@@ -329,7 +329,14 @@ function inventory(root) {
         // https://<site host>/.well-known/openvibe-menu.json on a five-minute timer, so whether it runs during this test
         // is timing. The hosts it may reach are exactly the open sites' hosts in server/frame/sites.js (openvibe.live,
         // openre.stream, ...), never a value a person named; anything else, a look-alike included, is unexpected.
-        const SITE_HOSTS = new Set(require('../server/frame/sites').SITES.filter((s) => s.status === 'open').map((s) => s.host));
+        // The feed's sources (server/feed/sources.js) read the same fixed hosts on their own timers, including the
+        // products another service serves on a domain of its own (openvibe.pics, openvibe.download): on a busy machine
+        // they run inside this window (the forge runner, 2026-11-19), and they are fixed hosts too.
+        const sitesModule = require('../server/frame/sites');
+        const SITE_HOSTS = new Set([
+            ...sitesModule.SITES.filter((s) => s.status === 'open').map((s) => s.host),
+            ...sitesModule.PRODUCTS.map((p) => p.host),
+        ]);
         for (const h of hosts) assert.ok(['127.0.0.1', 'discord.com', 'gateway.discord.gg', 'api.github.com'].includes(h) || SITE_HOSTS.has(h), `unexpected destination ${h}`);
         assert.match(gh.text, /no egress to api\.github\.com|could not be reached/, 'the GitHub integration test goes to api.github.com only (the egress guard refuses the socket; undici surfaces it as a fetch failure)');
         assert.ok(ingested.length >= 10 && ingested.every((x) => x.path === '/internal/avatar-ingest'), `avatar imports went to Media's ingest instead (${ingested.length})`);
