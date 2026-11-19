@@ -121,6 +121,30 @@ const { createOpenStats, render } = require('../server/stats/open');
         await s.collect(7);
         assert.strictEqual(calls, after, 'a reader after the old numbers would have expired gets the refreshed ones, no wait');
     }
+    // Expired with no warm-up (2026-11-19: a stale window made readers wait up to 9 s): the last numbers at once, one
+    // recompute behind them, and the next reader has the new ones.
+    {
+        let t = 0, calls = 0, gate = null;
+        const slow = { prepare: () => ({ all: async () => { calls++; if (gate) await gate.promise; return []; }, get: async () => ({ n: calls }) }) };
+        const s = createOpenStats({ db: slow, now: () => t, fetchImpl: async () => ({ ok: false }) });
+        const first = await s.collect(7);
+        const before = calls;
+        let release; gate = { promise: new Promise((r) => { release = r; }) };
+        t = s.ttlMs + 1000;
+        const started = Date.now();
+        const stale = await Promise.race([s.collect(7), new Promise((r) => setTimeout(() => r('waited'), 500))]);
+        assert.notStrictEqual(stale, 'waited', 'a stale window answers at once');
+        assert.strictEqual(stale, first, 'with its last numbers');
+        assert.ok(Date.now() - started < 500);
+        await s.collect(7); await s.collect(7);
+        const during = calls;
+        assert.ok(during > before, 'a recompute started');
+        release(); gate = null;
+        await new Promise((r) => setTimeout(r, 20));
+        const fresh = await s.collect(7);
+        assert.notStrictEqual(fresh, first, 'the next reader has the new numbers');
+        assert.ok(calls >= during, 'one recompute at a time');
+    }
     // Nothing answered yet: the page still renders, saying so.
     assert.ok(render(null, 30).includes('The numbers are being gathered'));
     // A change of 1,000 % or more reads as a multiple (the owner's shot of /stats, 11-15: "10773%").
