@@ -1404,8 +1404,10 @@ const server = app.listen(...(socketActivated ? [{ fd: 3 }] : [config.port, conf
     console.log(`║  Auth: ${config.loginUrl.padEnd(30)}║`);
     console.log(`╚═══════════════════════════════════════╝\n`);
 
-    // Open stats (/stats): the default window computed soon after boot and kept warm, so no reader waits ~2 s for it.
-    timers.push(setTimeout(() => openStats.collect(30).catch(() => {}), 15 * 1000), setInterval(() => openStats.collect(30, { refresh: true }).catch(() => {}), openStats.ttlMs - 15 * 1000));
+    // Open stats (/stats, /api/v1/stats): every window computed soon after boot and kept warm, so no reader waits for it
+    // (Report's home asks 7 days, /stats 30, the year view 90: only 30 was warm, so the others waited up to 9 s).
+    timers.push(setTimeout(() => { for (const d of [30, 7, 90]) openStats.collect(d).catch(() => {}); }, 15 * 1000),
+        setInterval(() => { for (const d of [30, 7, 90]) openStats.collect(d, { refresh: true }).catch(() => {}); }, openStats.ttlMs - 15 * 1000));
 
     // ── Periodic Maintenance ─────────────────────────────────
     // Clean expired notifications every hour

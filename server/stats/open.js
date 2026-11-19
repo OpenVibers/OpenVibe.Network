@@ -375,21 +375,27 @@ function createOpenStats({ db, selfToken = () => null, statusRows = () => [], pr
             ...(email ? { email } : {}),
         };
     }
-    /** The numbers for a window, held TTL_MS; one computation at a time. `refresh` (the boot warm-up, just before the
-     *  numbers expire) computes them again while readers keep the current ones, and swaps the new ones in when ready. */
+    /**
+     * The numbers for a window, held TTL_MS; one computation at a time. Readers never wait for a recompute once a window
+     * has been answered (2026-11-19: Network's /api/v1/stats was 1.9 s on average and 9 s at p95, and Report's home and
+     * /stats waited on it): a stale window answers its last numbers at once and is computed again behind them, swapped
+     * in when ready. `refresh` (the warm-up, just before the numbers expire) does the same and answers the new ones.
+     * Only a window never answered (the first read after boot) waits.
+     */
     function collect(days, { refresh = false } = {}) {
         const e = cache.get(days);
         const fresh = !!e && now() - e.at < TTL_MS;
         if (fresh && !refresh) return e.promise;
-        if (fresh && e.next) return e.next;
+        if (e && e.next) return refresh ? e.next : e.promise;   // a recompute is under way: the last numbers meanwhile
         const next = compute(days);
-        if (fresh) {
+        if (e && e.ok) {
             e.next = next;
-            next.then(() => cache.set(days, { at: now(), promise: next }), () => { e.next = null; });
-            return next;
+            next.then(() => cache.set(days, { at: now(), promise: next, ok: true }), () => { e.next = null; });
+            return refresh ? next : e.promise;
         }
-        cache.set(days, { at: now(), promise: next });
-        next.catch(() => cache.delete(days));
+        const entry = { at: now(), promise: next, ok: false };
+        cache.set(days, entry);
+        next.then(() => { entry.ok = true; }, () => { if (cache.get(days) === entry) cache.delete(days); });
         return next;
     }
 
