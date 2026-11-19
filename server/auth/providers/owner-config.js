@@ -38,7 +38,9 @@ async function handlersFor(app, req) {
             if (namespace !== configNs.NAMESPACE) return null;
             const providerId = String(testKey).split('.')[0];
             if (!presets.BY_ID.has(providerId)) return null;
-            return await require('./internal').testProvider({ db, baseUrl: base, providerId });
+            // The sign-in router's own fetch (app.locals.signIn), so Test reads providers exactly as sign-in does.
+            const signIn = app.locals.signIn;
+            return await require('./internal').testProvider({ db, baseUrl: base, providerId, ...(signIn && signIn.fetch ? { fetch: signIn.fetch } : {}) });
         },
         log: { info: (m) => console.log(`[SignIn] ${m}`), warn: (m) => console.warn(`[SignIn] ${m}`), error: (m) => console.error(`[SignIn] ${m}`) },
     });

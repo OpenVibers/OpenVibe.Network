@@ -170,6 +170,7 @@ function jar() {
     const signIn = providers.createRouter({
         requireAuth, signToken: authRoutes.signToken, config, fetch: fakeFetch, log: { info() {}, warn() {}, error() {} },
     });
+    app.locals.signIn = signIn;   // as server/index.js does: Setup's Test reads providers with the router's fetch
     app.use('/api/auth/connect', signIn.router);
     app.use('/api/auth/discord', signIn.discordAlias);
     app.get('/api/v1/me', requireAuth, (req, res) => res.json({ ok: true, username: req.user.username }));

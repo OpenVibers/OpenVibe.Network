@@ -507,7 +507,8 @@ function createRouter({ requireAuth, signToken, config = {}, fetch: fetchImpl = 
         res.json({ ok: true, configured: !!(s && s.enabled), linked: linked || null });
     });
 
-    return { router: r, discordAlias, list, registry };
+    // fetch: the one this router reads providers with; Setup's Test on a provider's row uses it too (owner-config.js).
+    return { router: r, discordAlias, list, registry, fetch: fetchImpl };
 }
 
 module.exports = { createRouter, NO_PASSWORD, SIGNIN_SWITCH, cleanIdentity, suggestUsername, uniqueUsername, waysIn, createAccount, link, safeReturn, audit };
