@@ -306,6 +306,36 @@ async function createEventsConsumer({ db, notifications, secrets, discord = () =
         return { outcome: created.length ? 'notified' : targets.size ? 'suppressed:preference' : 'no-recipients', detail, after };
     }
 
+    // A stream's go-live notices once it ended (the owner's register #331): the streamer's STREAM_LIVE rows of the last
+    // three days that name this stream. A few hundred rows at most (one per follower), each rewritten from its own
+    // rich_content.
+    const liveNoticesOf = db.prepare(`SELECT id, rich_content FROM notifications WHERE type = 'STREAM_LIVE' AND sender_id = ? AND created_at > ?`);
+    const endNotice = db.prepare('UPDATE notifications SET title = ?, url = ?, icon = ?, rich_content = ? WHERE id = ?');
+
+    /** live.stream.ended inside the inbox transaction: "X was live", opening Live's /replay/<id>. → how many changed, or why none. */
+    async function liveStreamEnded(event) {
+        if (event.source !== 'live') return 'ignored:source';
+        const p = event.payload && typeof event.payload === 'object' ? event.payload : {};
+        const streamId = Number(p.stream_id);
+        const ch = p.channel && typeof p.channel === 'object' ? p.channel : {};
+        const subject = ch.subject && typeof ch.subject === 'object' && ch.subject.type === 'user' ? ch.subject.id : null;
+        if (!Number.isSafeInteger(streamId) || streamId < 1 || !ids.isSubjectId('user', subject)) return 'ignored:payload';
+        const streamer = await streamerBySubject.get(subject);
+        if (!streamer) return 'ignored:channel';
+        const since = new Date(now() - 3 * 86400000).toISOString().replace('T', ' ').slice(0, 19);
+        const rows = (await liveNoticesOf.all(streamer.id, since)).filter((r) => {
+            try { const c = JSON.parse(r.rich_content || '{}').context; return c && Number(c.stream_id) === streamId; } catch { return false; }
+        });
+        const name = clean(ch.display_name, 60) || streamer.display_name || streamer.username;
+        const started = Date.parse(p.started_at || ''); const ended = Date.parse(p.ended_at || event.occurred_at || '');
+        const seconds = Number(p.duration_seconds) > 0 ? Number(p.duration_seconds) : (Number.isFinite(started) && Number.isFinite(ended) && ended > started ? (ended - started) / 1000 : 0);
+        for (const r of rows) {
+            const f = streamLive.endedNotice(r, { name, streamId, endedAt: Number.isFinite(ended) ? new Date(ended).toISOString() : null, durationSeconds: seconds });
+            await endNotice.run(f.title, f.url, f.icon, f.rich_content, r.id);
+        }
+        return rows.length;
+    }
+
     /** Apply one envelope. Returns { duplicate, outcome, detail }. Throws only on a storage failure. */
     async function apply(event) {
         let after = null;
@@ -314,8 +344,12 @@ async function createEventsConsumer({ db, notifications, secrets, discord = () =
             if (AUDIT_TOPICS.includes(event.event_type)) return moderationAudit ? moderationAudit.record(event) : 'ignored:audit_off';
             // Developer projects' usage rollups go to their dashboards (WS-N task 4), never to an inbox.
             if (USAGE_TOPICS.includes(event.event_type)) return projectUsage ? projectUsage.record(event) : 'ignored:usage_off';
-            // Creator analytics (WS-E task 6): each ended stream's totals, counts only.
-            if (event.event_type === 'live.stream.ended') return require('../analytics/creators').record(db, event);
+            // Creator analytics (WS-E task 6): each ended stream's totals, counts only; then its go-live notices open the replay.
+            if (event.event_type === 'live.stream.ended') {
+                const analytics = await require('../analytics/creators').record(db, event);
+                const notices = await liveStreamEnded(event);
+                return { outcome: analytics, detail: { notices } };
+            }
             if (event.event_type === 'today.event.scheduled' || event.event_type === 'today.event.cancelled') {
                 const out = event.event_type === 'today.event.scheduled' ? await todayEventScheduled(event) : await todayEventCancelled(event);
                 return typeof out === 'string' ? out : { outcome: out.outcome, detail: out.detail };

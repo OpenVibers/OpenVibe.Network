@@ -379,6 +379,50 @@ const rows = async (userId) => await db.prepare('SELECT * FROM notifications WHE
         assert.strictEqual((await post(todayEvent('today.event.cancelled', { event_id: e1.payload.event_id }, { source: 'tips' }), { now: clock })).body.outcome, 'ignored:source');
     }
 
+    // live.stream.ended (the owner's register #331, 2026-11-20): the stream's go-live notices say "was live" and open
+    // Live's /replay/<id> with the stream's length; read state and message are kept; another stream's notice stays;
+    // the creator analytics row is still written; a duplicate changes nothing.
+    {
+        await db.prepare("UPDATE notifications SET is_read = 1 WHERE user_id = 22 AND type = 'STREAM_LIVE'").run();
+        const endedEvent = (payload = {}, over = {}) => ({
+            event_id: ids.newId('event'), event_type: 'live.stream.ended', version: 1, source: 'live',
+            actor: { type: 'user', id: CAROL }, subject: { type: 'stream', id: '501', revision: 2 }, visibility: 'public', priority: 'normal',
+            occurred_at: new Date(clock).toISOString(),
+            payload: {
+                stream_id: 501, channel: { username: 'carol', display_name: 'Carol <3', subject: { type: 'user', id: CAROL } }, title: 'Building a robot',
+                started_at: new Date(clock - 7800e3).toISOString(), ended_at: new Date(clock).toISOString(), duration_seconds: 7800, stats: { peak_viewers: 3 }, ...payload,
+            },
+            ...over,
+        });
+        const e = endedEvent();
+        r = await post(e, { now: clock });
+        assert.strictEqual(r.status, 200, JSON.stringify(r.body));
+        assert.deepStrictEqual([r.body.outcome, r.body.detail], ['analytics:recorded', { notices: 3 }]);
+        for (const uid of [21, 22, 24]) {
+            const n = (await goLives(uid)).find((x) => JSON.parse(x.rich_content).context.stream_id === 501);
+            assert.strictEqual(n.title, 'Carol 3 was live', `user ${uid}: was live`);
+            assert.strictEqual(n.url, 'https://openvibe.live/replay/501', 'opens the replay');
+            assert.strictEqual(n.message, 'Building a b robot /b', 'the stream title is kept');
+            const rich = JSON.parse(n.rich_content);
+            assert.deepStrictEqual(rich.chips, ['2 h 10 min']);
+            assert.deepStrictEqual([rich.context.replay, rich.context.duration_seconds, rich.context.event_id], [true, 7800, s1.event_id]);
+        }
+        assert.strictEqual((await goLives(22)).filter((x) => Number(x.is_read) === 1).length, (await goLives(22)).length, 'read stays read');
+        const hank = (await goLives(21)).find((x) => JSON.parse(x.rich_content).context.stream_id === 502);
+        assert.ok(/is live!$/.test(hank.title) && /@hank$/.test(hank.url), 'another stream\'s notice is not touched');
+        assert.ok(await db.prepare('SELECT 1 FROM creator_streams WHERE stream_id = 501').get(), 'the analytics row is written as before');
+        r = await post(e, { now: clock });
+        assert.deepStrictEqual([r.body.duplicate, r.body.outcome], [true, null]);
+        // Without a length: no chip. Another source: not Live's notice to change.
+        const { durationText, replayUrl } = require('../server/notifications/stream-live');
+        assert.deepStrictEqual([durationText(30), durationText(2700), durationText(7200), durationText(7800)], ['under a minute', '45 min', '2 h', '2 h 10 min']);
+        assert.strictEqual(replayUrl('77'), 'https://openvibe.live/replay/77');
+        r = await post(endedEvent({ stream_id: 502, channel: { username: 'hank', subject: { type: 'user', id: HANK } }, duration_seconds: 0, started_at: new Date(clock).toISOString() }, { actor: { type: 'user', id: HANK }, subject: { type: 'stream', id: '502', revision: 2 } }), { now: clock });
+        assert.strictEqual(r.body.detail.notices, 2);
+        const h2 = (await goLives(21)).find((x) => JSON.parse(x.rich_content).context.stream_id === 502);
+        assert.deepStrictEqual([h2.title, JSON.parse(h2.rich_content).chips], ['hank was live', undefined]);
+    }
+
     srv.close();
     console.log('events consumer: all checks passed');
 })().catch((err) => { console.error(err); process.exit(1); });
