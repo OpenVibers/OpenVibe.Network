@@ -136,6 +136,10 @@ app.use(helmet({
             // its "Right now" screenshot pastes from openvibe.community (blocked until 2026-11-06: the card showed nothing).
             // openvibe.network itself too: the account hub on openvibe.my draws avatars from Network's /avatar (2026-11-07).
             imgSrc: ["'self'", "data:", "blob:", "https://openvibe.network", "https://openvibe.media", "https://openvibe.live", "https://openvibe.community"],
+            // The feed's preview videos (a recording's six seconds, a clip; ov-home.js watchPreview) and the Link hub's live
+            // screen: media-src was unset, so default-src 'self' refused every one (2026-11-20, the GUI audit's console
+            // error). Any https source, as Chat and Blog allow: a video cannot run code, and Media may redirect to storage.
+            mediaSrc: ["'self'", "blob:", "https:"],
             connectSrc: [
                 "'self'",
                 "https://openvibe.network",
