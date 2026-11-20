@@ -29,7 +29,14 @@ const KINDS = ['post', 'pic', 'clip', 'video', 'live', 'stream', 'rundown', 'que
 const SITE_RE = /^[a-z0-9][a-z0-9:-]{0,39}$/;
 // A cursor is [occurred_at, id] and, from 11-12, the bursts the pages before already showed ("deal|deals|2026-11-12T18"):
 // the next page leaves their rows out, so a Deals poll is one card however many pages it spans.
-const BURST_KEY = /^(deal|news|event)\|[a-z][a-z0-9-]{0,30}\|\d{4}-\d\d-\d\dT\d\d$/;
+const BURST_KEY = /^(deal|news|event|work)\|[a-z][a-z0-9-]{0,30}\|\d{4}-\d\d-\d\dT\d\d$/;
+// A shown run's card id as a cursor key: g:deal:deals:2026-11-12T18 → deal|deals|2026-11-12T18; g:work:<hour> → work|work|<hour>.
+const runKeyOf = (id) => {
+    let m = /^g:(deal|news|event):([a-z][a-z0-9-]{0,30}):(\d{4}-\d\d-\d\dT\d\d)$/.exec(String(id || ''));
+    if (m) return `${m[1]}|${m[2]}|${m[3]}`;
+    m = /^g:work:(\d{4}-\d\d-\d\dT\d\d)$/.exec(String(id || ''));
+    return m ? `work|work|${m[1]}` : null;
+};
 const encodeCursor = ([at, id], done = []) => Buffer.from(JSON.stringify([new Date(at).toISOString(), Number(id), ...(done.length ? [done.slice(0, 8)] : [])])).toString('base64url');
 const decodeCursor = (v) => {
     if (!v || typeof v !== 'string' || v.length > 1200) return null;
@@ -108,9 +115,12 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
         const affinity = viewer ? await store.affinityServices(db, viewer.id) : new Map();
         const before = decodeCursor(String(req.query.cursor || ''));
 
+        // The general feed (no kind, site, search or Following) reads people's things apart from the runs sources post with
+        // no person (store.RUN_KINDS), and adds the newest one or two of those below.
+        const general = !kind && !site && !q && !following;
         const base = {
             kind, site, q, followed, following, before, viewerSubject: viewer && viewer.subject,
-            limit: Math.min(400, want * 6 + 40), since: new Date(now() - 60 * 86400000).toISOString(),
+            limit: Math.min(400, want * 6 + 40), since: new Date(now() - 60 * 86400000).toISOString(), runsApart: general,
         };
         const skip = before ? burstsOf(before.done || []) : [];
         let read = await store.listItems(db, { ...base, skipBursts: skip });
@@ -155,6 +165,28 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
         } catch { /* a card without a count */ }
         if (q) cards = cards.filter((c) => searchMatches(c, q));
         cards = foldCards(oneCardPerThing(cards), now());
+        // The general feed's runs (2026-11-20): the newest Math.round(want / 10) (at least one) in the time this page covers,
+        // from its top (the cursor, or now) down to its want-th person's thing (or the read's end when there is more), one
+        // card each, counted whole. The ones an earlier page showed ride in the cursor.
+        if (general) {
+            const times = cards.map((c) => Date.parse(c.at || '')).filter(Number.isFinite).sort((a, b) => b - a);
+            const lastRead = read.rows.length ? Date.parse(read.rows[read.rows.length - 1].occurred_at) : NaN;
+            const from = times.length >= want ? times[want - 1] : (read.hasMore && Number.isFinite(lastRead) ? lastRead : Date.parse(base.since));
+            try {
+                const runs = await store.listRuns(db, { from, to: before ? Date.parse(before[0]) : null, skip, limit: Math.max(1, Math.round(want / 10)) });
+                for (const run of runs) {
+                    for (const c of foldCards((await store.runRows(db, run)).map((r) => cardOf(r, null)), now())) {
+                        // A run of jobs counts the whole hour, not the rows drawn (deals, news and events are counted below).
+                        if (/^g:work:/.test(String(c.id || '')) && c.group && run.n > c.group.count) {
+                            c.title = `${run.n.toLocaleString('en-US')} new jobs this hour`;
+                            c.group.count = run.n;
+                            c.counts = { ...c.counts, people: run.n };
+                        }
+                        cards.push(c);
+                    }
+                }
+            } catch { /* people's things alone */ }
+        }
         // A burst's card counts the whole hour, not just the rows this page read (11-12: three "112 new deals").
         for (const card of cards.filter((c) => c.bulk)) {
             const b = card.bulk;
@@ -201,7 +233,7 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
         // ended before the cursor's time).
         const edgeAt = edge ? new Date(edge.occurred_at).toISOString() : '';
         const done = [...new Set([...(before ? before.done || [] : []),
-            ...items.filter((c) => /^g:(deal|news|event):/.test(c.id)).map((c) => c.id.slice(2).replace(/:/, '|').replace(/:(?=\d{4}-)/, '|'))])]
+            ...items.map((c) => runKeyOf(c.id)).filter(Boolean)])]
             .filter((k) => BURST_KEY.test(k) && `${k.split('|')[2]}:00:00.000Z` < edgeAt).slice(-8);
         const next = (firstOut > 0 || read.hasMore) && edge ? encodeCursor([edge.occurred_at, edge.id], done) : null;
         if (wall) return { items: items.map(wallItem), next_cursor: next };
