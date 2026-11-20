@@ -17,7 +17,7 @@
  */
 const express = require('express');
 const store = require('./store');
-const { cardOf, oneCardPerThing, foldWatched, foldEpisodes, foldCards, rankCards, spreadCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD, RUN_PAGE } = require('./card');
+const { cardOf, oneCardPerThing, foldWatched, foldEpisodes, foldCards, rankCards, spreadCards, capCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD, RUN_PAGE } = require('./card');
 const { createPictures } = require('./pictures');
 const { createFeedSources } = require('./sources');
 const { createEffects } = require('./effects');
@@ -218,7 +218,10 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
             card.group.count = n;
             card.counts = { ...card.counts, people: n };
         }
-        cards = spreadCards(rankCards(cards, { followed: new Set(followed), affinity, now: now() }));
+        cards = rankCards(cards, { followed: new Set(followed), affinity, now: now() });
+        // The general feed is no one person's or site's (capCards); a site's or kind's own page is left whole.
+        if (general) { const capped = capCards(cards, want); cards = spreadCards(capped.slice(0, want)).concat(capped.slice(want)); }
+        else cards = spreadCards(cards);
         const items = cards.slice(0, want).map(pictures.card);
         // A run's card (g:…, an hour of deals or jobs) counts its own views (11-15, the owner: "why is there no view count
         // on everything on the feed?"): under feed:group:<id>, the ref the views beacon counts it by. Before, it showed its

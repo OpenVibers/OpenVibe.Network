@@ -464,6 +464,28 @@ function spreadCards(cards, { window = 6 } = {}) {
     return out;
 }
 
+/**
+ * A page that is not one person's or one site's (research/guests-and-feed.md §5.1; production 11-20, the signed-out
+ * first page: three cards of one streamer's videos, four Report cards and three "joined" days): at most perActor cards
+ * of a person and perSite of a site among a page's `want`; a live stream is not counted against its site. The others
+ * wait (not shown, so the next page meets them again); a page that would be short takes them back in rank order.
+ */
+function capCards(cards, want, { perActor = 2, perSite = 3 } = {}) {
+    const byActor = new Map(), bySite = new Map();
+    const page = [], later = [];
+    for (const c of cards) {
+        if (page.length >= want) { later.push(c); continue; }
+        const live = c.kind === 'live' && c.live_now === true;
+        const actor = c.subject || null, site = c.site || '';
+        if ((actor && (byActor.get(actor) || 0) >= perActor) || (!live && site && (bySite.get(site) || 0) >= perSite)) { later.push(c); continue; }
+        page.push(c);
+        if (actor) byActor.set(actor, (byActor.get(actor) || 0) + 1);
+        if (!live && site) bySite.set(site, (bySite.get(site) || 0) + 1);
+    }
+    while (page.length < want && later.length) page.push(later.shift());
+    return page.concat(later);
+}
+
 const ALIASES = {
     clip: 'clip', clips: 'clip', video: 'video', videos: 'video', recording: 'video', recordings: 'video',
     photo: 'pic', photos: 'pic', pic: 'pic', pics: 'pic', picture: 'pic', pictures: 'pic', post: 'post', posts: 'post',
@@ -518,4 +540,4 @@ function wallItem(card) {
     };
 }
 
-module.exports = { bulkId, BULK_WORD, RUN_PAGE, SITE_NAMES, kindOf, cardOf, oneCardPerThing, foldWatched, foldEpisodes, foldCards, compareRankedCards, rankCards, spreadCards, searchMatches, searchExamples, wallItem, titleKey, clean, https };
+module.exports = { bulkId, BULK_WORD, RUN_PAGE, SITE_NAMES, kindOf, cardOf, oneCardPerThing, foldWatched, foldEpisodes, foldCards, compareRankedCards, rankCards, spreadCards, capCards, searchMatches, searchExamples, wallItem, titleKey, clean, https };
