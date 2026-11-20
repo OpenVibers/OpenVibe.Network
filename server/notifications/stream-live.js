@@ -91,4 +91,41 @@ function streamLiveNotification({ username, displayName, avatarUrl, senderId, st
     };
 }
 
-module.exports = { ensureAnnouncements, claimAnnouncement, allLiveSubscribers, streamLiveNotification, channelUrl, canonicalChannelUrl };
+/** Live's address for a stream once it ended: its recording when Media has a public one, else the channel. */
+function replayUrl(streamId) {
+    return `${LIVE_ORIGIN}/replay/${Number(streamId)}`;
+}
+
+/** "2 h 10 min", "45 min", "under a minute": how long an ended stream ran. */
+function durationText(seconds) {
+    const s = Math.max(0, Math.round(Number(seconds) || 0));
+    if (s < 60) return 'under a minute';
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    return h ? `${h} h${m ? ` ${m} min` : ''}` : `${m} min`;
+}
+
+/**
+ * A go-live notice once its stream ended (2026-11-20; the owner's register #331: "live notifications should switch to
+ * the VOD once the streamer goes offline"): "X was live", opening the replay, the stream's length as a chip. The row's
+ * other fields (read, dismissed, its message) stay as they were. → the fields to write, from the row's rich_content.
+ */
+function endedNotice(row, { name, streamId, endedAt, durationSeconds }) {
+    let rich = {};
+    try { rich = row && row.rich_content ? JSON.parse(row.rich_content) : {}; } catch { rich = {}; }
+    if (!rich || typeof rich !== 'object' || Array.isArray(rich)) rich = {};
+    const context = rich.context && typeof rich.context === 'object' ? rich.context : {};
+    const length = durationSeconds > 0 ? durationText(durationSeconds) : null;
+    return {
+        title: `${name} was live`,
+        url: replayUrl(streamId),
+        icon: '\u25B6\uFE0F',
+        rich_content: JSON.stringify({
+            ...rich,
+            ...(length ? { chips: [length] } : {}),
+            context: { ...context, ended_at: endedAt || null, duration_seconds: durationSeconds > 0 ? Math.round(durationSeconds) : null, replay: true },
+        }),
+    };
+}
+
+module.exports = { ensureAnnouncements, claimAnnouncement, allLiveSubscribers, streamLiveNotification, channelUrl, canonicalChannelUrl, replayUrl, durationText, endedNotice };
