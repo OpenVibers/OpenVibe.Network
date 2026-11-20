@@ -201,6 +201,29 @@ const envelope = (type, payload, over = {}) => ({
         assert.strictEqual(seen.filter((id) => id === burst).length, 1, `the burst is one card across the pages (${seen.join(', ')})`);
         assert.ok(seen.includes('f:community:thread:mid'), 'the post in the middle of the burst is still met');
     }
+    // A page past the bursts (production, 11-20: 397 of the newest 401 public rows were Deals polls, so the feed, signed
+    // in or not, showed five cards): the burst is still one card, and the posts under it fill the page.
+    {
+        const hourAt = new Date(Date.now() - 20 * 60000);
+        for (let i = 0; i < 400; i++) {
+            await store.upsertItem(db, { source_service: 'deals', source_type: 'offer', source_id: `flood${i}`, kind: 'deal', title: `Flood ${i}`, text: '', url: 'https://openvibe.deals/d/f', site: 'deals', site_name: 'Deals', counts: {}, occurred_at: new Date(hourAt.getTime() - i * 1000).toISOString(), visibility: 'public' });
+        }
+        for (let i = 0; i < 12; i++) {
+            await store.upsertItem(db, { source_service: 'community', source_type: 'thread', source_id: `under${i}`, kind: 'post', title: `Under the flood ${i}`, text: 'hello', url: `https://openvibe.community/forum/status/under${i}`, site: 'community', site_name: 'Community', counts: {}, occurred_at: new Date(Date.now() - (2 + i) * 3600000).toISOString(), visibility: 'public' });
+        }
+        const r = await get('/api/v1/feed?limit=20');
+        const titles = r.d.items.map((x) => x.title);
+        const posts = titles.filter((t) => /^Under the flood/.test(t));
+        assert.ok(posts.length >= 10, `the posts under the burst fill the page (${titles.join(' | ')})`);
+        const floods = r.d.items.filter((x) => x.kind === 'deal' && /^g:deal:deals:/.test(x.id));
+        assert.ok(floods.length >= 1 && floods.every((x) => /new deals$/.test(x.title)), 'the burst is still there, one card for its hour');
+        assert.strictEqual(new Set(r.d.items.map((x) => x.id)).size, r.d.items.length, 'no card twice');
+        if (r.d.next_cursor) {
+            const n = await get(`/api/v1/feed?limit=20&cursor=${encodeURIComponent(r.d.next_cursor)}`);
+            const again = n.d.items.filter((x) => floods.some((f) => f.id === x.id));
+            assert.strictEqual(again.length, 0, 'the next page does not show the burst again');
+        }
+    }
     server.close();
     console.log('feed: mappings, grouping, privacy, ranking and the menu/feed ids pass');
 })().catch((err) => { console.error(err); process.exit(1); });

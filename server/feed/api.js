@@ -108,10 +108,31 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
         const affinity = viewer ? await store.affinityServices(db, viewer.id) : new Map();
         const before = decodeCursor(String(req.query.cursor || ''));
 
-        const read = await store.listItems(db, {
-            kind, site, q, followed, following, before, viewerSubject: viewer && viewer.subject, skipBursts: before ? burstsOf(before.done || []) : [],
+        const base = {
+            kind, site, q, followed, following, before, viewerSubject: viewer && viewer.subject,
             limit: Math.min(400, want * 6 + 40), since: new Date(now() - 60 * 86400000).toISOString(),
-        });
+        };
+        const skip = before ? burstsOf(before.done || []) : [];
+        let read = await store.listItems(db, { ...base, skipBursts: skip });
+        // Past the bursts (2026-11-20: 397 of the newest 401 public rows were Deals polls, so every page, signed in or
+        // not, read nothing else and folded to five cards). When the rows read fold to fewer things than the page needs,
+        // read the same window again with those bursts left out (listItems leaves out up to eight), at most three times.
+        // The bursts still show, as their one card each; everything else below them now shows too.
+        const hourOf = (r) => (r.occurred_at ? new Date(r.occurred_at).toISOString().slice(0, 13) : '');
+        const burstKey = (r) => (!r.actor_subject && BULK_WORD[r.kind] ? `${r.kind}|${r.site}|${hourOf(r)}` : null);
+        for (let more = 0; more < 3 && read.hasMore; more++) {
+            const things = new Set(read.rows.map((r) => burstKey(r) || `${r.source_service}:${r.source_type}:${r.source_id}`)).size;
+            if (things >= want + 4) break;
+            const skipped = new Set(skip.map((b) => `${b.kind}|${b.site}|${b.hour}`));
+            const found = [...new Set(read.rows.map(burstKey).filter((k) => k && !skipped.has(k)))];
+            if (!found.length || skip.length + found.length > 8) break;
+            skip.push(...burstsOf(found));
+            const again = await store.listItems(db, { ...base, skipBursts: skip });
+            const had = new Set(read.rows.map((r) => r.id));
+            const rows = read.rows.concat(again.rows.filter((r) => !had.has(r.id)));
+            rows.sort((x, y) => (new Date(y.occurred_at) - new Date(x.occurred_at)) || (Number(y.id) - Number(x.id)));
+            read = { rows, hasMore: again.hasMore };
+        }
         const actors = await actorsFor(db, read.rows);
         // The name effect each of them wears: one Inventory read for the page, kept a minute.
         const tokens = await effects.effects([...actors.keys()]);
