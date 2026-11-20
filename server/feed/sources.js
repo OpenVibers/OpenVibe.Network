@@ -104,6 +104,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             const url = https(a && a.url);
             const title = clean(a && a.title, 300);
             if (!id || !url || !title) continue;
+            if (store.isItemDiscussionUrl(url)) continue;   // an item's discussion: the item's comments (store.js)
             const type = clean(a.type, 40) || 'post';
             const kind = a.kind || (type === 'paste' ? (a.picture_url ? 'pic' : 'paste') : type === 'thread' || type === 'status' ? 'post' : 'post');
             const r = await upsert({
