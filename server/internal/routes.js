@@ -389,6 +389,7 @@ router.post('/resolve-anon', principals.guard('identity.subject.resolve'), async
             `).run(byIpLog.id, ip);
             return res.json({
                 anon_number: byIpLog.anon_number,
+                subject_id: byIpLog.subject_id || null,
                 anon_id: `anon_${byIpLog.id}`,
                 display_name: byIpLog.display_name || `Anonymous #${byIpLog.anon_number}`,
                 username: `anon${byIpLog.anon_number}`,
@@ -406,6 +407,7 @@ router.post('/resolve-anon', principals.guard('identity.subject.resolve'), async
             } catch { /* ok */ }
             return res.json({
                 anon_number: byCreatingIp.anon_number,
+                subject_id: byCreatingIp.subject_id || null,
                 anon_id: `anon_${byCreatingIp.id}`,
                 display_name: byCreatingIp.display_name || `Anonymous #${byCreatingIp.anon_number}`,
                 username: `anon${byCreatingIp.anon_number}`,
@@ -418,9 +420,10 @@ router.post('/resolve-anon', principals.guard('identity.subject.resolve'), async
         const anonNumber = maxNum + 1;
         const sessionToken = uuidv4();
 
+        const subjectId = require('../identity/subjects').newGuestSubjectId();
         const result = await db.prepare(
             'INSERT INTO anon_users (anon_number, session_token, ip, subject_id) VALUES (?, ?, ?, ?) RETURNING id'
-        ).run(anonNumber, sessionToken, ip, require('../identity/subjects').newGuestSubjectId());
+        ).run(anonNumber, sessionToken, ip, subjectId);
 
         // Log IP
         try {
@@ -430,6 +433,7 @@ router.post('/resolve-anon', principals.guard('identity.subject.resolve'), async
         console.log(`[Internal] New unified anon #${anonNumber} for IP ${ip}`);
         res.json({
             anon_number: anonNumber,
+            subject_id: subjectId,
             anon_id: `anon_${result.lastInsertRowid}`,
             display_name: `Anonymous #${anonNumber}`,
             username: `anon${anonNumber}`,
@@ -438,6 +442,38 @@ router.post('/resolve-anon', principals.guard('identity.subject.resolve'), async
     } catch (err) {
         console.error('[Internal] resolve-anon error:', err);
         res.status(500).json({ error: 'Failed to resolve anon identity' });
+    }
+});
+
+// ── Resolve a guest by the token they hold ───────────────────
+// POST /internal/resolve-guest
+// Body: { token }
+// A guest is the token they hold (POST /api/auth/anon-session, 2026-11-20), never their IP. A first-party service a
+// guest hands that token to (Chat's join) asks here who it is: the guest's subject (gst_), number and name. An unknown
+// token is 404 guest.unknown; nothing is created and the token is never echoed or logged. Read-only: last_seen is the
+// browser's own calls' business (GET /api/auth/anon/:token).
+const GUEST_TOKEN = /^[A-Za-z0-9-]{16,100}$/;
+router.post('/resolve-guest', principals.guard('identity.subject.resolve'), async (req, res) => {
+    const token = req.body && req.body.token;
+    if (typeof token !== 'string' || !GUEST_TOKEN.test(token)) {
+        return res.status(400).json({ error: 'token required', code: 'guest.token_invalid' });
+    }
+    try {
+        const db = await getDb(req);
+        const g = await db.prepare('SELECT id, anon_number, subject_id, display_name, first_seen FROM anon_users WHERE session_token = ?').get(token);
+        res.set('Cache-Control', 'no-store');
+        if (!g || !g.subject_id) return res.status(404).json({ error: 'No guest holds this token', code: 'guest.unknown' });
+        res.json({
+            subject_id: g.subject_id,
+            anon_number: g.anon_number,
+            anon_id: `anon_${g.id}`,
+            username: `anon${g.anon_number}`,
+            display_name: g.display_name || `Anonymous #${g.anon_number}`,
+            first_seen: g.first_seen || null,
+        });
+    } catch (err) {
+        console.error('[Internal] resolve-guest error:', err.message);
+        res.status(500).json({ error: 'Failed to resolve the guest' });
     }
 });
 
