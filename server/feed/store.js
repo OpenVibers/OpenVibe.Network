@@ -151,7 +151,12 @@ async function affinityServices(db, userId) {
  *   opts.since                          only this recent (the collectors read the last 7 days)
  * → { rows, hasMore }
  */
-async function listItems(db, { kind = '', site = '', q = '', followed = [], following = false, before = null, viewerSubject = null, limit = 40, since = null, skipBursts = [] } = {}) {
+// What a source posts with no person behind it, in runs (a Deals poll, a News or Today import, the Work board). The
+// general feed reads them apart from people's things (2026-11-20, production: 11,389 of 11,500 public rows in three days
+// were Deals rows, and the newest stream sat 3,600 rows down, under every page a reader could reach).
+const RUN_KINDS = ['deal', 'news', 'event', 'work'];
+
+async function listItems(db, { kind = '', site = '', q = '', followed = [], following = false, before = null, viewerSubject = null, limit = 40, since = null, skipBursts = [], runsApart = false } = {}) {
     const where = [];
     const args = [];
     // A burst an earlier page showed as one card (its kind, site and UTC hour, no person): its rows are not read again.
@@ -165,6 +170,15 @@ async function listItems(db, { kind = '', site = '', q = '', followed = [], foll
     if (site) { where.push('i.site = ?'); args.push(site); }
     if (q) { where.push('(i.title ILIKE ? OR i.text ILIKE ?)'); args.push(`%${q}%`, `%${q}%`); }
     if (since) { where.push('i.occurred_at >= ?'); args.push(since); }
+    if (runsApart) {
+        // People's things only (listRuns reads the runs); and a Report line only while it is the newest of its kind (a
+        // peak, a page-view total, who is on now, a trend): an older one is a stale number under the new one.
+        where.push(`NOT (i.actor_subject IS NULL AND i.kind IN (${RUN_KINDS.map(() => '?').join(', ')}))`);
+        args.push(...RUN_KINDS);
+        // The newest line of each kind is found once (15 ms on production's 24,000 rows; a per-row EXISTS took 366 ms).
+        where.push(`NOT (i.source_service = 'report' AND i.actor_subject IS NULL AND i.id NOT IN (SELECT DISTINCT ON (source_type) id FROM feed_items
+            WHERE source_service = 'report' AND actor_subject IS NULL AND visibility = 'public' ORDER BY source_type, occurred_at DESC, id DESC))`);
+    }
     if (following) {
         if (!followed.length) return { rows: [], hasMore: false };
         where.push(`i.actor_subject IN (${followed.map(() => '?').join(', ')})`);
@@ -188,6 +202,31 @@ async function listItems(db, { kind = '', site = '', q = '', followed = [], foll
     const hasMore = rows.length > limit;
     if (hasMore) rows.pop();
     return { rows, hasMore };
+}
+
+/**
+ * The newest runs between two times (no person; one kind, site and UTC hour), for the general feed: [{ kind, site, hour,
+ * n }] newest first, without the ones an earlier page showed (skip: [{ kind, site, hour }]). One GROUP BY over the window.
+ */
+async function listRuns(db, { from = null, to = null, skip = [], limit = 2 } = {}) {
+    const where = ['i.actor_subject IS NULL', `i.kind IN (${RUN_KINDS.map(() => '?').join(', ')})`, "i.visibility = 'public'"];
+    const args = [...RUN_KINDS];
+    if (from) { where.push('i.occurred_at >= ?'); args.push(new Date(from).toISOString()); }
+    if (to) { where.push('i.occurred_at < ?'); args.push(new Date(to).toISOString()); }
+    const rows = await db.prepare(`SELECT i.kind, i.site, to_char(date_trunc('hour', i.occurred_at AT TIME ZONE 'UTC'), 'YYYY-MM-DD"T"HH24') AS hour,
+            COUNT(*) AS n, MAX(i.occurred_at) AS last
+        FROM feed_items i WHERE ${where.join(' AND ')} GROUP BY 1, 2, 3 ORDER BY last DESC LIMIT ?`).all(...args, limit + (skip || []).length);
+    const skipped = new Set((skip || []).map((b) => `${b.kind}|${b.site}|${b.hour}`));
+    return rows.filter((r) => !skipped.has(`${r.kind}|${r.site}|${r.hour}`)).slice(0, limit)
+        .map((r) => ({ kind: r.kind, site: r.site, hour: String(r.hour), n: Number(r.n) || 0 }));
+}
+
+/** A run's newest rows (to draw its card: its first items and their pictures). */
+async function runRows(db, { kind, site, hour, limit = 20 }) {
+    const from = new Date(`${hour}:00:00.000Z`);
+    if (Number.isNaN(from.getTime())) return [];
+    return await db.prepare(`SELECT ${COLUMNS} FROM feed_items i WHERE i.actor_subject IS NULL AND i.kind = ? AND i.site = ? AND i.visibility = 'public'
+        AND i.occurred_at >= ? AND i.occurred_at < ? ORDER BY i.occurred_at DESC, i.id DESC LIMIT ?`).all(kind, site, from.toISOString(), new Date(from.getTime() + 3600_000).toISOString(), limit);
 }
 
 /** How many public rows a burst holds: one site's rows of one kind with no person, in one UTC hour ('2026-11-12T17'). */
@@ -217,4 +256,4 @@ async function burstStart(db, { kind, site, before }) {
     return other ? null : iso(first.at);
 }
 
-module.exports = { upsertItem, upsertLiveItem, removeItem, removeMissing, followedSubjects, affinityServices, listItems, countBulk, burstStart, iso, ms };
+module.exports = { upsertItem, upsertLiveItem, removeItem, removeMissing, followedSubjects, affinityServices, listItems, listRuns, runRows, RUN_KINDS, countBulk, burstStart, iso, ms };

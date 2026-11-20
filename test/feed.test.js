@@ -149,7 +149,15 @@ const envelope = (type, payload, over = {}) => ({
     const server = app.listen(0, '127.0.0.1');
     await new Promise((r) => server.once('listening', r));
     const base = `http://127.0.0.1:${server.address().port}`;
-    const get = async (p, headers) => { const r = await fetch(`${base}${p}`, { headers }); return { r, d: await r.json() }; };
+    // Once more on a reset: a keep-alive socket the server closed while a test was writing rows (5 s idle).
+    const get = async (p, headers) => {
+        let r;
+        try { r = await fetch(`${base}${p}`, { headers }); } catch (e) {
+            if (!(e && e.cause && e.cause.code === 'ECONNRESET')) throw e;
+            r = await fetch(`${base}${p}`, { headers });
+        }
+        return { r, d: await r.json() };
+    };
 
     let { r, d } = await get('/api/v1/feed?limit=20');
     assert.strictEqual(r.status, 200);
@@ -198,8 +206,20 @@ const envelope = (type, payload, over = {}) => ({
             cursor = r.d.next_cursor;
         }
         const burst = `g:deal:deals:${hourAt.toISOString().slice(0, 13)}`;
-        assert.strictEqual(seen.filter((id) => id === burst).length, 1, `the burst is one card across the pages (${seen.join(', ')})`);
+        // The general feed (2026-11-20) reads people's things apart from the runs and shows the newest runs in each page's
+        // time: a run is never shown twice, and may not be shown at all past the last person's thing.
+        assert.ok(seen.filter((id) => id === burst).length <= 1, `the burst is at most one card across the pages (${seen.join(', ')})`);
         assert.ok(seen.includes('f:community:thread:mid'), 'the post in the middle of the burst is still met');
+        // Deals' own view keeps every run: the burst is one card across its pages.
+        const deals = [];
+        cursor = '';
+        for (let page = 0; page < 8; page++) {
+            const r = await get(`/api/v1/feed?site=deals&limit=2${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+            deals.push(...r.d.items.map((x) => x.id));
+            if (!r.d.next_cursor) break;
+            cursor = r.d.next_cursor;
+        }
+        assert.strictEqual(deals.filter((id) => id === burst).length, 1, `on Deals, the burst is one card across the pages (${deals.join(', ')})`);
     }
     // A page past the bursts (production, 11-20: 397 of the newest 401 public rows were Deals polls, so the feed, signed
     // in or not, showed five cards): the burst is still one card, and the posts under it fill the page.
@@ -223,6 +243,41 @@ const envelope = (type, payload, over = {}) => ({
             const again = n.d.items.filter((x) => floods.some((f) => f.id === x.id));
             assert.strictEqual(again.length, 0, 'the next page does not show the burst again');
         }
+    }
+    // The general feed reads people's things apart from the runs (production, 11-20: 11,389 of 11,500 public rows in
+    // three days were Deals rows; the newest stream sat 3,600 rows down): a stream under 600 deal and 60 job rows is on
+    // the first page; a run of jobs is counted whole (not the 20 rows drawn); an older Report line of the same kind is
+    // gone (a stale number under the new one), another kind stays.
+    {
+        const t0 = Date.now();
+        const at = (msAgo) => new Date(t0 - msAgo).toISOString();
+        const row = (o) => store.upsertItem(db, { text: '', site_name: o.site, counts: {}, visibility: 'public', ...o });
+        for (let i = 0; i < 600; i++) await row({ source_service: 'deals', source_type: 'offer', source_id: `deep${i}`, kind: 'deal', title: `Deep ${i}`, url: 'https://openvibe.deals/d/q', site: 'deals', occurred_at: at(60000 + i * 1000) });
+        const jobHour = new Date(t0 - 90 * 60000); jobHour.setUTCMinutes(10, 0, 0);
+        for (let i = 0; i < 60; i++) await row({ source_service: 'work', source_type: 'job', source_id: `job${i}`, kind: 'work', title: `Job ${i}`, url: `https://openvibe.work/jobs/${i}`, site: 'work', occurred_at: new Date(jobHour.getTime() + i * 1000).toISOString() });
+        await row({ source_service: 'live', source_type: 'stream', source_id: 'deepstream', kind: 'stream', title: 'A stream under the runs', url: 'https://openvibe.live/@deep', site: 'live', occurred_at: at(3 * 3600000) });
+        await row({ source_service: 'report', source_type: 'peak', source_id: 'peak-old', kind: 'report', title: 'Peak today: 1,768 people online at once', url: 'https://openvibe.report/stats', site: 'report', occurred_at: at(40 * 60000) });
+        await row({ source_service: 'report', source_type: 'peak', source_id: 'peak-new', kind: 'report', title: 'Peak today: 5 people online at once', url: 'https://openvibe.report/stats', site: 'report', occurred_at: at(10 * 60000) });
+        await row({ source_service: 'report', source_type: 'views', source_id: 'views-old', kind: 'report', title: '688,822 page views in the last 30 days', url: 'https://openvibe.report/stats', site: 'report', occurred_at: at(40 * 60000) });
+        const r = await get('/api/v1/feed?limit=20');
+        const titles = r.d.items.map((x) => x.title);
+        assert.ok(titles.includes('A stream under the runs'), `a stream under 600 deals is on the first page (${titles.join(' | ')})`);
+        assert.ok(titles.includes('Peak today: 5 people online at once') && !titles.includes('Peak today: 1,768 people online at once'), 'only the newest peak');
+        assert.ok(titles.includes('688,822 page views in the last 30 days'), 'the newest of another kind stays');
+        const runs = r.d.items.filter((x) => /^g:/.test(String(x.id)));
+        assert.ok(runs.length >= 1 && runs.length <= 2, `one or two runs on a page of 20 (${runs.map((x) => x.title).join(' | ')})`);
+        assert.strictEqual(new Set(r.d.items.map((x) => x.id)).size, r.d.items.length, 'no card twice');
+        // A page of 40 has room for four runs: the jobs run is one of them and says the whole hour (60, not the 20 drawn).
+        const big = await get('/api/v1/feed?limit=40');
+        const jobs = big.d.items.find((x) => /^g:work:/.test(String(x.id)));
+        assert.ok(jobs, `the jobs run is on a page of 40 (${big.d.items.filter((x) => /^g:/.test(String(x.id))).map((x) => x.title).join(' | ')})`);
+        assert.deepStrictEqual([jobs.title, jobs.group.count], ['60 new jobs this hour', 60], 'a run of jobs is counted whole');
+        const { listRuns } = store;
+        const all = await listRuns(db, { from: t0 - 6 * 3600000, limit: 10 });
+        const work = all.find((x) => x.kind === 'work');
+        assert.deepStrictEqual([work.n, work.hour], [60, jobHour.toISOString().slice(0, 13)], 'listRuns: one row per kind, site and hour, counted');
+        const left = await listRuns(db, { from: t0 - 6 * 3600000, limit: 10, skip: [{ kind: 'work', site: 'work', hour: work.hour }] });
+        assert.ok(!left.some((x) => x.kind === 'work'), 'a run an earlier page showed is skipped');
     }
     server.close();
     console.log('feed: mappings, grouping, privacy, ranking and the menu/feed ids pass');
