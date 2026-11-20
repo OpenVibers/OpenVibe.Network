@@ -385,6 +385,9 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
                 const r = await upsert({ source_service: 'live', source_type: type, source_id: id, kind: type === 'recording' ? 'video' : 'clip',
                     title: `${type === 'recording' ? 'Recording: ' : ''}${clean(v.title, 150) || (type === 'recording' ? 'A stream' : 'A clip')}`,
                     url: https(v.href), site: 'live', site_name: 'Live', picture_url: https(v.thumbnail_url),
+                    // The video that plays as the card scrolls into view (ov-home.js watchPreview; register #691): a clip's
+                    // own video, a recording's six-second preview from Media (Live #1007), none until there is one.
+                    preview_url: https(v.preview_url),
                     actor_subject: (prior && prior.actor_subject) || await personOf(channel), actor_name: clean(v.channel && v.channel.display_name, 80),
                     origin: 'user', occurred_at: at, text: clean(v.excerpt, 280),
                     media_length: Number(v.duration_seconds) > 0 ? Number(v.duration_seconds) : null,
