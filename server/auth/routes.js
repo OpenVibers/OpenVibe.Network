@@ -577,6 +577,28 @@ async function logAnonIp(db, anonId, ip) {
     } catch { /* non-critical */ }
 }
 
+// ── Sign out on every device ─────────────────────────────────
+// POST /api/auth/sign-out-everywhere: every token and session this person holds ends, here and (via
+// network.user.token_valid_after) on every OpenVibe site; open chat and game sockets close. The page
+// then runs the sign-out fanout so this browser's site sessions are cleared too.
+router.post('/sign-out-everywhere', requireAuth, async (req, res) => {
+    const db = await getDb(req);
+    const { validAfter } = await revocation.revokeTokens(db, req.user.id, { reason: 'signed_out_everywhere', ctx: req.ov });
+    revocation.kick(db);
+    try { await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'sign_out_everywhere', JSON.stringify({ valid_after: validAfter })); } catch { /* audit is best effort */ }
+    require('./session').clearSessionCookies(res);
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: true, valid_after: validAfter });
+});
+
+// Server-side sign-out: the page-side storage is cleared by the caller; this drops the cookies
+// only the server can (ov_sso is httpOnly). Idempotent, no auth required.
+router.post('/logout', (req, res) => {
+    require('./session').clearSessionCookies(res);
+    res.set('Cache-Control', 'no-store');
+    res.json({ ok: true });
+});
+
 // ── Create Anonymous Session ─────────────────────────────────
 // POST /api/auth/anon-session
 // Creates a guest: a new anonymous identity with the next number, and the token that is its only proof.
