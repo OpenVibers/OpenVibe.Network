@@ -278,6 +278,26 @@ const envelope = (type, payload, over = {}) => ({
             assert.strictEqual(again.length, 0, 'the next page does not show the burst again');
         }
     }
+    // A ranked page shows an older card ahead of newer ones (11-20, production: 15 of the first 120 public cards came
+    // again on a later page): the next page starts at the newest row not shown, and the older one shown rides in the
+    // cursor, so it is not shown twice and nothing is skipped.
+    {
+        for (let i = 1; i <= 6; i++) {
+            await store.upsertItem(db, { source_service: 'community', source_type: 'thread', source_id: `ranked${i}`, kind: 'post', title: `Ranked ${i}`, text: 'hello',
+                url: `https://openvibe.community/forum/status/ranked${i}`, site: 'rankdemo', site_name: 'Community', counts: i === 5 ? { likes: 500 } : {},
+                occurred_at: new Date(Date.now() - i * 3600000).toISOString(), visibility: 'public' });
+        }
+        const ids = [];
+        let cursor = '';
+        for (let page = 0; page < 6; page++) {
+            const r = await get(`/api/v1/feed?site=rankdemo&limit=2${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+            ids.push(...r.d.items.map((x) => x.id));
+            if (!r.d.next_cursor) break;
+            cursor = r.d.next_cursor;
+        }
+        assert.strictEqual(ids[0], 'f:community:thread:ranked5', 'the liked older post leads the first page');
+        assert.deepStrictEqual([...ids].sort(), [1, 2, 3, 4, 5, 6].map((i) => `f:community:thread:ranked${i}`).sort(), `each once, none skipped (${ids.join(', ')})`);
+    }
     // The general feed reads people's things apart from the runs (production, 11-20: 11,389 of 11,500 public rows in
     // three days were Deals rows; the newest stream sat 3,600 rows down): a stream under 600 deal and 60 job rows is on
     // the first page; a run of jobs is counted whole (not the 20 rows drawn); an older Report line of the same kind is
