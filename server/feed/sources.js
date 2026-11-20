@@ -329,8 +329,15 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
     }
 
     // ── Live: on air, recordings and clips ────────────────────
+    // 11-20: Live's list is 48 pages (1,431 recordings and clips) and a run read 20, so the "gone from Live" step, which
+    // waited for the end of the list, never ran: RePlayer009's deleted recording stayed in the feed, its preview a 404.
+    // Each run now removes what is missing from the stretch it read (newer than the oldest item of that type it saw);
+    // once an hour a run reads the whole list and removes anything missing from it.
+    let contentFullAt = 0;
     async function publicContent() {
         const seen = new Set();
+        const oldest = { recording: null, clip: null };   // the oldest created_at read, per type: the stretch this run covered
+        const full = now() - contentFullAt >= 60 * MINUTE;
         let cursor = null, created = 0;
         const live = await getJson(`${urls.live}/api/streams`);
         const onAir = new Map();
@@ -356,7 +363,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
         // Anything no longer on Live's list is a past broadcast, not "live now".
         const onAirRows = await db.prepare("SELECT source_id FROM feed_items WHERE source_service = 'live' AND source_type = 'stream' AND live_now = true").all();
         for (const row of onAirRows) if (!liveIds.has(String(row.source_id))) await db.prepare("UPDATE feed_items SET live_now = false, updated_at = now() WHERE source_service = 'live' AND source_type = 'stream' AND source_id = ?").run(String(row.source_id));
-        for (let page = 0; page < 20; page++) {
+        for (let page = 0; page < (full ? 200 : 20); page++) {
             const url = new URL('/api/content/feed', urls.live);
             url.searchParams.set('sort', 'new');
             url.searchParams.set('window', 'all');
@@ -375,6 +382,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
                 const current = onAir.get(channel.toLowerCase()) || [];
                 if (type === 'recording' && current.some((started) => Number.isFinite(started) && Math.abs(Date.parse(at) - started) <= 10 * MINUTE)) continue;
                 seen.add(`${type}:${id}`);
+                if (!oldest[type] || at < oldest[type]) oldest[type] = at;
                 let prior = null;
                 if (type === 'recording' && channel) {
                     const candidates = await db.prepare(`SELECT actor_subject, source_id FROM feed_items WHERE source_service = 'live' AND source_type = 'stream'
@@ -398,8 +406,12 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             cursor = typeof out.next === 'string' && out.next ? out.next : null;
             if (!cursor) break;
         }
-        if (!cursor) await store.removeMissing(db, 'live', 'recording', new Set([...seen].filter((x) => x.startsWith('recording:')).map((x) => x.split(':')[1])));
-        if (!cursor) await store.removeMissing(db, 'live', 'clip', new Set([...seen].filter((x) => x.startsWith('clip:')).map((x) => x.split(':')[1])));
+        for (const type of ['recording', 'clip']) {
+            const keep = new Set([...seen].filter((x) => x.startsWith(`${type}:`)).map((x) => x.split(':')[1]));
+            if (!cursor) await store.removeMissing(db, 'live', type, keep);
+            else if (oldest[type]) await store.removeMissing(db, 'live', type, keep, { since: oldest[type] });
+        }
+        if (!cursor && full) contentFullAt = now();
         return created;
     }
 
