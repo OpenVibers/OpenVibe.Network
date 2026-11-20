@@ -17,7 +17,7 @@
  */
 const express = require('express');
 const store = require('./store');
-const { cardOf, oneCardPerThing, foldWatched, foldCards, rankCards, spreadCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD, RUN_PAGE } = require('./card');
+const { cardOf, oneCardPerThing, foldWatched, foldEpisodes, foldCards, rankCards, spreadCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD, RUN_PAGE } = require('./card');
 const { createPictures } = require('./pictures');
 const { createFeedSources } = require('./sources');
 const { createEffects } = require('./effects');
@@ -165,7 +165,7 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
         } catch { /* a card without a count */ }
         if (q) cards = cards.filter((c) => searchMatches(c, q));
         const folded = new Map();   // a watched card → the recording that took it (foldWatched)
-        cards = foldCards(foldWatched(oneCardPerThing(cards), folded), now());
+        cards = foldCards(foldEpisodes(foldWatched(oneCardPerThing(cards), folded), folded), now());
         // The general feed's runs (2026-11-20): the newest Math.round(want / 10) (at least one) in the time this page covers,
         // from its top (the cursor, or now) down to its want-th person's thing (or the read's end when there is more), one
         // card each, counted whole. The ones an earlier page showed ride in the cursor.
