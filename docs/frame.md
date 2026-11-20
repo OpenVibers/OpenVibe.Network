@@ -78,6 +78,28 @@ and `RUN_FINISHED` with the same answer and citations. A failure is `RUN_ERROR` 
 kept in memory for five minutes after it ends, so a reconnect can resume; `GET /api/v1/runs/:id` is its snapshot.
 Asks are rate-limited per person (12 a minute).
 
+## `POST /api/frame/ask/guest` (signed out)
+
+A visitor who is not signed in may ask the menu's box a short question (2026-11-20; the plan's §V.1 guests). The answer
+is OpenVibe.AI's `network.guest_answer`, run with Network's own service token: the cheapest interactive model, at most
+450 tokens, no tools, no search, no files; the same question on the same page is answered once an hour to everyone.
+
+```http
+GET  /api/frame/ask/guest/challenge   → { algorithm: "SHA-256", salt, challenge, maxnumber, signature }
+POST /api/frame/ask/guest             { text, context?, site?, guest?, proof: { ...challenge, number } }
+                                      → 200 { answer, model, left }
+```
+
+- **The human check:** the browser finds the `number` (0 to `maxnumber`) whose SHA-256 of `salt + number` is the
+  `challenge` (ALTCHA's scheme; a second or two). A challenge is signed by Network, lives five minutes and answers one
+  question: `403 guest.check_failed` otherwise.
+- **Limits:** three questions a day per guest (`guest`, an id the browser keeps) and ten per address: `429
+  guest.limit` ("Sign in (free) to ask up to 100 a day"). A daily budget across all guests (`NETWORK_GUEST_AI_DAILY_ASKS`,
+  3000; `NETWORK_GUEST_AI_DAILY_USD`, $5): `503 guest.ai_paused` ("resting today"). An answer that failed does
+  not count.
+- Counted by day in `guest_asks` under keyed hashes; no address or id is kept in the clear. The run is attributed to
+  `network:guest:<hash>` on OpenVibe.AI.
+
 ## `GET /api/frame/commands?site=<host>&q=`
 
 The `/` menu. Every site offers the network's four commands, a site adds its own from its Frame manifest
