@@ -56,6 +56,24 @@ for (const bad of ['http://openvibe.media/x.png', 'javascript:alert(1)', 'https:
     assert.deepStrictEqual([pushes.length, pushes[0].avatar_url], [1, `${M}/o/${A}`], 'the site learns the avatar object it now shows');
     await svc.apply(1, 'Goosely', `${M}/f/b.png`, 'network');
     assert.deepStrictEqual([pushes.length, pushes[1].avatar_url], [2, `${M}/f/b.png`], 'a change made here is pushed to the sites');
+    // The network feed hears it (register #544, 11-20): one card per person, moved to the top by a new picture.
+    {
+        const cards = async () => await db.prepare("SELECT title, url, picture_url, actor_subject, kind, visibility, occurred_at FROM feed_items WHERE source_service = 'network' AND source_type = 'avatar'").all();
+        let c = await cards();
+        assert.strictEqual(c.length, 1, 'one card for the person');
+        assert.deepStrictEqual([c[0].title, c[0].url, c[0].picture_url, c[0].actor_subject, c[0].kind, c[0].visibility],
+            ['Goosely has a new profile picture', 'https://openvibe.network/@Goosely', `${M}/f/b.png`, 'usr_01KZK5GRQ088Y3CW1TMEF4Z4RM', 'pic', 'public']);
+        const first = Date.parse(c[0].occurred_at);
+        await new Promise((r) => setTimeout(r, 15));
+        await svc.apply(1, 'Goosely', `${M}/f/c.png`, 'network');
+        c = await cards();
+        assert.deepStrictEqual([c.length, c[0].picture_url], [1, `${M}/f/c.png`], 'still one card, the newest picture');
+        assert.ok(Date.parse(c[0].occurred_at) > first, 'moved to the top');
+        await svc.apply(1, 'Goosely', null, 'network');
+        assert.strictEqual((await cards())[0].picture_url, `${M}/f/c.png`, 'removing the picture leaves the card');
+        await svc.apply(1, 'Goosely', `${M}/f/b.png`, 'network');
+        assert.strictEqual((await cards())[0].title, 'Goosely added a profile picture', 'after none: added');
+    }
     const bearer = String(pushHeaders[0].Authorization || '').replace(/^Bearer /, '');
     const v = require('openvibe-contracts').serviceAuth.verifyServiceToken(bearer, { publicKey, issuer: 'https://openvibe.network', audience: 'openvibe.live' });
     assert.ok(v.ok && v.claims.sub === 'svc:network' && v.claims.cap.includes('live.avatar.write'), `the push carries Network's token for live.avatar.write: ${v.reason || ''}`);
