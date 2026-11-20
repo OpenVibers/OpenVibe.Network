@@ -145,6 +145,19 @@ function stripOf(list) {
  * self-signed Network service token (sub svc:network, aud openvibe.ai, cap ai.run.create, ns network.*).
  * There is no other source: Live's /internal/ai/site-copy is no longer called.
  */
+/** Network's own service token for OpenVibe.AI's network.* workflows (sub svc:network, five minutes, cached). */
+function networkAiToken({ privateKey, issuer }) {
+    const { serviceAuth } = require('openvibe-contracts');
+    let cached = null;
+    return function token() {
+        const now = Math.floor(Date.now() / 1000);
+        if (cached && cached.exp - 60 > now) return cached.token;
+        const claims = { iss: issuer, sub: 'svc:network', actor_type: 'service', aud: ['openvibe.ai'], cap: ['ai.run.create', 'ai.run.read'], ns: ['network.*'], iat: now, exp: now + 300, jti: `tok_${require('crypto').randomBytes(12).toString('hex')}` };
+        cached = { token: serviceAuth.signServiceToken(claims, privateKey), exp: claims.exp };
+        return cached.token;
+    };
+}
+
 function aiSiteCopy({ privateKey, issuer, aiUrl }) {
     const { serviceAuth } = require('openvibe-contracts');
     let cached = null;
@@ -191,6 +204,10 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
         searchUrl: (services.search && services.search.internalUrl) || 'http://127.0.0.1:4710',
     });
     const fromAi = privateKey && issuer ? aiSiteCopy({ privateKey, issuer, aiUrl: String(aiUrl).replace(/\/+$/, '') }) : null;
+    // A signed-out visitor's question (guest-ask.js; the plan's §V.1 guests): a human check, caps and a daily budget.
+    const guestAsk = privateKey && issuer && aiUrl ? require('./guest-ask').createGuestAsk({
+        db, secret: String(privateKey), aiUrl: String(aiUrl), serviceToken: networkAiToken({ privateKey, issuer }), now,
+    }) : null;
     // frame_cache and frame_hits are migrations/NNNN_*.sql (plan T2). The old chrome_cache/chrome_hits
     // rename was a SQLite-only step and is not repeated here.
     const bump = db.prepare("INSERT INTO frame_hits (day, host, hits) VALUES (substring(ov_now(), 1, 10), ?, 1) ON CONFLICT(day, host) DO UPDATE SET hits = frame_hits.hits + 1");
@@ -1380,6 +1397,7 @@ async function createFrameService(db, config, analytics, { privateKey = null, is
     // chosen scopes, streamed on Network's runs. Signed in only; the person's own token pays. The run's events are at
     // /api/v1/runs/:id/events (mounted in server/index.js), replayable from Last-Event-ID.
     router.post('/ask', ...ask.ask);
+    if (guestAsk) router.use('/ask/guest', guestAsk.router);
 
     // POST /api/frame/caption — alt text, a caption and tags for one picture (AI's pics.describe_image), signed in only
     // and on the person's own allowance; the composer's "Caption it" and a post's missing alt text ask here (11-12).
