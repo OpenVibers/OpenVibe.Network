@@ -53,7 +53,7 @@ function blocks(text) {
                 res.writeHead(200, { 'Content-Type': 'text/event-stream' });
                 res.write('event: delta\ndata: {"text":"The answer "}\n\n');
                 res.write('event: delta\ndata: {"text":"is [1]."}\n\n');
-                res.end(`event: run\ndata: ${JSON.stringify({ run: { id: 'run_ai', status: 'succeeded', cost_usd: 0.001, output: { text: 'The answer is [1].' }, provenance: { model: 'openai/gpt-5-mini' } } })}\n\n`);
+                res.end(`event: run\ndata: ${JSON.stringify({ run: { id: 'run_ai', status: 'succeeded', cost_usd: 0.001, output: { text: 'The answer is [1].' }, provenance: { model: 'openai/gpt-5-mini' }, receipt: { chose: 'gpt-5-mini', why: 'the best balance of quality, speed and price for this task' } } })}\n\n`);
                 return;
             }
             res.statusCode = 404; res.end('{}');
@@ -112,6 +112,9 @@ function blocks(text) {
         const answer = events.find((e) => e.event === 'ANSWER').data;
         assert.strictEqual(answer.answer, 'The answer is [1].');
         assert.strictEqual(answer.model, 'openai/gpt-5-mini');
+        // Auto's receipt (AI #665) comes along, on ANSWER and on RUN_FINISHED.
+        assert.deepStrictEqual(answer.receipt, { chose: 'gpt-5-mini', why: 'the best balance of quality, speed and price for this task' });
+        assert.deepStrictEqual(events.at(-1).data.result.receipt, answer.receipt);
         assert.deepStrictEqual(answer.citations.map((c) => [c.n, c.title, c.site]), [[1, 'Example source', 'example.org'], [2, 'A network post', 'openvibe.community'], [3, 'The thread', 'openvibe.community']]);
         const eventIds = events.map((e) => Number(e.id));
         assert.deepStrictEqual(eventIds, eventIds.map((_, i) => i + 1), 'events are numbered from 1');

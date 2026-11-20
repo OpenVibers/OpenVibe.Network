@@ -25,7 +25,7 @@ const solve = (c) => { for (let n = 0; n <= c.maxnumber; n++) if (crypto.createH
     const fetchImpl = async (url, init) => {
         calls.push({ url, auth: init.headers.Authorization, body: JSON.parse(init.body) });
         if (aiFails) return { ok: false, status: 502, json: async () => ({ error: 'down' }) };
-        return { ok: true, status: 201, json: async () => ({ run: { status: 'succeeded', output: { text: 'You can go live from your browser on openvibe.live.' }, cost_usd: 0.002, provenance: { model: 'cheap-1' } } }) };
+        return { ok: true, status: 201, json: async () => ({ run: { status: 'succeeded', output: { text: 'You can go live from your browser on openvibe.live.' }, cost_usd: 0.002, provenance: { model: 'cheap-1' }, receipt: { chose: 'cheap-1', why: 'the cheapest model that fits this task' } } }) };
     };
     const g = createGuestAsk({ db, secret: 'test-secret', aiUrl: 'http://ai.test', serviceToken: () => 'svc-token', fetchImpl, now: () => t, log: { warn() {} }, dailyAsks: 11, dailyUsd: 1 });
     const app = express();
@@ -57,6 +57,7 @@ const solve = (c) => { for (let n = 0; n <= c.maxnumber; n++) if (crypto.createH
         r = await ask({ text: 'How do I go live?', context: 'The Go live page', site: 'live', guest: 'guest_ABCDEFGHIJKLMNOP', proof: p });
         assert.strictEqual(r.status, 200, JSON.stringify(r.body));
         assert.deepStrictEqual([r.body.answer, r.body.model, r.body.left], ['You can go live from your browser on openvibe.live.', 'cheap-1', 2]);
+        assert.deepStrictEqual(r.body.receipt, { chose: 'cheap-1', why: 'the cheapest model that fits this task' }, 'Auto\'s receipt comes along');
         const call = calls[0];
         assert.strictEqual(call.url, 'http://ai.test/api/v1/runs?wait=40000');
         assert.strictEqual(call.auth, 'Bearer svc-token');
