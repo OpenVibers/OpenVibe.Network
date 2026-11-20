@@ -362,7 +362,10 @@ function createFrameAsk({
         }
         if (!streamed) runs.emit(run, 'TEXT_MESSAGE_CONTENT', { messageId: `${run.id}-answer`, delta: answer });
         const answered = (final && final.answered) || (final && final.provenance && final.provenance.model) || choice.model;
-        return { answer, model: answered, cost_usd: final && Number.isFinite(Number(final.cost_usd)) ? Number(final.cost_usd) : null };
+        // Auto's receipt (AI #665): what answered and why, one sentence; null from an AI without it.
+        const receipt = final && final.receipt && typeof final.receipt === 'object' && typeof final.receipt.why === 'string'
+            ? { chose: clean(final.receipt.chose || '', 120) || null, why: clean(final.receipt.why, 300) } : null;
+        return { answer, model: answered, cost_usd: final && Number.isFinite(Number(final.cost_usd)) ? Number(final.cost_usd) : null, receipt };
     }
 
     async function work(run, { text, sources, depth, refs, files, context, choice, token, ip }) {
@@ -382,8 +385,8 @@ function createFrameAsk({
             runs.emit(run, 'TEXT_MESSAGE_END', { messageId: `${run.id}-answer` });
             runs.emit(run, 'STEP_FINISHED', { stepName: 'Answer' });
             const citations = list.map(({ n, title, url, site }) => ({ n, title, url, site }));
-            runs.emit(run, 'ANSWER', { answer: answer.answer, citations, model: answer.model, cost_usd: answer.cost_usd });
-            runs.emit(run, 'RUN_FINISHED', { result: { answer: answer.answer, citations } });
+            runs.emit(run, 'ANSWER', { answer: answer.answer, citations, model: answer.model, cost_usd: answer.cost_usd, receipt: answer.receipt });
+            runs.emit(run, 'RUN_FINISHED', { result: { answer: answer.answer, citations, ...(answer.receipt ? { receipt: answer.receipt } : {}) } });
         } catch (err) {
             const code = (err && err.code) || 'frame.ask_failed';
             const message = clean(err && err.message || 'The answer could not be written.', 300);

@@ -96,7 +96,8 @@ function createGuestAsk({
         }
         const prov = run.provenance && typeof run.provenance === 'object' ? run.provenance : {};
         const usd = Number(run.cost_usd ?? (run.usage && run.usage.cost_usd) ?? prov.cost_usd) || 0;
-        return { text: clean(text, 4000), model: prov.model || null, usd: usd > 0 ? usd : 0 };
+        const receipt = run.receipt && typeof run.receipt.why === 'string' ? { chose: clean(run.receipt.chose || '', 120) || null, why: clean(run.receipt.why, 300) } : null;
+        return { text: clean(text, 4000), model: prov.model || null, usd: usd > 0 ? usd : 0, receipt };
     }
 
     const router = express.Router();
@@ -122,7 +123,7 @@ function createGuestAsk({
         try {
             const a = await answer({ question, context: clean(b.context, 2000), site: SITE_RE.test(String(b.site || '')) ? String(b.site) : '', guestKey });
             if (a.usd > 0) await bump(day, 'all', '*', 0, a.usd);
-            res.json({ answer: a.text, model: a.model, left: Math.max(0, PER_GUEST - mine.n - 1) });
+            res.json({ answer: a.text, model: a.model, left: Math.max(0, PER_GUEST - mine.n - 1), ...(a.receipt ? { receipt: a.receipt } : {}) });
         } catch (err) {
             // Nothing was answered: the question does not count.
             await Promise.all([bump(day, 'all', '*', -1, 0), bump(day, 'guest', guestKey, -1, 0), bump(day, 'ip', ipKey, -1, 0)]).catch(() => {});
