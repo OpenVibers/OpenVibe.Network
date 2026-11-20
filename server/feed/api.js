@@ -37,14 +37,24 @@ const runKeyOf = (id) => {
     m = /^g:work:(\d{4}-\d\d-\d\dT\d\d)$/.exec(String(id || ''));
     return m ? `work|work|${m[1]}` : null;
 };
-const encodeCursor = ([at, id], done = []) => Buffer.from(JSON.stringify([new Date(at).toISOString(), Number(id), ...(done.length ? [done.slice(0, 8)] : [])])).toString('base64url');
+// And, from 11-20, the rows earlier pages showed below the cursor (a ranked page shows older cards ahead of newer ones,
+// and the next page, which starts at the newest row not shown, met them again: 15 of the first 120 public cards were
+// repeats). Row ids, the newest SEEN_MAX kept.
+const SEEN_MAX = 60;
+const encodeCursor = ([at, id], done = [], seen = []) => {
+    const parts = [new Date(at).toISOString(), Number(id)];
+    if (done.length || seen.length) parts.push(done.slice(0, 8));
+    if (seen.length) parts.push(seen.slice(-SEEN_MAX));
+    return Buffer.from(JSON.stringify(parts)).toString('base64url');
+};
 const decodeCursor = (v) => {
-    if (!v || typeof v !== 'string' || v.length > 1200) return null;
+    if (!v || typeof v !== 'string' || v.length > 1600) return null;
     try {
-        const [at, id, done] = JSON.parse(Buffer.from(v, 'base64url').toString('utf8'));
+        const [at, id, done, seen] = JSON.parse(Buffer.from(v, 'base64url').toString('utf8'));
         if (typeof at !== 'string' || !Number.isSafeInteger(id) || id <= 0) return null;
         const kept = Array.isArray(done) ? done.filter((k) => typeof k === 'string' && BURST_KEY.test(k)).slice(0, 8) : [];
-        return Object.assign([at, id], { done: kept });
+        const rows = Array.isArray(seen) ? seen.filter((n) => Number.isSafeInteger(n) && n > 0).slice(-SEEN_MAX) : [];
+        return Object.assign([at, id], { done: kept, seen: rows });
     } catch { return null; }
 };
 const burstsOf = (keys) => keys.map((k) => { const [kind, site, hour] = k.split('|'); return { kind, site, hour }; });
@@ -143,6 +153,10 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
             rows.sort((x, y) => (new Date(y.occurred_at) - new Date(x.occurred_at)) || (Number(y.id) - Number(x.id)));
             read = { rows, hasMore: again.hasMore };
         }
+        // Rows an earlier page showed are left out (they ride in the cursor until the pages pass them).
+        const seenBefore = new Set(before ? before.seen || [] : []);
+        const metSeen = seenBefore.size ? read.rows.filter((r) => seenBefore.has(Number(r.id))) : [];
+        if (metSeen.length) read = { ...read, rows: read.rows.filter((r) => !seenBefore.has(Number(r.id))) };
         const actors = await actorsFor(db, read.rows);
         // The name effect each of them wears: one Inventory read for the page, kept a minute.
         const tokens = await effects.effects([...actors.keys()]);
@@ -237,7 +251,15 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
         const done = [...new Set([...(before ? before.done || [] : []),
             ...items.map((c) => runKeyOf(c.id)).filter(Boolean)])]
             .filter((k) => BURST_KEY.test(k) && `${k.split('|')[2]}:00:00.000Z` < edgeAt).slice(-8);
-        const next = (firstOut > 0 || read.hasMore) && edge ? encodeCursor([edge.occurred_at, edge.id], done) : null;
+        // Shown rows the next page will still meet (below its start), and earlier pages' ones it has not passed.
+        const seen = [];
+        if (edge) {
+            const below = (r) => { const t = Date.parse(r.occurred_at), e = Date.parse(edge.occurred_at); return t < e || (t === e && Number(r.id) < Number(edge.id)); };
+            const passed = new Set(metSeen.filter((r) => !below(r)).map((r) => Number(r.id)));
+            for (const n of seenBefore) if (!passed.has(n)) seen.push(n);
+            if (firstOut > 0) for (const r of read.rows.slice(firstOut)) if (rowShown(r)) seen.push(Number(r.id));
+        }
+        const next = (firstOut > 0 || read.hasMore) && edge ? encodeCursor([edge.occurred_at, edge.id], done, [...new Set(seen)]) : null;
         if (wall) return { items: items.map(wallItem), next_cursor: next };
         return { items, next_cursor: next };
     }
