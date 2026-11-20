@@ -20,7 +20,10 @@ const { bootServer } = require('./helpers/boot-server');
         assert.strictEqual(directive('frame-src'), 'frame-src https://openvibe.network', 'the shared Link/My shell permits only Network session frames');
         assert.ok(directive('script-src').includes('https://esm.sh'), 'script-src lets the mediasoup client through');
         assert.ok(directive('connect-src').includes('wss://ingest.openre.stream'), 'connect-src lets the screen signaling through');
-        console.log('CSP: home images, and the machine hub\'s live screen sources');
+        // The feed's preview videos (openvibe.media; 11-20: refused while media-src was unset and default-src 'self').
+        const media = directive('media-src').split(/\s+/);
+        assert.ok(media.includes('https:') && media.includes("'self'") && media.includes('blob:'), `media-src lets the feed's previews play: ${media.join(' ')}`);
+        console.log('CSP: home images, preview videos, and the machine hub\'s live screen sources');
         await srv.stop();
         process.exit(0);
     } finally {
