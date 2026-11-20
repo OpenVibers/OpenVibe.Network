@@ -579,68 +579,23 @@ async function logAnonIp(db, anonId, ip) {
 
 // ── Create Anonymous Session ─────────────────────────────────
 // POST /api/auth/anon-session
-// Creates a temporary anonymous identity with a unique number.
-// If force_new=true, always creates a new anon identity.
-// ── Sign out on every device ─────────────────────────────────
-// POST /api/auth/sign-out-everywhere: every token and session this person holds ends, here and (via
-// network.user.token_valid_after) on every OpenVibe site; open chat and game sockets close. The page
-// then runs the sign-out fanout so this browser's site sessions are cleared too.
-router.post('/sign-out-everywhere', requireAuth, async (req, res) => {
+// Creates a guest: a new anonymous identity with the next number, and the token that is its only proof.
+//
+// A guest is the token they hold, never their IP or a fingerprint (2026-11-20). This used to hand an existing guest to
+// anyone who sent the same client-chosen fingerprint, or who came from the same IP with no fingerprint, and rotate that
+// guest's token: two people behind one carrier or campus IP took each other's guest identity in turn, each signing the
+// other out. The account switcher keeps its token and checks it (GET /api/auth/anon/:token) before asking for a new
+// one, so a returning guest keeps theirs; a lost token is a new guest. The fingerprint is still stored, as a hint only.
+// New guests are limited per address (an hour's window), whatever /api/auth's limit on failures allows.
+const anonCreateLimit = require('express-rate-limit')({ windowMs: 60 * 60_000, max: 60, standardHeaders: true, legacyHeaders: false,
+    message: { error: 'Too many new guests from this address: try again later', code: 'auth.guest_rate_limited' } });
+router.post('/anon-session', anonCreateLimit, async (req, res) => {
     const db = await getDb(req);
-    const { validAfter } = await revocation.revokeTokens(db, req.user.id, { reason: 'signed_out_everywhere', ctx: req.ov });
-    revocation.kick(db);
-    try { await db.prepare('INSERT INTO audit_log (user_id, action, details) VALUES (?, ?, ?)').run(req.user.id, 'sign_out_everywhere', JSON.stringify({ valid_after: validAfter })); } catch { /* audit is best effort */ }
-    require('./session').clearSessionCookies(res);
-    res.set('Cache-Control', 'no-store');
-    res.json({ ok: true, valid_after: validAfter });
-});
-
-// Server-side sign-out: the page-side storage is cleared by the caller; this drops the cookies
-// only the server can (ov_sso is httpOnly). Idempotent, no auth required.
-router.post('/logout', (req, res) => {
-    require('./session').clearSessionCookies(res);
-    res.set('Cache-Control', 'no-store');
-    res.json({ ok: true });
-});
-
-router.post('/anon-session', async (req, res) => {
-    const db = await getDb(req);
-    const config = getConfig(req);
     const ip = getRequestIp(req);
 
     try {
         const sessionToken = uuidv4();
-        const fingerprint = req.body.fingerprint || null;
-        const forceNew = !!req.body.force_new;
-
-        // Check if this fingerprint already has an anon user (unless forcing new)
-        if (fingerprint && !forceNew) {
-            const existing = await db.prepare('SELECT * FROM anon_users WHERE fingerprint = ?').get(fingerprint);
-            if (existing) {
-                // Return existing anon user with a fresh session token
-                await db.prepare('UPDATE anon_users SET session_token = ?, last_seen = ov_now() WHERE id = ?')
-                    .run(sessionToken, existing.id);
-                await logAnonIp(db, existing.id, ip);
-                return res.json({
-                    token: sessionToken,
-                    user: formatAnonUser({ ...existing, last_seen: new Date().toISOString() }),
-                });
-            }
-        }
-
-        // Check if this IP already has a default anon (unless forcing new)
-        if (!forceNew) {
-            const byIp = await db.prepare('SELECT * FROM anon_users WHERE ip = ? ORDER BY id ASC LIMIT 1').get(ip);
-            if (byIp) {
-                await db.prepare('UPDATE anon_users SET session_token = ?, last_seen = ov_now() WHERE id = ?')
-                    .run(sessionToken, byIp.id);
-                await logAnonIp(db, byIp.id, ip);
-                return res.json({
-                    token: sessionToken,
-                    user: formatAnonUser({ ...byIp, last_seen: new Date().toISOString() }),
-                });
-            }
-        }
+        const fingerprint = typeof req.body.fingerprint === 'string' ? req.body.fingerprint.slice(0, 200) : null;
 
         // Generate next anon number
         const maxNum = (await db.prepare('SELECT MAX(anon_number) as max FROM anon_users').get()).max || 0;
@@ -731,35 +686,19 @@ router.post('/anon/:token/link', requireAuth, async (req, res) => {
 
 // ── List All Anon Identities for Current IP ──────────────────
 // GET /api/auth/anon-identities
-// Returns all anon identities associated with the caller's IP.
+// The caller's own guest identity (the guest token they hold, as a Bearer token), never a session token and never
+// anyone else's (2026-11-20: it listed every guest seen from the caller's IP with their session tokens, unauthenticated,
+// so anyone behind a shared address could take those guests over). No token, or not a guest's: an empty list.
 router.get('/anon-identities', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
     const db = await getDb(req);
-    const ip = getRequestIp(req);
-
+    const m = /^Bearer\s+([A-Za-z0-9-]{20,80})$/.exec(String(req.get('authorization') || ''));
+    if (!m) return res.json({ identities: [] });
     try {
-        // Find all anon IDs that have been seen from this IP
-        const anons = await db.prepare(`
-            SELECT DISTINCT a.* FROM anon_users a
-            INNER JOIN anon_ip_log l ON l.anon_id = a.id
-            WHERE l.ip = ?
-            ORDER BY a.anon_number ASC
-        `).all(ip);
-
-        // Also include any anon whose creating IP matches
-        const byCreatingIp = await db.prepare('SELECT * FROM anon_users WHERE ip = ?').all(ip);
-        const seen = new Set(anons.map(a => a.id));
-        for (const a of byCreatingIp) {
-            if (!seen.has(a.id)) anons.push(a);
-        }
-
-        res.json({
-            identities: anons.map(a => ({
-                ...formatAnonUser(a),
-                session_token: a.session_token,
-            })),
-        });
+        const anon = await db.prepare('SELECT * FROM anon_users WHERE session_token = ?').get(m[1]);
+        res.json({ identities: anon ? [formatAnonUser(anon)] : [] });
     } catch (err) {
-        console.error('[Auth] Anon identities error:', err);
+        console.error('[Auth] Anon identities error:', err.message);
         res.status(500).json({ error: 'Failed to list anon identities' });
     }
 });
