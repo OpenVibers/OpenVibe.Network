@@ -326,6 +326,36 @@ const pictureKey = (card) => {
 };
 const isDiscussion = (card) => card && card.site === 'community' && /^f:community:(thread|post):/.test(String(card.id || ''));
 const threadOf = (url) => String(url || '').split('#')[0];
+/**
+ * A stream's "N people watched X live" card and its recording are one thing (2026-11-20, the owner's register #908:
+ * "why are these duplicated?"): the recording keeps its card and takes the watchers; the watched card goes. Its
+ * recording is the same person's that started last before the stream ended, within 12 hours (a person's streams do not
+ * overlap; on production every recording card starts within a minute of its stream). One on another page stays.
+ * `folded` gets watched id → recording id, so the page counts the watched row as shown when the recording is.
+ */
+function foldWatched(cards, folded = new Map()) {
+    const recordings = cards.filter((c) => /^f:live:recording:/.test(String(c.id || '')) && c.subject);
+    if (!recordings.length) return cards;
+    const drop = new Set();
+    for (const w of cards) {
+        if (!/^f:live:watched:/.test(String(w.id || '')) || !w.subject) continue;
+        const end = Date.parse(w.at || '');
+        if (!Number.isFinite(end)) continue;
+        let best = null;
+        for (const r of recordings) {
+            const at = Date.parse(r.at || '');
+            if (r.subject !== w.subject || !Number.isFinite(at) || at > end || end - at > 12 * 3600_000) continue;
+            if (!best || at > Date.parse(best.at)) best = r;
+        }
+        if (!best) continue;
+        const watchers = Math.max(Number(w.counts && w.counts.watchers) || 0, Number(best.counts && best.counts.watchers) || 0);
+        if (watchers > 0) best.counts = { ...(best.counts || {}), watchers };
+        drop.add(w);
+        folded.set(w.id, best.id);
+    }
+    return drop.size ? cards.filter((c) => !drop.has(c)) : cards;
+}
+
 function oneCardPerThing(cards) {
     const byPicture = new Map();
     for (const c of cards) { const k = pictureKey(c); if (k && !isDiscussion(c) && !byPicture.has(k)) byPicture.set(k, c); }
@@ -458,4 +488,4 @@ function wallItem(card) {
     };
 }
 
-module.exports = { bulkId, BULK_WORD, RUN_PAGE, SITE_NAMES, kindOf, cardOf, oneCardPerThing, foldCards, compareRankedCards, rankCards, spreadCards, searchMatches, searchExamples, wallItem, titleKey, clean, https };
+module.exports = { bulkId, BULK_WORD, RUN_PAGE, SITE_NAMES, kindOf, cardOf, oneCardPerThing, foldWatched, foldCards, compareRankedCards, rankCards, spreadCards, searchMatches, searchExamples, wallItem, titleKey, clean, https };

@@ -7,7 +7,7 @@ const contracts = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
 const store = require('../server/feed/store');
 const { eventToItems } = require('../server/feed/events');
-const { cardOf, oneCardPerThing, foldCards, rankCards, searchMatches } = require('../server/feed/card');
+const { foldWatched, cardOf, oneCardPerThing, foldCards, rankCards, searchMatches } = require('../server/feed/card');
 const { createFeedApi } = require('../server/feed/api');
 const { createFrameService } = require('../server/frame/service');
 
@@ -68,6 +68,22 @@ const envelope = (type, payload, over = {}) => ({
     assert.strictEqual(jobs.length, 1);
     assert.strictEqual(jobs[0].title, '3 new jobs this hour');
     assert.strictEqual(jobs[0].group.count, 3);
+    // A stream's watched card folds into its recording (11-20, register #908 "why are these duplicated?").
+    {
+        const A = 'usr_01KZK5GRQ088Y3CW1TMEF4Z4RM', B = 'usr_01KZK5GRQ088Y3CW1TMEF4Z4RN';
+        const c = (o) => cardOf({ source_service: 'live', kind: o.kind, title: o.title || 'x', url: 'https://openvibe.live/x', site: 'live', site_name: 'Live', actor_subject: o.who, counts: o.counts || {}, ...o });
+        const rec1 = c({ source_type: 'recording', source_id: '6628', kind: 'video', who: A, occurred_at: '2026-11-19T16:58:18Z', counts: { views: 4 } });
+        const rec0 = c({ source_type: 'recording', source_id: '6619', kind: 'video', who: A, occurred_at: '2026-11-18T19:32:16Z' });
+        const w1 = c({ source_type: 'watched', source_id: '3059', kind: 'stream', who: A, occurred_at: '2026-11-19T18:51:16Z', counts: { watchers: 2 } });
+        const wB = c({ source_type: 'watched', source_id: '3056', kind: 'stream', who: B, occurred_at: '2026-11-19T18:00:00Z', counts: { watchers: 1 } });
+        const wEarly = c({ source_type: 'watched', source_id: '3000', kind: 'stream', who: A, occurred_at: '2026-11-17T10:00:00Z', counts: { watchers: 9 } });
+        const folded = new Map();
+        const out = foldWatched([w1, rec1, rec0, wB, wEarly], folded);
+        assert.deepStrictEqual(out.map((x) => x.id), ['f:live:recording:6628', 'f:live:recording:6619', 'f:live:watched:3056', 'f:live:watched:3000'],
+            'the watched card goes into the recording that started last before the stream ended; another person\'s and one with no recording before it stay');
+        assert.deepStrictEqual(out[0].counts, { views: 4, watchers: 2 }, 'the recording takes the watchers');
+        assert.deepStrictEqual([...folded], [['f:live:watched:3059', 'f:live:recording:6628']]);
+    }
     const deals = foldCards([1, 2, 3].map((n) => cardOf({ source_service: 'deals', source_type: 'offer', source_id: `d${n}`, kind: 'deal', title: `Deal ${n}`, url: 'https://openvibe.deals/d/x', site: 'deals', site_name: 'Deals', counts: {}, occurred_at: '2026-11-12T09:00:00.000Z' })));
     assert.strictEqual(deals.length, 1, 'a poll of deals is one card');
     assert.strictEqual(deals[0].title, '3 new deals');

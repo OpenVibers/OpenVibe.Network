@@ -17,7 +17,7 @@
  */
 const express = require('express');
 const store = require('./store');
-const { cardOf, oneCardPerThing, foldCards, rankCards, spreadCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD, RUN_PAGE } = require('./card');
+const { cardOf, oneCardPerThing, foldWatched, foldCards, rankCards, spreadCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD, RUN_PAGE } = require('./card');
 const { createPictures } = require('./pictures');
 const { createFeedSources } = require('./sources');
 const { createEffects } = require('./effects');
@@ -164,7 +164,8 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
             held.forEach((h, i) => { cards[i].counts = h.counts; });
         } catch { /* a card without a count */ }
         if (q) cards = cards.filter((c) => searchMatches(c, q));
-        cards = foldCards(oneCardPerThing(cards), now());
+        const folded = new Map();   // a watched card → the recording that took it (foldWatched)
+        cards = foldCards(foldWatched(oneCardPerThing(cards), folded), now());
         // The general feed's runs (2026-11-20): the newest Math.round(want / 10) (at least one) in the time this page covers,
         // from its top (the cursor, or now) down to its want-th person's thing (or the read's end when there is more), one
         // card each, counted whole. The ones an earlier page showed ride in the cursor.
@@ -221,6 +222,7 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
         // read, so the cards past the first `want` were never seen); a row of a shown burst or group counts as shown.
         const shown = new Set();
         for (const c of items) { shown.add(c.id); for (const it of (c.group && c.group.items) || []) shown.add(it.id); }
+        for (const [watched, recording] of folded) if (shown.has(recording)) shown.add(watched);
         const rowShown = (r) => {
             const hour = r.occurred_at ? new Date(r.occurred_at).toISOString().slice(0, 13) : '';
             return shown.has(`f:${r.source_service}:${r.source_type}:${r.source_id}`)
