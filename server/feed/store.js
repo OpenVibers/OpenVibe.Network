@@ -159,6 +159,13 @@ async function affinityServices(db, userId) {
 // were Deals rows, and the newest stream sat 3,600 rows down, under every page a reader could reach).
 const RUN_KINDS = ['deal', 'news', 'event', 'work'];
 
+// A Community thread about one item (/forum/pastes|clips|videos/item-<id>: a paste's, clip's or video's discussion) is that
+// item's comments, not a card of its own (11-20: the paste "Current read, it's so thin…" showed again as its thread
+// "1000012166", the camera file name it was first saved under, and "Re: 1000012166"; the two never met on one page, so
+// the page fold could not join them). The item has its own card.
+const ITEM_DISCUSSION_RE = '/forum/(pastes|clips|videos)/item-[0-9]+(#.*)?$';
+const isItemDiscussionUrl = (url) => new RegExp(ITEM_DISCUSSION_RE).test(String(url || ''));
+
 async function listItems(db, { kind = '', site = '', q = '', followed = [], following = false, before = null, viewerSubject = null, limit = 40, since = null, skipBursts = [], runsApart = false } = {}) {
     const where = [];
     const args = [];
@@ -169,6 +176,7 @@ async function listItems(db, { kind = '', site = '', q = '', followed = [], foll
         where.push('NOT (i.kind = ? AND i.site = ? AND i.actor_subject IS NULL AND i.occurred_at >= ? AND i.occurred_at < ?)');
         args.push(b.kind, b.site, from.toISOString(), new Date(from.getTime() + 3600_000).toISOString());
     }
+    where.push("NOT (i.source_service = 'community' AND i.url ~ ?)"); args.push(ITEM_DISCUSSION_RE);
     if (kind) { where.push('i.kind = ?'); args.push(kind); }
     if (site) { where.push('i.site = ?'); args.push(site); }
     if (q) { where.push('(i.title ILIKE ? OR i.text ILIKE ?)'); args.push(`%${q}%`, `%${q}%`); }
@@ -259,4 +267,4 @@ async function burstStart(db, { kind, site, before }) {
     return other ? null : iso(first.at);
 }
 
-module.exports = { upsertItem, upsertLiveItem, removeItem, removeMissing, followedSubjects, affinityServices, listItems, listRuns, runRows, RUN_KINDS, countBulk, burstStart, iso, ms };
+module.exports = { isItemDiscussionUrl, upsertItem, upsertLiveItem, removeItem, removeMissing, followedSubjects, affinityServices, listItems, listRuns, runRows, RUN_KINDS, countBulk, burstStart, iso, ms };

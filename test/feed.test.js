@@ -278,6 +278,18 @@ const envelope = (type, payload, over = {}) => ({
             assert.strictEqual(again.length, 0, 'the next page does not show the burst again');
         }
     }
+    // An item's discussion thread is the item's comments, not a card (11-20: the paste and its thread "1000012166").
+    {
+        const at = (m) => new Date(Date.now() - m * 60000).toISOString();
+        await store.upsertItem(db, { source_service: 'community', source_type: 'paste', source_id: 'lone-path', kind: 'pic', title: 'Current read, it is so thin', text: '', url: 'https://openvibe.community/p/lone-path', site: 'itemdemo', site_name: 'Community', actor_subject: A, counts: {}, occurred_at: at(30), visibility: 'public' });
+        await store.upsertItem(db, { source_service: 'community', source_type: 'thread', source_id: 'itd1', kind: 'post', title: '1000012166', text: '', url: 'https://openvibe.community/forum/pastes/item-55847', site: 'itemdemo', site_name: 'Community', actor_subject: A, counts: {}, occurred_at: at(25), visibility: 'public' });
+        await store.upsertItem(db, { source_service: 'community', source_type: 'post', source_id: 'itd2', kind: 'post', title: 'Re: 1000012166', text: '.', url: 'https://openvibe.community/forum/pastes/item-55847#post-165', site: 'itemdemo', site_name: 'Community', actor_subject: A, counts: {}, occurred_at: at(20), visibility: 'public' });
+        await store.upsertItem(db, { source_service: 'community', source_type: 'thread', source_id: 'itd3', kind: 'post', title: 'A forum thread', text: 'hi', url: 'https://openvibe.community/forum/status/t9', site: 'itemdemo', site_name: 'Community', actor_subject: A, counts: {}, occurred_at: at(15), visibility: 'public' });
+        const r = await get('/api/v1/feed?site=itemdemo&limit=10');
+        assert.deepStrictEqual(r.d.items.map((x) => x.title).sort(), ['A forum thread', 'Current read, it is so thin'], JSON.stringify(r.d.items.map((x) => x.title)));
+        assert.strictEqual(store.isItemDiscussionUrl('https://openvibe.community/forum/clips/item-23'), true);
+        assert.strictEqual(store.isItemDiscussionUrl('https://openvibe.community/forum/status/t9'), false);
+    }
     // A ranked page shows an older card ahead of newer ones (11-20, production: 15 of the first 120 public cards came
     // again on a later page): the next page starts at the newest row not shown, and the older one shown rides in the
     // cursor, so it is not shown twice and nothing is skipped.
