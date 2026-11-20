@@ -73,7 +73,7 @@ function fakeFetch(routes) {
     src = make({
         '/api/streams': { streams: [{ id: 9, username: 'alex', display_name: 'Alex', title: 'a stream', started_at: '2026-11-12 08:55:00' }] },
         '/api/content/feed': { sources: { vods: 'ok', clips: 'ok' }, items: [
-            { kind: 'vod', id: 'r1', href: 'https://openvibe.video/watch?v=r1', title: 'A stream', created_at: '2026-11-12 07:00:00', channel: { username: 'alex', display_name: 'Alex' }, duration_seconds: 3600 },
+            { kind: 'vod', id: 'r1', href: 'https://openvibe.video/watch?v=r1', title: 'A stream', created_at: '2026-11-12 07:00:00', channel: { username: 'alex', display_name: 'Alex' }, duration_seconds: 3600, preview_url: 'https://openvibe.media/p/vod-r1-preview.mp4' },
             { kind: 'clip', id: 'c1', href: 'https://openvibe.live/clip/c1', title: 'A clip', created_at: '2026-11-12 08:00:00', channel: { username: 'alex' } },
         ], next: null },
         '/api/rundown/streams': { streams: [{ stream_id: 3005, user: { username: 'alex', display_name: 'Alex' }, title: 'An episode', started_at: '2026-11-11 20:00:00', live: false, episode: { title: 'The case for a feed', logline: 'A logline', audience: 'public', aired_at: '2026-11-11 21:00:00' }, thumbnail_url: 'https://openvibe.media/t/e.jpg' }], next: null },
@@ -82,6 +82,9 @@ function fakeFetch(routes) {
     assert.ok((await rows()).some((r) => r.kind === 'live' && r.live_now === true));
     assert.ok((await rows()).some((r) => r.kind === 'video'));
     assert.ok((await rows()).some((r) => r.kind === 'clip'));
+    // The preview the feed plays in view (register #691): a recording's from Media; none where Live sent none.
+    assert.strictEqual((await rows()).find((r) => r.source_type === 'recording' && r.source_id === 'r1').preview_url, 'https://openvibe.media/p/vod-r1-preview.mp4');
+    assert.strictEqual((await rows()).find((r) => r.source_type === 'clip' && r.source_id === 'c1').preview_url, null);
     await src.rundownEpisodes();
     assert.ok((await rows()).some((r) => r.kind === 'rundown'));
 
