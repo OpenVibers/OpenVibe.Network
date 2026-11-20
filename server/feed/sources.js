@@ -146,6 +146,14 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
     }
 
     // ── Network members ───────────────────────────────────────
+    // A day said the way people say it (11-20, the owner's register #908: no raw numbers in titles): "today",
+    // "yesterday", else "on Nov 18" (UTC, the day the rows are grouped by).
+    function dayWords(day, today) {
+        if (day === today) return 'today';
+        if (day === new Date(Date.parse(`${today}T12:00:00Z`) - DAY).toISOString().slice(0, 10)) return 'yesterday';
+        return `on ${new Date(`${day}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}`;
+    }
+
     async function networkMembers() {
         const at = now();
         const rows = await db.prepare(`SELECT substring(created_at, 1, 10) AS day, COUNT(*) AS n FROM users
@@ -160,7 +168,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             if (!Number.isInteger(count) || count <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
             const r = await upsert({
                 source_service: 'network', source_type: 'members', source_id: day, kind: 'member',
-                title: day === today ? `${count} ${count === 1 ? 'person' : 'people'} joined today` : `${count} ${count === 1 ? 'person' : 'people'} joined on ${day}`,
+                title: `${count} ${count === 1 ? 'person' : 'people'} joined ${dayWords(day, today)}`,
                 url: `${config.networkUrl || 'https://openvibe.network'}/stats`, site: 'network', site_name: 'Network',
                 actor_subject: null, origin: 'system', label: 'Network',
                 text: Number(total && total.n) > 0 ? `${Number(total.n).toLocaleString('en-US')} people on OpenVibe so far` : '',
@@ -407,8 +415,10 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             const ended = sqlFrom(s.ended_at);
             if (!ended) continue;
             const r = await upsert({ source_service: 'live', source_type: 'watched', source_id: String(s.stream_id), kind: 'stream',
-                title: `${peak.toLocaleString('en-US')} ${peak === 1 ? 'person' : 'people'} watched ${label} tonight`,
-                text: clean(s.title, 220), url: `https://openvibe.live/@${encodeURIComponent((name && name.username) || label)}`,
+                // "Tonight" was wrong by day; and the stream is over, so the card opens its replay (Live's /replay/<id>: the
+                // recording once Media has a public one, else the channel; 11-20).
+                title: `${peak.toLocaleString('en-US')} ${peak === 1 ? 'person' : 'people'} watched ${label} live`,
+                text: clean(s.title, 220), url: `https://openvibe.live/replay/${Number(s.stream_id)}`,
                 site: 'live', site_name: 'Live', actor_subject: who, origin: 'user', occurred_at: ended,
                 counts: { watchers: peak } });
             if (r.created) created++;

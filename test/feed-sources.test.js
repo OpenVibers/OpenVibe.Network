@@ -91,6 +91,17 @@ function fakeFetch(routes) {
     assert.strictEqual(await src.watchedTogether(), 1);
     const watched = (await rows()).find((r) => r.source_id === '4242');
     assert.deepStrictEqual([watched.kind, watched.counts.watchers], ['stream', 312]);
+    assert.match(watched.title, /^312 people watched .+ live$/, 'said as "watched X live", not "tonight"');
+    assert.strictEqual(watched.url, 'https://openvibe.live/replay/4242', 'the stream is over: its replay');
+    // New members by day, said as people say a day.
+    await db.prepare(`INSERT INTO users (username, password_hash, created_at) VALUES ('newbie1', 'x', ?), ('newbie2', 'x', ?), ('newbie3', 'x', ?)`)
+        .run(new Date(NOW).toISOString(), new Date(NOW - 86400000).toISOString(), new Date(NOW - 3 * 86400000).toISOString());
+    await src.networkMembers();
+    const joined = (await db.prepare("SELECT title FROM feed_items WHERE source_service = 'network' AND source_type = 'members' ORDER BY source_id DESC").all()).map((r) => r.title);
+    assert.ok(joined.some((t) => / joined today$/.test(t)) && joined.some((t) => / joined yesterday$/.test(t)), joined.join(' | '));
+    const older = new Date(NOW - 3 * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    assert.ok(joined.some((t) => t.endsWith(` joined on ${older}`)), `an older day by its month and day (${joined.join(' | ')})`);
+    assert.ok(!joined.some((t) => /\d{4}-\d\d-\d\d/.test(t)), 'never a raw date');
 
     // Spaces.
     src = make({ '/api/v1/apps/gallery': { spaces: [{ id: 'spc_01M6SV8E153FM2T70WAF14TB4W', name: 'A space', url: 'https://openvibe.space/s/1', published_at: NOW - 3600000, owner_name: 'Alex' }], next_cursor: null } });
