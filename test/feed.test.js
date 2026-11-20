@@ -7,7 +7,7 @@ const contracts = require('openvibe-contracts');
 const { getDb } = require('../server/db/database');
 const store = require('../server/feed/store');
 const { eventToItems } = require('../server/feed/events');
-const { foldWatched, cardOf, oneCardPerThing, foldCards, rankCards, searchMatches } = require('../server/feed/card');
+const { foldWatched, foldEpisodes, cardOf, oneCardPerThing, foldCards, rankCards, searchMatches } = require('../server/feed/card');
 const { createFeedApi } = require('../server/feed/api');
 const { createFrameService } = require('../server/frame/service');
 
@@ -83,6 +83,24 @@ const envelope = (type, payload, over = {}) => ({
             'the watched card goes into the recording that started last before the stream ended; another person\'s and one with no recording before it stay');
         assert.deepStrictEqual(out[0].counts, { views: 4, watchers: 2 }, 'the recording takes the watchers');
         assert.deepStrictEqual([...folded], [['f:live:watched:3059', 'f:live:recording:6628']]);
+    }
+    // A stream's Rundown card folds into its recording, which takes the episode's logline (11-20, register #908).
+    {
+        const A = 'usr_01KZK5GRQ088Y3CW1TMEF4Z4RM', B = 'usr_01KZK5GRQ088Y3CW1TMEF4Z4RN';
+        const c = (o) => cardOf({ source_service: 'live', title: o.title || 'x', url: 'https://openvibe.live/x', site: 'live', site_name: 'Live', actor_subject: o.who, counts: {}, ...o });
+        const rec = c({ source_type: 'recording', source_id: '6628', kind: 'video', who: A, title: 'Recording: Loud Mic', occurred_at: '2026-11-19T16:58:18Z' });
+        const named = c({ source_type: 'recording', source_id: '6591', kind: 'video', who: A, title: 'Recording: TW: scary!', text: 'Their own words', occurred_at: '2026-11-17T18:42:03Z' });
+        const ep = c({ source_type: 'episode', source_id: '3059', kind: 'rundown', who: A, title: 'Rundown: Loud Mic', text: 'A loud mic and bait boxes.', occurred_at: '2026-11-19T16:58:16Z' });
+        const ep2 = c({ source_type: 'episode', source_id: '3048', kind: 'rundown', who: A, title: 'Rundown: Barn Twin', text: 'Barn twins.', occurred_at: '2026-11-17T18:41:20Z' });
+        const other = c({ source_type: 'episode', source_id: '3056', kind: 'rundown', who: B, title: 'Rundown: Someone else', occurred_at: '2026-11-19T16:58:00Z' });
+        const lonely = c({ source_type: 'episode', source_id: '3000', kind: 'rundown', who: A, title: 'Rundown: No recording', occurred_at: '2026-11-15T10:00:00Z' });
+        const folded = new Map();
+        const out = foldEpisodes([ep, rec, named, ep2, other, lonely], folded);
+        assert.deepStrictEqual(out.map((x) => x.id), ['f:live:recording:6628', 'f:live:recording:6591', 'f:live:episode:3056', 'f:live:episode:3000'],
+            'an episode goes into its recording; another person\'s, and one with no recording near it, stay');
+        assert.strictEqual(out[0].text, 'A loud mic and bait boxes.', 'the recording takes the logline');
+        assert.strictEqual(out[1].text, 'Their own words', 'a recording with words of its own keeps them');
+        assert.deepStrictEqual([...folded], [['f:live:episode:3059', 'f:live:recording:6628'], ['f:live:episode:3048', 'f:live:recording:6591']]);
     }
     const deals = foldCards([1, 2, 3].map((n) => cardOf({ source_service: 'deals', source_type: 'offer', source_id: `d${n}`, kind: 'deal', title: `Deal ${n}`, url: 'https://openvibe.deals/d/x', site: 'deals', site_name: 'Deals', counts: {}, occurred_at: '2026-11-12T09:00:00.000Z' })));
     assert.strictEqual(deals.length, 1, 'a poll of deals is one card');

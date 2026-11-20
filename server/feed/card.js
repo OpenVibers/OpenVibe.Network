@@ -356,6 +356,36 @@ function foldWatched(cards, folded = new Map()) {
     return drop.size ? cards.filter((c) => !drop.has(c)) : cards;
 }
 
+/**
+ * A stream's Rundown card and its recording are one thing too (2026-11-20: a recording named after its episode, Live
+ * #1002, sat beside "Rundown: <the same title>"; register #908 also asks for "the AI overview … and description" on
+ * feed items): the recording keeps its card (the video, its counts) and takes the episode's logline as its words when
+ * it has none; the Rundown card goes. Its recording is the same person's that started within 15 minutes of the
+ * episode's air time (both are the stream's start). Rundown alone (kind=rundown) and an episode with no recording on
+ * the page are not touched. `folded` as in foldWatched.
+ */
+function foldEpisodes(cards, folded = new Map()) {
+    const recordings = cards.filter((c) => /^f:live:recording:/.test(String(c.id || '')) && c.subject);
+    if (!recordings.length) return cards;
+    const drop = new Set();
+    for (const e of cards) {
+        if (!/^f:live:episode:/.test(String(e.id || '')) || !e.subject) continue;
+        const aired = Date.parse(e.at || '');
+        if (!Number.isFinite(aired)) continue;
+        let best = null, gap = Infinity;
+        for (const r of recordings) {
+            const d = Math.abs(Date.parse(r.at || '') - aired);
+            if (r.subject !== e.subject || !(d <= 15 * 60_000) || d >= gap) continue;
+            best = r; gap = d;
+        }
+        if (!best) continue;
+        if (!best.text && e.text) best.text = e.text;
+        drop.add(e);
+        folded.set(e.id, best.id);
+    }
+    return drop.size ? cards.filter((c) => !drop.has(c)) : cards;
+}
+
 function oneCardPerThing(cards) {
     const byPicture = new Map();
     for (const c of cards) { const k = pictureKey(c); if (k && !isDiscussion(c) && !byPicture.has(k)) byPicture.set(k, c); }
@@ -488,4 +518,4 @@ function wallItem(card) {
     };
 }
 
-module.exports = { bulkId, BULK_WORD, RUN_PAGE, SITE_NAMES, kindOf, cardOf, oneCardPerThing, foldWatched, foldCards, compareRankedCards, rankCards, spreadCards, searchMatches, searchExamples, wallItem, titleKey, clean, https };
+module.exports = { bulkId, BULK_WORD, RUN_PAGE, SITE_NAMES, kindOf, cardOf, oneCardPerThing, foldWatched, foldEpisodes, foldCards, compareRankedCards, rankCards, spreadCards, searchMatches, searchExamples, wallItem, titleKey, clean, https };
