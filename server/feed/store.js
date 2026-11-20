@@ -117,9 +117,12 @@ async function removeItem(db, service, type, id) {
 }
 
 /** Remove every item a source no longer lists (a gallery page, a recordings feed): the kept ids survive. */
-async function removeMissing(db, service, type, keepIds) {
+async function removeMissing(db, service, type, keepIds, { since = null } = {}) {
     const keep = new Set([...keepIds].map(String));
-    const rows = await db.prepare('SELECT source_id FROM feed_items WHERE source_service = ? AND source_type = ?').all(service, type);
+    // `since`: only items newer than it (a source read the newest part of its list; older ones were not asked about).
+    const rows = since
+        ? await db.prepare('SELECT source_id FROM feed_items WHERE source_service = ? AND source_type = ? AND occurred_at > ?').all(service, type, since)
+        : await db.prepare('SELECT source_id FROM feed_items WHERE source_service = ? AND source_type = ?').all(service, type);
     let removed = 0;
     for (const row of rows) if (!keep.has(String(row.source_id))) removed += await removeItem(db, service, type, row.source_id);
     return removed;

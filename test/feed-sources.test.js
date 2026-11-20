@@ -156,5 +156,32 @@ function fakeFetch(routes) {
     assert.deepStrictEqual(whereStat.facts[0], { label: 'on Live', n: 1 }, 'a site and how many are on it');
     assert.deepStrictEqual(peakCard.stat.facts[0], { label: 'people today', n: 1240 });
 
+    // 11-20: a recording deleted on Live leaves the feed. Live's list ran past the 20 pages a run reads, so the removal,
+    // which waited for its end, never ran (RePlayer009's deleted recording stayed, its preview a 404). A run removes what
+    // is missing from the stretch it read; an hourly run reads it all and removes older ones too.
+    let liveList = Array.from({ length: 25 }, (_, i) => ({ kind: 'vod', id: `g${i + 1}`, href: `https://openvibe.video/watch?v=g${i + 1}`, title: `Stream ${i + 1}`,
+        created_at: new Date(NOW - (i + 1) * 3600000).toISOString(), channel: { username: 'alex' } }));
+    const pageOf = (u) => {
+        const at = Number(new URL(u).searchParams.get('cursor') || 0);
+        return { sources: { vods: 'ok', clips: 'ok' }, items: liveList.slice(at, at + 1), next: at + 1 < liveList.length ? String(at + 1) : null };
+    };
+    let clock = NOW;
+    const pages = createFeedSources({ db, now: () => clock, log: { warn() {} }, config: { networkUrl: 'https://openvibe.network', feed: { liveUrl: 'https://live.test' } },
+        fetchImpl: fakeFetch({ '/api/streams': { streams: [] }, '/api/content/feed': pageOf }) });
+    const recordings = async () => (await rows()).filter((r) => r.source_type === 'recording').map((r) => r.source_id).sort();
+    await pages.publicContent();
+    assert.strictEqual((await recordings()).filter((x) => /^g\d+$/.test(x)).length, 25, 'the first run reads the whole list');
+    liveList = liveList.filter((v) => v.id !== 'g3' && v.id !== 'g24');   // deleted on Live: one new, one old
+    clock = NOW + 5 * 60000;
+    await pages.publicContent();
+    let left = await recordings();
+    assert.ok(!left.includes('g3'), 'a recording deleted from the stretch a run read leaves at once');
+    assert.ok(left.includes('g24') && left.includes('g25'), 'older ones the run did not read stay');
+    clock = NOW + 61 * 60000;
+    await pages.publicContent();
+    left = await recordings();
+    assert.ok(!left.includes('g24'), 'the hourly run reads it all and removes the old one');
+    assert.strictEqual(left.filter((x) => /^g\d+$/.test(x)).length, 23);
+
     console.log('feed sources: community, today, quest, play, meme, pics, live, rundown, watch, space, work, deals, news and report map to feed.item@1');
 })().catch((err) => { console.error(err); process.exit(1); });
