@@ -144,7 +144,30 @@ function createAvatarService({ db, config, requireAuth, selfToken = () => null, 
         await setUrl.run(url, userId);
         try { await db.prepare('INSERT INTO audit_log (user_id, action, details, ip) VALUES (?, ?, ?, ?)').run(userId, 'avatar_change', JSON.stringify({ from: before, to: url, origin }), null); } catch { /* audit is best effort */ }
         if (origin !== 'live' || pushBack) pushToSites(userId, username, url);
+        if (url) await feedNote(userId, username, url, before);
         return true;
+    }
+
+    /**
+     * A new picture in the network feed (the owner's register #544, 2026-11-20: "the feed misses avatar uploads"): one
+     * card per person (network:avatar:<id>), moved to the top by each new picture; a removed picture leaves the card as
+     * it was. The picture is public whatever the profile setting (a private profile still shows its name and picture).
+     * A feed failure never fails the change.
+     */
+    const feedPerson = db.prepare('SELECT subject_id, display_name FROM users WHERE id = ?');
+    async function feedNote(userId, username, url, before) {
+        try {
+            const u = await feedPerson.get(userId);
+            if (!u || !u.subject_id || !/^https:\/\//.test(String(url))) return;
+            const name = String(u.display_name || username || '').replace(/\s+/g, ' ').trim().slice(0, 80) || username;
+            await require('../feed/store').upsertItem(db, {
+                source_service: 'network', source_type: 'avatar', source_id: String(userId), kind: 'pic',
+                title: before ? `${name} has a new profile picture` : `${name} added a profile picture`, text: '',
+                url: `https://openvibe.network/@${encodeURIComponent(username)}`, site: 'network', site_name: 'Network',
+                picture_url: url, media_ratio: 1, actor_subject: u.subject_id, actor_name: name, origin: 'user',
+                visibility: 'public', counts: {}, occurred_at: new Date().toISOString(), touch: true,
+            });
+        } catch (err) { if (log && log.warn) log.warn('[avatar] feed card not written:', err.message); }
     }
 
     const api = express.Router();
