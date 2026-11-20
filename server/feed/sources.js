@@ -333,11 +333,15 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
     // waited for the end of the list, never ran: RePlayer009's deleted recording stayed in the feed, its preview a 404.
     // Each run now removes what is missing from the stretch it read (newer than the oldest item of that type it saw);
     // once an hour a run reads the whole list and removes anything missing from it.
-    let contentFullAt = 0;
+    // 11-20: this sweep was 93 % of Live's /api/content/feed asks (20 pages every 3 minutes, ~154 ms each on Live). New
+    // recordings and clips come in at the top, so a run reads the first 2 pages; every 30 minutes it reads 20 (counts
+    // and removals further down), and hourly the whole list.
+    let contentFullAt = 0, contentDeepAt = 0;
     async function publicContent() {
         const seen = new Set();
         const oldest = { recording: null, clip: null };   // the oldest created_at read, per type: the stretch this run covered
         const full = now() - contentFullAt >= 60 * MINUTE;
+        const deep = full || now() - contentDeepAt >= 30 * MINUTE;
         let cursor = null, created = 0;
         const live = await getJson(`${urls.live}/api/streams`);
         const onAir = new Map();
@@ -363,7 +367,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
         // Anything no longer on Live's list is a past broadcast, not "live now".
         const onAirRows = await db.prepare("SELECT source_id FROM feed_items WHERE source_service = 'live' AND source_type = 'stream' AND live_now = true").all();
         for (const row of onAirRows) if (!liveIds.has(String(row.source_id))) await db.prepare("UPDATE feed_items SET live_now = false, updated_at = now() WHERE source_service = 'live' AND source_type = 'stream' AND source_id = ?").run(String(row.source_id));
-        for (let page = 0; page < (full ? 200 : 20); page++) {
+        for (let page = 0; page < (full ? 200 : deep ? 20 : 2); page++) {
             const url = new URL('/api/content/feed', urls.live);
             url.searchParams.set('sort', 'new');
             url.searchParams.set('window', 'all');
@@ -412,6 +416,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
             else if (oldest[type]) await store.removeMissing(db, 'live', type, keep, { since: oldest[type] });
         }
         if (!cursor && full) contentFullAt = now();
+        if (deep) contentDeepAt = now();
         return created;
     }
 
