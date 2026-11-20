@@ -69,6 +69,14 @@ function fakeFetch(routes) {
     assert.strictEqual(await src.publicPictures(), 1);
     assert.strictEqual((await rows()).find((r) => r.kind === 'pic' && r.source_service === 'pics').source_service, 'pics');
 
+    // 11-20: Play's API is at play.openvibe.network; openvibe.games (its pages) answered 404 to every feed read.
+    const asked = [];
+    const playDefault = createFeedSources({ db, now: () => NOW, log: { warn() {} }, config: { networkUrl: 'https://openvibe.network', feed: {} },
+        fetchImpl: async (u) => { asked.push(String(u)); return { ok: true, status: 200, async json() { return { items: [], next: null }; } }; } });
+    await playDefault.playAchievements();
+    assert.ok(asked.some((u) => u.startsWith('https://play.openvibe.network/api/v1/achievements/feed')), asked.join(' '));
+    assert.strictEqual(require('../server/config').feed.playUrl, process.env.OV_PLAY_URL || 'https://play.openvibe.network');
+
     // Live: on air, recordings and clips; the Rundown episodes.
     src = make({
         '/api/streams': { streams: [{ id: 9, username: 'alex', display_name: 'Alex', title: 'a stream', started_at: '2026-11-12 08:55:00' }] },

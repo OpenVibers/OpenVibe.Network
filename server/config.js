@@ -91,7 +91,9 @@ module.exports = {
         communityUrl: process.env.OV_COMMUNITY_URL || '',
         todayUrl: process.env.OV_TODAY_URL || 'https://openvibe.today',
         questUrl: process.env.OV_QUEST_URL || 'https://openvibe.quest',
-        playUrl: process.env.OV_PLAY_URL || 'https://openvibe.games',
+        // Play's API stays at play.openvibe.network (its pages moved to openvibe.games, which answers 404 for /api/v1:
+        // 287 failed feed reads in three days, 11-20, and no achievement ever reached the feed).
+        playUrl: process.env.OV_PLAY_URL || 'https://play.openvibe.network',
         memeUrl: process.env.OV_MEME_URL || 'https://openvibe.meme',
         picsUrl: process.env.OV_PICS_URL || 'https://openvibe.pics',
         liveUrl: process.env.OV_LIVE_URL || '',

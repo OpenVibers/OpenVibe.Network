@@ -50,7 +50,7 @@ function createFeedSources({ db, config = {}, fetchImpl = globalThis.fetch, now 
         community: String(feed.communityUrl || (config.services && config.services.community && config.services.community.internalUrl) || 'https://openvibe.community').replace(/\/+$/, ''),
         today: String(feed.todayUrl || 'https://openvibe.today').replace(/\/+$/, ''),
         quest: String(feed.questUrl || 'https://openvibe.quest').replace(/\/+$/, ''),
-        play: String(feed.playUrl || 'https://openvibe.games').replace(/\/+$/, ''),
+        play: String(feed.playUrl || 'https://play.openvibe.network').replace(/\/+$/, ''),   // Play's API host (config.js)
         meme: String(feed.memeUrl || 'https://openvibe.meme').replace(/\/+$/, ''),
         pics: String(feed.picsUrl || 'https://openvibe.pics').replace(/\/+$/, ''),
         live: String(feed.liveUrl || (config.services && config.services.live && config.services.live.internalUrl) || 'https://openvibe.live').replace(/\/+$/, ''),
