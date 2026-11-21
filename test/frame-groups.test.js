@@ -158,6 +158,8 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
         const theirs = new Set([...await groups.adapter.hidden({ id: ada.subject_id }), ...await groups.adapter.hidden({ id: bo.subject_id })]);
         assert.ok(theirs.has(agentStep.run_ref), `the group's runs are hidden from their people's lists: ${agentStep.run_ref} in ${JSON.stringify([...theirs])} (ada ${JSON.stringify(ada)})`);
         assert.ok(![...(await groups.adapter.hidden({ id: cy.subject_id }))].length, 'a stranger has none');
+        // A group turn says it is one, so the agent's product sends no done alert of its own (11-21).
+        assert.ok(calls.filter((c) => c.op === 'start').every((c) => c.body.source && c.body.source.kind === 'group' && c.body.source.id === id), 'every turn names its group');
         const said = await fetch(`${runBase}/group:${id}/messages`, { method: 'POST', headers: { Authorization: BO, 'Content-Type': 'application/json' }, body: JSON.stringify({ text: '@actor one more thing' }) });
         assert.strictEqual(said.status, 201, 'said through the runs API');
         await until(async () => { const v = (await call(BO, 'GET', `/${id}`)).json; return !v.busy && v.messages.length >= 9 ? v : null; });

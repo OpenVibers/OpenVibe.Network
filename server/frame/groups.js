@@ -125,12 +125,15 @@ function turnWords(words, member, team) {
 }
 
 /** What the Frame's run start reads for this agent (agents.run-start@1 as server/frame/runs.js takes it). */
-function startBody(config, text) {
+function startBody(config, text, source = null) {
+    // A group's turn (11-21): the agent's product shows it in the group, not as an alert of its own ("Your task is
+    // done — You are Design in a group conversation…").
+    const from = source && /^[A-Za-z0-9_-]{1,64}$/.test(String(source.id || '')) ? { source: { kind: 'group', id: String(source.id) } } : {};
     if (config.product === 'codes') {
-        return { text, kind: 'code', agent: config.harness || 'codes', ...(config.model ? { model: { id: config.model } } : {}) };
+        return { text, kind: 'code', agent: config.harness || 'codes', ...(config.model ? { model: { id: config.model } } : {}), ...from };
     }
-    if (config.agent) return { text, kind: 'task', agent: config.agent };
-    return { text, kind: 'task', agent: 'actor', ...(config.engine ? { engine: config.engine } : {}) };
+    if (config.agent) return { text, kind: 'task', agent: config.agent, ...from };
+    return { text, kind: 'task', agent: 'actor', ...(config.engine ? { engine: config.engine } : {}), ...from };
 }
 
 function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetch, now = Date.now, log = console, pollMs = 3000, turnTimeoutMs = 10 * 60 * 1000, check = null } = {}) {
@@ -190,7 +193,7 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
         let seen = known ? Number(known.seen_seq) || 0 : 0;
         if (ref) await frame(`/runs/${encodeURIComponent(ref)}/messages`, { auth, method: 'POST', body: { text: words } });
         else {
-            const run = await frame('/runs', { auth, method: 'POST', body: startBody(config, words) });
+            const run = await frame('/runs', { auth, method: 'POST', body: startBody(config, words, { id }) });
             ref = run.ref || run.id;
             if (!ref) throw fail(502, 'groups.no_run', 'The agent did not start');
             await db.prepare(`INSERT INTO frame_group_runs (group_id, member_id, subject, run_ref, seen_seq) VALUES (?, ?, ?, ?, 0)
