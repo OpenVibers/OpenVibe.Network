@@ -28,7 +28,9 @@ const MY_HOST = 'openvibe.my';
 const WWW_HOST = 'www.openvibe.my';
 const NETWORK_HOSTS = new Set(['openvibe.network', 'www.openvibe.network']);
 const HUB_PATHS = new Set(require('../not-found').ACCOUNT_HUB_PATHS.filter((p) => !p.startsWith('/my')));
-const BOT_RE = /bot|crawl|spider|slurp|headless/i;
+// Crawlers and AI agents (the same list as openvibe-shared seo.isCrawler, 4.333.0): ChatGPT-User, Google-Extended and
+// meta-externalagent carry no "bot" and were sent to silent sign-in (the network SEO pass, 11-21).
+const BOT_RE = /bot|crawl|spider|slurp|archiver|headless|preview|facebookexternalhit|embedly|gptbot|chatgpt-user|oai-searchbot|claude|anthropic|perplexity|ccbot|google-extended|applebot|amazonbot|meta-external|bytespider|youbot|cohere-ai|diffbot|yandex|baiduspider|petalbot|ahrefs|semrush/i;
 const PAGE = path.join(__dirname, '..', '..', 'public', 'my.html');
 const MEMORY_PAGE = 'https://openvibe.codes/memory';
 

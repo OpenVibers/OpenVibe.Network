@@ -25,7 +25,9 @@ const LINK_CLIENT_ID = 'link-web';
 const LINK_CALLBACK = `${SITE}/auth/callback`;
 const HUB_PATH = '/machines';
 const HUB_PAGE = pathLib.join(__dirname, '..', '..', 'public', 'my.html');
-const BOT_RE = /bot|crawl|spider|slurp|headless/i;
+// Crawlers and AI agents (the same list as openvibe-shared seo.isCrawler, 4.333.0): ChatGPT-User, Google-Extended and
+// meta-externalagent carry no "bot" and were sent to silent sign-in (the network SEO pass, 11-21).
+const BOT_RE = /bot|crawl|spider|slurp|archiver|headless|preview|facebookexternalhit|embedly|gptbot|chatgpt-user|oai-searchbot|claude|anthropic|perplexity|ccbot|google-extended|applebot|amazonbot|meta-external|bytespider|youbot|cohere-ai|diffbot|yandex|baiduspider|petalbot|ahrefs|semrush/i;
 
 // The hub is the account page reduced to its Machines section: the body is marked link-hub (my.css hides the account
 // home, the email card and the settings tabs), the page is titled for Link, and the section's heading is the page's
