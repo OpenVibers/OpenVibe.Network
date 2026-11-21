@@ -155,6 +155,8 @@ app.use(helmet({
                 // Release notifications: release-watch's EventSource on the Events realtime stream (openvibe-shared 1.17)
                 "https://openvibe.events",
                 "https://openvibe.link",   // Link's page on its own origin
+                // openvibe.my's spare usage box (plan §AD.37): OpenVibe.Codes' /api/v1/me/spare with the person's token.
+                "https://openvibe.codes",
                 // The machine's live screen on the Link hub: OpenRestream's viewer signaling socket.
                 "wss://ingest.openre.stream",
             ],
