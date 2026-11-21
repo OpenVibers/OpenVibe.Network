@@ -81,7 +81,8 @@ async function loadSpare() {
     });
     const list = spEl('ul', 'sp-tasks', [], { role: 'list' });
     for (const t of v.tasks.slice(0, 6)) list.append(spEl('li', `sp-task is-${t.state}`, [spEl('b', '', [t.title]), spEl('span', 'muted', [` ${({ queued: 'waiting', running: 'running', done: 'done', failed: 'did not finish', paused: 'paused' })[t.state] || t.state}`])]));
-    box.replaceChildren(
+    // replaceChildren writes a null as the word "null": only the parts there are.
+    box.replaceChildren(...[
         spEl('div', 'sp-head', [
             spEl('h4', '', ['Spare usage']),
             spEl('label', 'sp-switch', [sw, spEl('span', '', ['Use it on my list'])], { for: 'sp-enabled' }),
@@ -92,6 +93,6 @@ async function loadSpare() {
         add,
         status,
         spEl('a', 'sp-more', ['The whole list and its settings on OpenVibe Codes'], { href: `${SP_CODES}/settings/spare` }),
-    );
+    ].filter(Boolean));
 }
 document.addEventListener('DOMContentLoaded', () => { loadSpare().catch(() => {}); });

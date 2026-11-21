@@ -38,6 +38,7 @@ assert.ok(html.includes('id="mc-spare"'), 'the spare usage box is in the Machine
 const spareJs = fs.readFileSync(path.join(pub, 'js', 'my', 'spare.js'), 'utf8');
 assert.ok(!/innerHTML|insertAdjacentHTML/.test(spareJs), 'spare.js never parses text as HTML');
 assert.strictEqual(owner.get('loadSpare'), 'spare.js');
+assert.ok(/replaceChildren\(\.\.\.\[[\s\S]*?\]\.filter\(Boolean\)\)/.test(spareJs), 'an empty part is left out, never written as "null"');
 assert.ok(/https:\/\/openvibe\.codes\/api\/v1\/me\/spare|SP_CODES \+ path/.test(spareJs) && spareJs.includes("'/api/v1/me/spare'"), 'it reads the list from OpenVibe.Codes');
 assert.ok(fs.readFileSync(path.join(__dirname, '..', 'server', 'index.js'), 'utf8').includes('"https://openvibe.codes",'), 'connect-src reaches openvibe.codes');
 
