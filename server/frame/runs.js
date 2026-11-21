@@ -307,7 +307,9 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
             const model = body.model && typeof body.model === 'object' && typeof body.model.id === 'string' ? body.model : undefined;
             const where = body.where && typeof body.where === 'object' && body.where.kind === 'machine' && typeof body.where.id === 'string' ? { kind: 'machine', id: body.where.id } : undefined;
             const way = engineOf(body.engine);
-            return actorRun(await call('actor', '/api/v1/runs', { auth, method: 'POST', body: { text, ...(kind ? { kind } : {}), ...(agentId ? { agent: agentId } : {}), ...(model ? { model } : {}), ...(where ? { where } : {}), ...(way ? { engine: way } : {}) }, accept: RUN_TYPE, idempotencyKey }));
+            // A group's turn says so (groups.js startBody), so Actor sends no done alert of its own.
+            const source = body.source && body.source.kind === 'group' && /^[A-Za-z0-9_-]{1,64}$/.test(String(body.source.id || '')) ? { kind: 'group', id: String(body.source.id) } : undefined;
+            return actorRun(await call('actor', '/api/v1/runs', { auth, method: 'POST', body: { text, ...(kind ? { kind } : {}), ...(agentId ? { agent: agentId } : {}), ...(model ? { model } : {}), ...(where ? { where } : {}), ...(way ? { engine: way } : {}), ...(source ? { source } : {}) }, accept: RUN_TYPE, idempotencyKey }));
         },
         async say(auth, owner, id, msg) {
             const text = withFiles(msg.text, msg.attachments);
