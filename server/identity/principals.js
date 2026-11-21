@@ -590,6 +590,9 @@ const DEFAULT_GRANTS = [
     ...['actor.task.create', 'actor.task.read'].map((c) => ['codes', c, 'openvibe.actor', []]),
     // Plan T18/T16: a watch's codes-run action starts a coding task for its owner on Codes (Watch#55).
     ['watch', 'codes.task.start', 'openvibe.codes', []],
+    // Plan AD.37 (Contracts 0.450.0, 2026-11-21): a watch's usage source reads its owner's AI plan windows from Codes
+    // (GET /api/v1/me/usage, X-OV-Subject): "detect your usage limit and … use that on Watch".
+    ['watch', 'codes.task.read', 'openvibe.codes', []],
     // Plan T2 lane B step 3: Host places and runs per project, so it reads a project's tenancy, placement and quotas.
     // Other services get this row only when they ship a caller of GET /internal/projects/:project_id.
     ['host', 'network.project.read', SELF_AUDIENCE, []],
