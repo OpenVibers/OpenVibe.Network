@@ -12,7 +12,7 @@ for (const [, body] of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)) as
 
 const files = fs.readdirSync(path.join(pub, 'js', 'my')).filter((f) => f.endsWith('.js')).sort();
 // The module map, in load order (public/js/my/…).
-const modules = ['core.js', 'tools.js', 'today.js', 'machines.js', 'access.js', 'themes.js', 'profile.js', 'emails.js', 'consent.js', 'labels.js', 'security.js', 'passkeys.js', 'mfa.js', 'approvals.js', 'apps.js', 'receipts.js', 'boot.js'];
+const modules = ['core.js', 'tools.js', 'today.js', 'machines.js', 'spare.js', 'access.js', 'themes.js', 'profile.js', 'emails.js', 'consent.js', 'labels.js', 'security.js', 'passkeys.js', 'mfa.js', 'approvals.js', 'apps.js', 'receipts.js', 'boot.js'];
 assert.deepStrictEqual(files, [...modules].sort(), 'each module file exists and there is no other');
 const tags = [...html.matchAll(/<script\b([^>]*)\bsrc="\/js\/my\/([^"]+)"([^>]*)><\/script>/g)];
 const loaded = tags.map((m) => m[2]);
@@ -31,6 +31,15 @@ for (const f of files) {
 assert.ok(owner.size > 70, 'the modules declare the hub functions');
 // Every section calls these, so they load first.
 for (const name of ['_bootstrapFromCookie', 'getAuthToken', 'apiFetch', 'showSection']) assert.strictEqual(owner.get(name), 'core.js', `${name} lives in core.js`);
+
+// Spare usage (plan §AD.37): its box under Your machines, filled by spare.js from OpenVibe.Codes with the person's own
+// token (so openvibe.my's connect-src reaches openvibe.codes), built from DOM nodes (task titles are the person's words).
+assert.ok(html.includes('id="mc-spare"'), 'the spare usage box is in the Machines section');
+const spareJs = fs.readFileSync(path.join(pub, 'js', 'my', 'spare.js'), 'utf8');
+assert.ok(!/innerHTML|insertAdjacentHTML/.test(spareJs), 'spare.js never parses text as HTML');
+assert.strictEqual(owner.get('loadSpare'), 'spare.js');
+assert.ok(/https:\/\/openvibe\.codes\/api\/v1\/me\/spare|SP_CODES \+ path/.test(spareJs) && spareJs.includes("'/api/v1/me/spare'"), 'it reads the list from OpenVibe.Codes');
+assert.ok(fs.readFileSync(path.join(__dirname, '..', 'server', 'index.js'), 'utf8').includes('"https://openvibe.codes",'), 'connect-src reaches openvibe.codes');
 
 // The Approvals section (T2 WS-Z2): its tab, its section and its list, and the module builds rows from DOM nodes, never
 // innerHTML (summaries, names and resources come from agents).
