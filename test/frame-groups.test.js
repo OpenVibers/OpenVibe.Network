@@ -151,6 +151,13 @@ const until = async (fn, ms = 8000) => { const end = Date.now() + ms; for (;;) {
         const asAda = await (await fetch(`${runBase}/group:${id}/steps`, { headers: { Authorization: ADA } })).json();
         assert.strictEqual(asAda.steps[0].author.you, false, 'the same step, read by someone else');
         assert.strictEqual(steps.steps.find((x) => x.author.handle === 'codes').files[0].name, 'patch.diff');
+        // 11-21: each agent answer links to the run it was worked in, and those runs are the group's, not the list's.
+        const agentStep = steps.steps.find((x) => x.from === 'agent' && x.author.handle === 'actor');
+        assert.match(String(agentStep.run_ref || ''), /^actor:r\d+$/, 'an agent answer names its run');
+        // The run is on the account of the person whose message started that round: it leaves that person's list.
+        const theirs = new Set([...await groups.adapter.hidden({ id: ada.subject_id }), ...await groups.adapter.hidden({ id: bo.subject_id })]);
+        assert.ok(theirs.has(agentStep.run_ref), `the group's runs are hidden from their people's lists: ${agentStep.run_ref} in ${JSON.stringify([...theirs])} (ada ${JSON.stringify(ada)})`);
+        assert.ok(![...(await groups.adapter.hidden({ id: cy.subject_id }))].length, 'a stranger has none');
         const said = await fetch(`${runBase}/group:${id}/messages`, { method: 'POST', headers: { Authorization: BO, 'Content-Type': 'application/json' }, body: JSON.stringify({ text: '@actor one more thing' }) });
         assert.strictEqual(said.status, 201, 'said through the runs API');
         await until(async () => { const v = (await call(BO, 'GET', `/${id}`)).json; return !v.busy && v.messages.length >= 9 ? v : null; });

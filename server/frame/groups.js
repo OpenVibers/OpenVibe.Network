@@ -152,7 +152,7 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
     const sdkMembers = (rows) => rows.map((r) => { const c = configOf(r); return { id: r.member_id, kind: r.kind, name: r.name, handle: r.handle, lead: !!c.lead, coder: !!c.coder, reviewer: !!c.reviewer }; });
     const filesOf = (row) => { const f = typeof row.files === 'string' ? JSON.parse(row.files || '[]') : row.files; return Array.isArray(f) ? f : []; };
     async function messages(id, after = 0, limit = 500) {
-        return db.prepare(`SELECT seq, from_id, from_kind, by_subject, text, files, state, why, usd, created_at, updated_at FROM frame_group_messages
+        return db.prepare(`SELECT seq, from_id, from_kind, by_subject, text, files, state, why, run_ref, usd, created_at, updated_at FROM frame_group_messages
             WHERE group_id = ? AND seq > ? ORDER BY seq LIMIT ?`).all(id, Number(after) || 0, limit);
     }
     const historyOf = (rows) => rows.filter((m) => m.state !== 'working').map((m) => ({ from: m.from_id, fromKind: m.from_kind, text: m.text, usd: m.usd == null ? 0 : Number(m.usd) }));
@@ -460,6 +460,16 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
         async list(auth, owner, { limit = 30 } = {}) {
             return (await listFor(owner.id, limit)).map((g) => asRun(g, owner));
         },
+        /**
+         * The runs an agent works a group's turns in, on this person's account (frame_group_runs): they are the group's,
+         * so the one runs list leaves them out and the group's thread links each answer to its run (the owner, 11-21:
+         * "it spawns sub-agents, but … it's not indicated in the main chat … confusing"; the menu listed "You are Design
+         * in a group conversation…" as a session of its own).
+         */
+        async hidden(owner) {
+            const rows = await db.prepare('SELECT run_ref FROM frame_group_runs WHERE subject = ?').all(owner.id);
+            return new Set(rows.map((r) => String(r.run_ref || '')).filter(Boolean));
+        },
         async get(auth, owner, id) {
             const v = await view(id, owner.id, Number.MAX_SAFE_INTEGER);
             return asRun(v.group, owner, { busy: v.busy, members: v.members });
@@ -473,6 +483,8 @@ function createFrameGroups({ db, frameUrl, personOf, fetchImpl = globalThis.fetc
                     : { ...authorOf(rows, m.from_id), ...(m.from_kind === 'person' ? { you: m.by_subject === owner.id } : {}) },
                 text: m.text || null, files: filesOf(m), attachments: filesOf(m),
                 status: m.state === 'working' ? 'running' : m.state === 'failed' ? 'failed' : 'done', started_at: m.created_at,
+                // The agent's own run for this answer (its steps, tools and model): the thread links to it.
+                ...(m.from_kind === 'agent' && m.run_ref && /^[a-z][a-z0-9-]{0,30}:[A-Za-z0-9_:.-]{1,120}$/.test(String(m.run_ref)) ? { run_ref: String(m.run_ref) } : {}),
                 ...(m.why ? { why: m.why } : {}), ...(m.usd != null ? { cost: { usd: Number(m.usd) } } : {}),
             }));
             return { steps: all, next: null };

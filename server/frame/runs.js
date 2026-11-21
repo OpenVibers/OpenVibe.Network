@@ -411,6 +411,14 @@ function createFrameRuns({ svcUrl = (name, fallback) => fallback, personOf = asy
             return [];
         })));
         let runs = lists.flat();
+        // A group's agents work its turns in runs of their own (on this person's account): the group shows them, the list
+        // does not (11-21).
+        if (PRODUCTS.group && typeof PRODUCTS.group.hidden === 'function') {
+            try {
+                const theirs = await PRODUCTS.group.hidden(owner);
+                if (theirs.size) runs = runs.filter((r) => !theirs.has(String(r.ref || '')) && !theirs.has(`${r.product || ''}:${r.id || ''}`));
+            } catch { /* a list with them in it */ }
+        }
         if (kind) runs = runs.filter((r) => (r.kind || 'task') === kind);
         if (status) runs = runs.filter((r) => r.status === status);
         if (q) runs = runs.filter((r) => `${r.title || ''} ${(r.preview && r.preview.text) || ''}`.toLowerCase().includes(q));
