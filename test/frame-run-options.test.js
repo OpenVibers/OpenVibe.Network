@@ -77,6 +77,30 @@ const reply = (status, body) => new Response(JSON.stringify(body), { status, hea
     assert.deepStrictEqual(got.body.agents.map((a) => a.id), ['auto', 'actor', 'codes']);
     assert.deepStrictEqual(got.body.places.map((p) => p.kind), ['auto', 'openvibe']);
 
+    // Your coding agents as they stand (Codes /api/v1/me/harnesses; the owner, 11-21: Claude Code said Ready while no
+    // machine of theirs had it): ready ones say so, the others say why and carry the way to set them up.
+    const withYours = async (url, init = {}) => {
+        const u = new URL(url);
+        if (u.pathname === '/api/v1/me/harnesses') {
+            assert.strictEqual(init.headers.Authorization, 'Bearer tok_abcdefghijklmnopqrstuvwxyz', 'asked as the person');
+            return reply(200, { harnesses: [
+                { id: 'claude-code', ready: false, badge: 'Not installed', line: 'Not on your machine yet', plan: 'a Claude Pro or Max plan', install: 'npm install -g @anthropic-ai/claude-code', sign_in: 'claude', sign_in_note: 'and sign in when it asks', docs: 'https://docs.claude.com/en/docs/claude-code/setup', setup_url: 'https://openvibe.codes/setup#agent-claude-code' },
+                { id: 'codex', ready: true, badge: '12% used', line: 'Signed in on Studio PC' },
+                { id: '../x', ready: true },
+            ] });
+        }
+        if (u.pathname === '/api/v1/harnesses') return reply(200, { harnesses: [{ id: 'claude-code', name: 'Claude Code', provider: 'anthropic' }, { id: 'codex', name: 'Codex', provider: 'openai' }] });
+        return fetchImpl(url, init);
+    };
+    codesUp = true;
+    const yours = createRunOptions({ svcUrl: (n, f) => f, fetchImpl: withYours, bot, now: () => t, log: { warn() {} } });
+    got = await yours.get({ auth: 'Bearer tok_abcdefghijklmnopqrstuvwxyz', subject: 'usr_1' });
+    const claude = got.body.agents.find((a) => a.id === 'claude-code');
+    const codex = got.body.agents.find((a) => a.id === 'codex');
+    assert.deepStrictEqual([claude.available, claude.badge, claude.line], [false, 'Not installed', 'Not on your machine yet']);
+    assert.deepStrictEqual(claude.setup, { plan: 'a Claude Pro or Max plan', install: 'npm install -g @anthropic-ai/claude-code', sign_in: 'claude', sign_in_note: 'and sign in when it asks', docs: 'https://docs.claude.com/en/docs/claude-code/setup', url: 'https://openvibe.codes/setup#agent-claude-code' });
+    assert.deepStrictEqual([codex.available, codex.badge, codex.line, codex.setup], [true, '12% used', 'A coding agent by OpenAI', null], 'a ready one keeps its maker line');
+
     // The route is mounted beside /choices.
     const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'server', 'frame', 'service.js'), 'utf8');
     assert.match(src, /router\.get\('\/run-options'/);
