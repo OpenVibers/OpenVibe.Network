@@ -98,13 +98,37 @@ function createRunOptions({ svcUrl = (n, f) => f, fetchImpl = globalThis.fetch, 
     async function computers(subject) {
         return (await machines(subject)).map(placeOf).sort((x, y) => Number(!!x.disabled) - Number(!!y.disabled) || x.name.localeCompare(y.name));
     }
+    /**
+     * Each coding agent as it stands for this person (Codes GET /api/v1/me/harnesses; the owner, 11-21: Claude Code said
+     * Ready while no machine of theirs had it): ready, the badge, the line and the way to set it up. Null when Codes does
+     * not answer: the list then says nothing either way.
+     */
+    async function yourAgents(auth) {
+        try {
+            const r = await fetchImpl(new URL('/api/v1/me/harnesses', svcUrl('codes', 'http://127.0.0.1:4900')).href, { headers: { Accept: 'application/json', Authorization: auth }, redirect: 'error', signal: AbortSignal.timeout(4000) });
+            const j = r.ok ? await r.json() : null;
+            return j && Array.isArray(j.harnesses) ? new Map(j.harnesses.filter((h) => h && ID.test(String(h.id || ''))).map((h) => [String(h.id), h])) : null;
+        } catch (err) { if (log.warn) log.warn(`[run-options] your coding agents: ${err && err.message}`); return null; }
+    }
+    const https = (u) => (/^https:\/\/[a-z0-9.-]+(\/|$)/i.test(String(u || '')) ? String(u).slice(0, 300) : null);
+    function withReadiness(h, r) {
+        if (!r) return h;
+        return {
+            ...h, available: !!r.ready, badge: clip(r.badge || (r.ready ? 'Ready' : 'Set up'), 24),
+            ...(r.ready ? {} : { line: clip(r.line || 'Not set up on a computer of yours yet', 120) }),
+            setup: r.ready ? null : {
+                plan: clip(r.plan, 120) || null, install: clip(r.install, 200) || null, sign_in: clip(r.sign_in, 120) || null,
+                sign_in_note: clip(r.sign_in_note, 120) || null, docs: https(r.docs), url: https(r.setup_url),
+            },
+        };
+    }
     async function get({ auth = '', subject = null } = {}) {
         if (!auth) return { body: { agents: BASE_AGENTS, places: BASE_PLACES }, cache: true };
-        const [name, list, mine] = await Promise.all([actorName(auth), harnesses(), computers(subject)]);
-        const agents = BASE_AGENTS.map((a) => (a.id === 'actor' ? { ...a, name } : a)).concat(list);
+        const [name, list, mine, ready] = await Promise.all([actorName(auth), harnesses(), computers(subject), yourAgents(auth)]);
+        const agents = BASE_AGENTS.map((a) => (a.id === 'actor' ? { ...a, name } : a)).concat(list.map((h) => withReadiness(h, ready && ready.get(h.id))));
         return { body: { agents, places: BASE_PLACES.concat(mine) }, cache: false };
     }
-    return { get, harnesses, computers, machines, BASE_AGENTS, BASE_PLACES };
+    return { get, harnesses, yourAgents, computers, machines, BASE_AGENTS, BASE_PLACES };
 }
 
 module.exports = { createRunOptions, makerLine, BASE_AGENTS, BASE_PLACES };
