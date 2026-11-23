@@ -182,29 +182,18 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
         // A page is a stretch of time, newest first (11-23, the owner: "Timestamps are still screwed up all over in the
         // feed": the menu drew Friday's cards, then "6 min ago", then Saturday's). A page used to keep the best-ranked cards
         // of what it read, and the next began at the newest card it left out, so every later page went back up to minutes
-        // ago under older day lines. Now a page walks its cards newest first and keeps what the general feed's caps allow
-        // (no one person or site fills it: two of a person, three of a site, capCards' numbers). It ends at the oldest card
-        // it kept, and a card it passed over above that is not shown later under older ones. What is live now leads the
-        // first page whenever it started; later pages leave it out.
+        // ago under older day lines. Now a page is the newest `want` cards below its cursor, and the next page starts
+        // below its oldest. Nothing is left out to keep a page varied (a per-site cap of three dropped 213 of 242 Live
+        // cards in a month, measured the same day): the folds above (a person's watched stream, episodes, runs of a kind)
+        // and the menu's (back-to-back streams, the day's Report numbers, the same achievement by several people) keep it
+        // varied. What is live now leads the first page whenever it started; later pages leave it out.
         const stamp = (c) => Date.parse(c.at || '') || 0;
         const newestFirst = (a, b) => (stamp(b) - stamp(a)) || String(a.id).localeCompare(String(b.id));
         const liveNow = (c) => c.kind === 'live' && c.live_now === true;
         cards.sort(newestFirst);
         const lead = before ? [] : cards.filter(liveNow);
-        const kept = [], waiting = [];
-        const byActor = new Map(), bySite = new Map();
-        for (const c of cards) {
-            if (liveNow(c)) continue;
-            if (kept.length >= want) break;
-            const actor = c.subject || null, s = c.site || '';
-            if (general && ((actor && (byActor.get(actor) || 0) >= 2) || (s && (bySite.get(s) || 0) >= 3))) { waiting.push(c); continue; }
-            kept.push(c);
-            if (actor) byActor.set(actor, (byActor.get(actor) || 0) + 1);
-            if (s) bySite.set(s, (bySite.get(s) || 0) + 1);
-        }
-        // A page its read could not fill takes back what the caps passed over (still in time order).
+        const kept = cards.filter((c) => !liveNow(c)).slice(0, want);
         const full = kept.length >= want;
-        if (!full) { kept.push(...waiting.slice(0, want - kept.length)); kept.sort(newestFirst); }
         // The general feed's runs (2026-11-20): the newest Math.round(want / 10) (at least one) in the stretch this page
         // covers, from its top (the cursor, or now) down to its oldest card (or the read's end when there is more), one card
         // each, counted whole, in their place in time. The ones an earlier page showed ride in the cursor.
