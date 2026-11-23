@@ -202,8 +202,13 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
             const from = full ? stamp(kept[kept.length - 1]) : (read.hasMore && Number.isFinite(lastRead) ? lastRead : Date.parse(base.since));
             try {
                 const runs = await store.listRuns(db, { from, to: before ? Date.parse(before[0]) : null, skip, limit: Math.max(1, Math.round(want / 10)) });
+                // A run's card takes its hour's newest row's time, which can be after this page's top (the hour began before
+                // the cursor): that one belonged to the page above, and here it would sit above newer cards (production, 11-23:
+                // "61 new deals" at 12:50 under a page that began at 12:38).
+                const top = before ? Date.parse(before[0]) : Infinity;
                 for (const run of runs) {
                     for (const c of foldCards((await store.runRows(db, run)).map((r) => cardOf(r, null)), now())) {
+                        if (stamp(c) > top) continue;
                         // A run of jobs counts the whole hour, not the rows drawn (deals, news and events are counted below).
                         if (/^g:work:/.test(String(c.id || '')) && c.group && run.n > c.group.count) {
                             c.title = `${run.n.toLocaleString('en-US')} new jobs this hour`;
