@@ -424,6 +424,8 @@ const DEFAULT_GRANTS = [
     ['bot', 'identity.subject.resolve', SELF_AUDIENCE, []],
     // Bot tells a person their turn on a robot has started (11-23, LOOI viewer turns): one notification as `service: bot`.
     ['bot', 'network.notifications.push', SELF_AUDIENCE, ['bot']],
+    // A robot's line can let the owner's followers go first (11-23): Bot reads who follows the owner's channel.
+    ['bot', 'network.follows.read', SELF_AUDIENCE, []],
     // Plan T15: Bot runs each robot's OpenRestream stream for its owner (find/create/archive, key rotation), plays the live
     // session in the panel (session.read), restreams out (output.*) and sets the owner's streaming and recording
     // toggles on the stream, minting its own token with its Network client instead of a hand-set BOT_OPENRE_TOKEN.
