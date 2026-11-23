@@ -309,9 +309,15 @@ const envelope = (type, payload, over = {}) => ({
         }
         assert.deepStrictEqual(ids, [1, 2, 3, 4, 5, 6].map((i) => `f:community:thread:ranked${i}`), `newest first across pages, each once, none skipped (${ids.join(', ')})`);
     }
-    // The general feed, page after page, never goes back up in time (the caps leave cards out; they never come back
-    // under older ones): every card, page by page, is no newer than the one before it.
+    // The general feed, page after page, never goes back up in time, and leaves nothing out (11-23: a per-site cap of
+    // three dropped 213 of 242 Live cards in a month): every card is no newer than the one before it, and one person's
+    // six posts of the last hour are all there.
     {
+        for (let i = 0; i < 6; i++) {
+            await store.upsertItem(db, { source_service: 'community', source_type: 'thread', source_id: `burst${i}`, kind: 'post', title: `Burst ${i}`, text: 'hi',
+                url: `https://openvibe.community/forum/status/burst${i}`, site: 'community', site_name: 'Community', actor_subject: A, counts: {},
+                occurred_at: new Date(Date.now() - (i + 1) * 60000).toISOString(), visibility: 'public' });
+        }
         const stamps = [];
         let cursor = '';
         for (let page = 0; page < 40; page++) {
@@ -325,6 +331,8 @@ const envelope = (type, payload, over = {}) => ({
             assert.ok(Date.parse(stamps[i][0]) <= Date.parse(stamps[i - 1][0]), `card ${i} (${stamps[i][1]} at ${stamps[i][0]}) is newer than the one before it (${stamps[i - 1][1]} at ${stamps[i - 1][0]})`);
         }
         assert.strictEqual(new Set(stamps.map((s) => s[1])).size, stamps.length, 'no card twice across pages');
+        const ids = new Set(stamps.map((s) => s[1]));
+        assert.deepStrictEqual([0, 1, 2, 3, 4, 5].filter((i) => !ids.has(`f:community:thread:burst${i}`)), [], 'every one of the six posts is on a page');
     }
     // The general feed reads people's things apart from the runs (production, 11-20: 11,389 of 11,500 public rows in
     // three days were Deals rows; the newest stream sat 3,600 rows down): a stream under 600 deal and 60 job rows is on
