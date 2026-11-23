@@ -17,7 +17,7 @@
  */
 const express = require('express');
 const store = require('./store');
-const { cardOf, oneCardPerThing, foldWatched, foldEpisodes, foldCards, rankCards, spreadCards, capCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD, RUN_PAGE } = require('./card');
+const { cardOf, oneCardPerThing, foldWatched, foldEpisodes, foldCards, rankCards, spreadCards, searchMatches, searchExamples, wallItem, bulkId, BULK_WORD, RUN_PAGE } = require('./card');
 const { createPictures } = require('./pictures');
 const { createFeedSources } = require('./sources');
 const { createEffects } = require('./effects');
@@ -122,7 +122,6 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
         const viewer = await viewerOf(req, { db, publicKey, config });
         if (following && !viewer) return { error: 'sign_in' };
         const followed = viewer && viewer.subject ? await store.followedSubjects(db, viewer.subject) : [];
-        const affinity = viewer ? await store.affinityServices(db, viewer.id) : new Map();
         const before = decodeCursor(String(req.query.cursor || ''));
 
         // The general feed (no kind, site, search or Following) reads people's things apart from the runs sources post with
@@ -180,13 +179,38 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
         if (q) cards = cards.filter((c) => searchMatches(c, q));
         const folded = new Map();   // a watched card → the recording that took it (foldWatched)
         cards = foldCards(foldEpisodes(foldWatched(oneCardPerThing(cards), folded), folded), now());
-        // The general feed's runs (2026-11-20): the newest Math.round(want / 10) (at least one) in the time this page covers,
-        // from its top (the cursor, or now) down to its want-th person's thing (or the read's end when there is more), one
-        // card each, counted whole. The ones an earlier page showed ride in the cursor.
+        // A page is a stretch of time, newest first (11-23, the owner: "Timestamps are still screwed up all over in the
+        // feed": the menu drew Friday's cards, then "6 min ago", then Saturday's). A page used to keep the best-ranked cards
+        // of what it read, and the next began at the newest card it left out, so every later page went back up to minutes
+        // ago under older day lines. Now a page walks its cards newest first and keeps what the general feed's caps allow
+        // (no one person or site fills it: two of a person, three of a site, capCards' numbers). It ends at the oldest card
+        // it kept, and a card it passed over above that is not shown later under older ones. What is live now leads the
+        // first page whenever it started; later pages leave it out.
+        const stamp = (c) => Date.parse(c.at || '') || 0;
+        const newestFirst = (a, b) => (stamp(b) - stamp(a)) || String(a.id).localeCompare(String(b.id));
+        const liveNow = (c) => c.kind === 'live' && c.live_now === true;
+        cards.sort(newestFirst);
+        const lead = before ? [] : cards.filter(liveNow);
+        const kept = [], waiting = [];
+        const byActor = new Map(), bySite = new Map();
+        for (const c of cards) {
+            if (liveNow(c)) continue;
+            if (kept.length >= want) break;
+            const actor = c.subject || null, s = c.site || '';
+            if (general && ((actor && (byActor.get(actor) || 0) >= 2) || (s && (bySite.get(s) || 0) >= 3))) { waiting.push(c); continue; }
+            kept.push(c);
+            if (actor) byActor.set(actor, (byActor.get(actor) || 0) + 1);
+            if (s) bySite.set(s, (bySite.get(s) || 0) + 1);
+        }
+        // A page its read could not fill takes back what the caps passed over (still in time order).
+        const full = kept.length >= want;
+        if (!full) { kept.push(...waiting.slice(0, want - kept.length)); kept.sort(newestFirst); }
+        // The general feed's runs (2026-11-20): the newest Math.round(want / 10) (at least one) in the stretch this page
+        // covers, from its top (the cursor, or now) down to its oldest card (or the read's end when there is more), one card
+        // each, counted whole, in their place in time. The ones an earlier page showed ride in the cursor.
         if (general) {
-            const times = cards.map((c) => Date.parse(c.at || '')).filter(Number.isFinite).sort((a, b) => b - a);
             const lastRead = read.rows.length ? Date.parse(read.rows[read.rows.length - 1].occurred_at) : NaN;
-            const from = times.length >= want ? times[want - 1] : (read.hasMore && Number.isFinite(lastRead) ? lastRead : Date.parse(base.since));
+            const from = full ? stamp(kept[kept.length - 1]) : (read.hasMore && Number.isFinite(lastRead) ? lastRead : Date.parse(base.since));
             try {
                 const runs = await store.listRuns(db, { from, to: before ? Date.parse(before[0]) : null, skip, limit: Math.max(1, Math.round(want / 10)) });
                 for (const run of runs) {
@@ -197,13 +221,14 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
                             c.group.count = run.n;
                             c.counts = { ...c.counts, people: run.n };
                         }
-                        cards.push(c);
+                        kept.push(c);
                     }
                 }
             } catch { /* people's things alone */ }
+            kept.sort(newestFirst);
         }
         // A burst's card counts the whole hour, not just the rows this page read (11-12: three "112 new deals").
-        for (const card of cards.filter((c) => c.bulk)) {
+        for (const card of [...lead, ...kept].filter((c) => c.bulk)) {
             const b = card.bulk;
             delete card.bulk;
             let n = card.group ? card.group.count : 1;
@@ -218,11 +243,7 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
             card.group.count = n;
             card.counts = { ...card.counts, people: n };
         }
-        cards = rankCards(cards, { followed: new Set(followed), affinity, now: now() });
-        // The general feed is no one person's or site's (capCards); a site's or kind's own page is left whole.
-        if (general) { const capped = capCards(cards, want); cards = spreadCards(capped.slice(0, want)).concat(capped.slice(want)); }
-        else cards = spreadCards(cards);
-        const items = cards.slice(0, want).map(pictures.card);
+        const items = [...lead, ...kept].map(pictures.card);
         // A run's card (g:…, an hour of deals or jobs) counts its own views (11-15, the owner: "why is there no view count
         // on everything on the feed?"): under feed:group:<id>, the ref the views beacon counts it by. Before, it showed its
         // first row's views, and nothing counted the run, so it stayed at 0.
@@ -235,19 +256,27 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
                 runs.forEach((c, i) => { c.counts = { ...(c.counts || {}), views: Math.max(0, Number(held[i].counts && held[i].counts.views) || 0) }; });
             } catch { /* the count it had */ }
         }
-        // The next page starts at the newest row whose card this page did not show (it used to start after every row
-        // read, so the cards past the first `want` were never seen); a row of a shown burst or group counts as shown.
-        const shown = new Set();
-        for (const c of items) { shown.add(c.id); for (const it of (c.group && c.group.items) || []) shown.add(it.id); }
-        for (const [watched, recording] of folded) if (shown.has(recording)) shown.add(watched);
-        const rowShown = (r) => {
-            const hour = r.occurred_at ? new Date(r.occurred_at).toISOString().slice(0, 13) : '';
-            return shown.has(`f:${r.source_service}:${r.source_type}:${r.source_id}`)
-                || (!r.actor_subject && BULK_WORD[r.kind] && shown.has(bulkId(r.kind, r.site, hour)))
-                || (r.kind === 'work' && shown.has(`g:work:${hour}`));
+        // The next page starts below the oldest row of a card this page kept, so it never goes back up above it (a page its
+        // read could not fill goes on below everything it read); a row of a shown burst or group counts as shown.
+        const idsOf = (list) => {
+            const ids = new Set();
+            for (const c of list) { ids.add(c.id); for (const it of (c.group && c.group.items) || []) ids.add(it.id); }
+            for (const [watched, recording] of folded) if (ids.has(recording)) ids.add(watched);
+            return ids;
         };
-        const firstOut = read.rows.findIndex((r) => !rowShown(r));
-        const edge = firstOut > 0 ? read.rows[firstOut - 1] : read.rows[read.rows.length - 1];
+        const shown = idsOf(items);
+        const inStretch = idsOf(kept);
+        const rowIn = (ids, r) => {
+            const hour = r.occurred_at ? new Date(r.occurred_at).toISOString().slice(0, 13) : '';
+            return ids.has(`f:${r.source_service}:${r.source_type}:${r.source_id}`)
+                || (!r.actor_subject && BULK_WORD[r.kind] && ids.has(bulkId(r.kind, r.site, hour)))
+                || (r.kind === 'work' && ids.has(`g:work:${hour}`));
+        };
+        const rowShown = (r) => rowIn(shown, r);
+        let edge = null;
+        if (full) for (let i = read.rows.length - 1; i >= 0 && !edge; i--) if (rowIn(inStretch, read.rows[i])) edge = read.rows[i];
+        if (!edge) edge = read.rows[read.rows.length - 1] || null;
+        const below = (r) => { const at = Date.parse(r.occurred_at), e = Date.parse(edge.occurred_at); return at < e || (at === e && Number(r.id) < Number(edge.id)); };
         // The bursts shown so far ride in the cursor while the next page can still meet their rows (an hour that has not
         // ended before the cursor's time).
         const edgeAt = edge ? new Date(edge.occurred_at).toISOString() : '';
@@ -257,12 +286,11 @@ function createFeedApi({ db, config = {}, privateKey = null, issuer = null, publ
         // Shown rows the next page will still meet (below its start), and earlier pages' ones it has not passed.
         const seen = [];
         if (edge) {
-            const below = (r) => { const t = Date.parse(r.occurred_at), e = Date.parse(edge.occurred_at); return t < e || (t === e && Number(r.id) < Number(edge.id)); };
             const passed = new Set(metSeen.filter((r) => !below(r)).map((r) => Number(r.id)));
             for (const n of seenBefore) if (!passed.has(n)) seen.push(n);
-            if (firstOut > 0) for (const r of read.rows.slice(firstOut)) if (rowShown(r)) seen.push(Number(r.id));
+            for (const r of read.rows) if (below(r) && rowShown(r)) seen.push(Number(r.id));
         }
-        const next = (firstOut > 0 || read.hasMore) && edge ? encodeCursor([edge.occurred_at, edge.id], done, [...new Set(seen)]) : null;
+        const next = edge && (read.hasMore || read.rows.some(below)) ? encodeCursor([edge.occurred_at, edge.id], done, [...new Set(seen)]) : null;
         if (wall) return { items: items.map(wallItem), next_cursor: next };
         return { items, next_cursor: next };
     }

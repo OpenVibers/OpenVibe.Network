@@ -290,9 +290,9 @@ const envelope = (type, payload, over = {}) => ({
         assert.strictEqual(store.isItemDiscussionUrl('https://openvibe.community/forum/clips/item-23'), true);
         assert.strictEqual(store.isItemDiscussionUrl('https://openvibe.community/forum/status/t9'), false);
     }
-    // A ranked page shows an older card ahead of newer ones (11-20, production: 15 of the first 120 public cards came
-    // again on a later page): the next page starts at the newest row not shown, and the older one shown rides in the
-    // cursor, so it is not shown twice and nothing is skipped.
+    // Pages are stretches of time, newest first (11-23, the owner: "Timestamps are still screwed up all over in the feed";
+    // a ranked page led with an older liked card and the next page went back up to minutes ago under older day lines):
+    // across pages every card is older than the one before, each shows once, and a site's own page skips nothing.
     {
         for (let i = 1; i <= 6; i++) {
             await store.upsertItem(db, { source_service: 'community', source_type: 'thread', source_id: `ranked${i}`, kind: 'post', title: `Ranked ${i}`, text: 'hello',
@@ -307,8 +307,24 @@ const envelope = (type, payload, over = {}) => ({
             if (!r.d.next_cursor) break;
             cursor = r.d.next_cursor;
         }
-        assert.strictEqual(ids[0], 'f:community:thread:ranked5', 'the liked older post leads the first page');
-        assert.deepStrictEqual([...ids].sort(), [1, 2, 3, 4, 5, 6].map((i) => `f:community:thread:ranked${i}`).sort(), `each once, none skipped (${ids.join(', ')})`);
+        assert.deepStrictEqual(ids, [1, 2, 3, 4, 5, 6].map((i) => `f:community:thread:ranked${i}`), `newest first across pages, each once, none skipped (${ids.join(', ')})`);
+    }
+    // The general feed, page after page, never goes back up in time (the caps leave cards out; they never come back
+    // under older ones): every card, page by page, is no newer than the one before it.
+    {
+        const stamps = [];
+        let cursor = '';
+        for (let page = 0; page < 40; page++) {
+            const r = await get(`/api/v1/feed?limit=5${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`);
+            for (const x of r.d.items) if (!(x.kind === 'live' && x.live_now === true)) stamps.push([x.at, x.id]);
+            if (!r.d.next_cursor) break;
+            cursor = r.d.next_cursor;
+        }
+        assert.ok(stamps.length > 5, `the general feed has pages (${stamps.length} cards)`);
+        for (let i = 1; i < stamps.length; i++) {
+            assert.ok(Date.parse(stamps[i][0]) <= Date.parse(stamps[i - 1][0]), `card ${i} (${stamps[i][1]} at ${stamps[i][0]}) is newer than the one before it (${stamps[i - 1][1]} at ${stamps[i - 1][0]})`);
+        }
+        assert.strictEqual(new Set(stamps.map((s) => s[1])).size, stamps.length, 'no card twice across pages');
     }
     // The general feed reads people's things apart from the runs (production, 11-20: 11,389 of 11,500 public rows in
     // three days were Deals rows; the newest stream sat 3,600 rows down): a stream under 600 deal and 60 job rows is on
