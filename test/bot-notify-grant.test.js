@@ -16,4 +16,6 @@ assert.ok(cap && cap.status === 'active', 'an active capability');
 // A robot's line lets the owner's followers go first (11-23): Bot reads followers, and writes none.
 const follows = principals.DEFAULT_GRANTS.filter((g) => g[0] === 'bot' && /^network\.follows\./.test(g[1]));
 assert.deepStrictEqual(follows.map((g) => [g[1], g[2]]), [['network.follows.read', principals.SELF_AUDIENCE]], 'bot reads follows, never writes them');
+const billing = principals.DEFAULT_GRANTS.filter((g) => g[0] === 'bot' && /^billing\./.test(g[1]) && g[1] !== 'billing.usage.record');
+assert.deepStrictEqual(billing.map((g) => [g[1], g[2]]), [['billing.entitlement.check', 'openvibe.billing']], 'and checks a subscription, nothing more of Billing\'s');
 console.log('bot notify grant: ok');
