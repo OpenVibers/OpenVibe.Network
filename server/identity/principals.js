@@ -479,6 +479,10 @@ const DEFAULT_GRANTS = [
     // on the Apps page (a read grant in OpenVibe Finance: an Expert reads their money). The same for Codes.
     ['actor', CONNECT_ACT, SELF_AUDIENCE, []],
     ['codes', CONNECT_ACT, SELF_AUDIENCE, []],
+    // One memory (plan §V.1, 11-23): what a person tells their agents to remember goes to OpenVibe.AI's store (the
+    // Memory page), as suggestions the person keeps, and Actor recalls from it, always on behalf of that one person
+    // (the `user` scope; AI's grantedScopes). Actor keeps only an agent's own working notes.
+    ...['ai.memory.read', 'ai.memory.write'].map((c) => ['actor', c, 'openvibe.ai', []]),
     ['media', 'network.project.member.read', SELF_AUDIENCE, []],
     // Work's agent pillar: "Ask my Actor agent" on a tracked application gives Actor a task for that person (X-OV-Subject).
     ['work', 'actor.task.create', 'openvibe.actor', []],
