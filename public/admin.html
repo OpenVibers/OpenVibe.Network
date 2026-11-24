@@ -337,12 +337,12 @@
                 <input id="modlog-until" aria-label="End date" aria-describedby="help-modlog-filters" type="date"></label>
             <div class="admin-filter-actions">
                 <button class="btn btn-primary" type="submit"><i class="fa-solid fa-filter"></i> Filter</button>
-                <button class="btn btn-outline" type="button" onclick="exportModLog()">Export CSV</button>
+                <button class="btn btn-outline" type="button" onclick="exportModLog()"><i class="fa-solid fa-download"></i> Export CSV</button>
             </div>
         </form>
         <p class="admin-filter-hint" id="help-modlog-filters">Blank filters include everything. <b>Service</b> narrows the log to one service, <b>Action</b> takes an exact action name (for example <code>site_ban</code>), <b>By</b> takes the staff account ID (<code>usr_&#8230;</code>), <b>Target</b> the account or item the action affected, and the two dates a window.</p>
         <div id="modlog-content"><div class="loading">Loading...</div></div>
-        <div style="display:flex;justify-content:center;margin-top:12px"><button id="modlog-more" class="btn" hidden onclick="loadModLog(false)">Load more</button></div>
+        <div style="display:flex;justify-content:center;margin-top:12px"><button id="modlog-more" class="btn" hidden onclick="loadModLog(false)"><i class="fa-solid fa-ellipsis"></i> Load more</button></div>
     </div>
 
     <!-- Group conversations (plan §AD.19): people and agents in one thread, in the session surface every site opens (js/admin/team.js) -->
@@ -378,7 +378,7 @@
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Namespaces<span class="admin-field"><input id="grant-ns" aria-label="Allowed areas" aria-describedby="help-grant-ns" placeholder="comma separated (optional)" maxlength="400" style="width:180px"><span class="admin-help" id="help-grant-ns"><strong>Allowed areas.</strong> Optional comma-separated areas to restrict this permission, for example a namespace required by the integration. Blank adds no namespace restriction.</span></span></label>
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Expires<span class="admin-field"><input id="grant-exp" aria-label="Access expiry date" aria-describedby="help-grant-exp" type="date"><span class="admin-help" id="help-grant-exp"><strong>Access expiry date.</strong> Blank means no expiry date. Access ends at midnight UTC on the selected date; an earlier date grants access for less time.</span></span></label>
             <label class="muted" style="font-size:12px;display:flex;flex-direction:column;gap:2px">Reason<span class="admin-field"><input id="grant-reason" aria-label="Why access is needed" aria-describedby="help-grant-reason" maxlength="500" style="width:220px" required><span class="admin-help" id="help-grant-reason"><strong>Why access is needed.</strong> Required explanation for the audit history, for example enable staff lookup for Live. No reason is filled in by default.</span></span></label>
-            <button class="btn" type="submit">Grant access</button>
+            <button class="btn" type="submit"><i class="fa-solid fa-key"></i> Grant access</button>
         </form>
         <div class="admin-filter-bar">
             <label class="admin-filter"><span class="admin-filter-label">Find a service</span><input id="grant-filter" aria-label="Find a service" aria-describedby="help-grant-filter" placeholder="service" maxlength="64" oninput="renderGrants()"></label>
@@ -396,7 +396,7 @@
         <div class="admin-filter-bar">
             <label class="admin-filter"><span class="admin-filter-label">Delivery state</span><select id="dlq-status" aria-label="Delivery state" aria-describedby="help-dlq" onchange="loadDeliveries()"><option value="dead">Stopped retrying — needs attention</option><option value="failed">Retrying — delivery keeps failing</option><option value="pending">Waiting — delivery is queued</option></select></label>
             <label class="admin-filter"><span class="admin-filter-label">Subscription</span><input id="dlq-sub" aria-label="Subscription ID" aria-describedby="help-dlq" placeholder="sub_…" maxlength="40"></label>
-            <div class="admin-filter-actions"><button class="btn" type="button" onclick="loadDeliveries()">Show deliveries</button></div>
+            <div class="admin-filter-actions"><button class="btn" type="button" onclick="loadDeliveries()"><i class="fa-solid fa-eye"></i> Show deliveries</button></div>
         </div>
         <p class="admin-filter-hint" id="help-dlq">The default shows deliveries that stopped retrying. Choose Retrying for ongoing failures, Waiting for queued messages, and enter a sub_ identifier to narrow the list to one receiving service.</p>
         <div id="dlq-counts" class="muted" style="font-size:12px;margin-bottom:8px"></div>

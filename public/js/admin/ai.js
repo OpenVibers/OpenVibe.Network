@@ -51,7 +51,7 @@ async function loadStaffRoom() {
         <form id="staff-task-form" style="display:grid;gap:6px;margin-bottom:10px">
             <input name="title" required minlength="3" maxlength="200" placeholder="Add work: what to do" style="padding:8px 10px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text)">
             <div style="display:flex;gap:6px;flex-wrap:wrap"><select name="kind" style="padding:6px 8px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text)"><option value="research">research (runs now)</option><option value="web">web answer (runs now)</option><option value="code">code (a worker takes it)</option><option value="computer">computer (a worker takes it)</option><option value="other">other</option></select>
-            <button class="btn btn-secondary" type="submit">Add to the queue</button></div>
+            <button class="btn btn-secondary" type="submit"><i class="fa-solid fa-plus"></i> Add to the queue</button></div>
         </form>
         ${err ? `<p class="muted">The queue could not be read: ${esc(err)}</p>` : (tasks.length ? `<ol style="list-style:none;margin:0;padding:0">${tasks.map(row).join('')}</ol>` : '<p class="muted">Nothing queued yet.</p>')}
     </fieldset>`;
@@ -215,7 +215,7 @@ async function loadRundownPictures() {
             <td style="padding:4px 6px">${esc(p.title || ('stream ' + p.stream_id))}<br><small class="muted">${esc(p.username ? '@' + p.username : '')} · ${esc(p.model || '')} ${p.size ? '· ' + esc(p.size) : ''}</small></td>
             <td style="padding:4px 6px;white-space:nowrap">${esc(badge[p.status] || p.status)}${p.cost_usd ? `<br><small class="muted">${money(p.cost_usd)}</small>` : ''}</td>
             <td style="padding:4px 6px;max-width:280px"><small class="muted">${esc(p.error || '')}</small></td>
-            <td style="padding:4px 6px;white-space:nowrap"><button type="button" class="btn btn-sm" onclick="remakeRundownPicture(${Number(p.stream_id)})">Remake</button></td>
+            <td style="padding:4px 6px;white-space:nowrap"><button type="button" class="btn btn-sm" onclick="remakeRundownPicture(${Number(p.stream_id)})"><i class="fa-solid fa-rotate"></i> Remake</button></td>
         </tr>`).join('');
         el.innerHTML = `
             <p class="muted" style="margin:0 0 10px">Every Rundown episode gets one editorial illustration made from its title, topics, takes and recap, stored in Media at 1200×630. Explicit words (sex acts, or anything involving a minor) are refused before a prompt leaves Live; the stream thumbnail stays the fallback. This month: <b>${money(spend.usd || 0)}</b> of ${esc(cap)} · ${Number(spend.pictures || 0)} picture${Number(spend.pictures || 0) === 1 ? '' : 's'} · ${Number((d.counts || {}).pending || 0)} queued, ${Number((d.counts || {}).refused || 0)} refused.</p>
@@ -270,7 +270,7 @@ async function loadAiViewersFleet() {
             </div>
             ${d.running.length ? `<table style="width:100%;font-size:13px;border-collapse:collapse;margin-bottom:10px"><tr><th style="text-align:left">Running now</th><th>Engine</th><th>Stream</th><th>Bots</th><th>Mode</th><th>Lines</th><th>Passes</th><th style="text-align:right">Cost</th><th></th></tr>
                 ${d.running.map(r=>`<tr><td>${esc(r.username||('#'+r.user_id))}</td><td>${esc(r.engine)}</td><td>${r.stream_id}</td><td>${r.bots}</td><td>${esc(r.paused ? 'paused' : (r.mode||''))}</td><td>${r.stats ? r.stats.lines : '—'}</td><td>${r.stats ? r.stats.ticks : '—'}</td><td style="text-align:right">${r.stats ? money(r.stats.cost) : '—'}</td>
-                    <td style="white-space:nowrap"><button class="btn btn-sm btn-outline" onclick="aiViewersAdmin(${r.user_id},'${r.paused ? 'resume' : 'pause'}')">${r.paused ? 'Resume' : 'Pause'}</button> <button class="btn btn-sm btn-danger" onclick="aiViewersAdmin(${r.user_id},'stop')">Stop + disable</button></td></tr>`).join('')}</table>` : '<p class="muted" style="margin:0 0 8px">No AI viewer workers running right now.</p>'}
+                    <td style="white-space:nowrap"><button class="btn btn-sm btn-outline" onclick="aiViewersAdmin(${r.user_id},'${r.paused ? 'resume' : 'pause'}')"><i class="fa-solid fa-${r.paused ? 'play' : 'pause'}"></i> ${r.paused ? 'Resume' : 'Pause'}</button> <button class="btn btn-sm btn-danger" onclick="aiViewersAdmin(${r.user_id},'stop')"><i class="fa-solid fa-power-off"></i> Stop + disable</button></td></tr>`).join('')}</table>` : '<p class="muted" style="margin:0 0 8px">No AI viewer workers running right now.</p>'}
             <details><summary class="muted" style="cursor:pointer;font-size:12px">Channels with AI viewers configured (${d.channels.length})</summary>
             <table style="width:100%;font-size:13px;border-collapse:collapse"><tr><th style="text-align:left">Channel</th><th>Enabled</th><th>Activity</th><th>Bots</th><th>Key</th><th style="text-align:right">Today / cap</th></tr>
                 ${d.channels.map(c=>`<tr><td>${esc(c.username)}</td><td>${c.enabled ? '✔' : '—'}</td><td>${esc(c.activity||'—')}</td><td>${c.bots}</td><td>${c.shared_key ? 'shared' : 'BYO'}</td><td style="text-align:right">${money(c.spent_today_usd)} / ${c.shared_key ? '$'+c.cap_usd.toFixed(2) : '∞'}</td></tr>`).join('')}</table></details>`;
@@ -967,10 +967,10 @@ function paiProviderRow(p) {
     const key = paiKeyState(p);
     const health = paiHealth(p);
     const sealed = String(p.secret_ref || '').startsWith('vault:') && p.credentials !== 'missing';
-    const actions = '<button type="button" class="btn btn-sm pai-quiet" data-act="edit">Edit</button> '
-        + (key.required && key.env ? '<button type="button" class="btn btn-sm pai-quiet" data-act="key" title="Enter the key here so it is locked by OpenVibe.AI instead of read from the server\'s settings file">Enter it here instead</button> ' : '')
-        + (key.required && !key.env ? '<button type="button" class="btn btn-sm pai-quiet" data-act="key">' + (sealed ? 'Replace key' : 'Add key') + '</button> ' : '')
-        + (key.required && sealed ? '<button type="button" class="btn btn-sm pai-quiet pai-quiet-danger" data-act="remove-key">Remove key</button>' : '');
+    const actions = '<button type="button" class="btn btn-sm pai-quiet" data-act="edit"><i class="fa-solid fa-pen"></i> Edit</button> '
+        + (key.required && key.env ? '<button type="button" class="btn btn-sm pai-quiet" data-act="key" title="Enter the key here so it is locked by OpenVibe.AI instead of read from the server\'s settings file"><i class="fa-solid fa-key"></i> Enter it here instead</button> ' : '')
+        + (key.required && !key.env ? '<button type="button" class="btn btn-sm pai-quiet" data-act="key"><i class="fa-solid fa-key"></i> ' + (sealed ? 'Replace key' : 'Add key') + '</button> ' : '')
+        + (key.required && sealed ? '<button type="button" class="btn btn-sm pai-quiet pai-quiet-danger" data-act="remove-key"><i class="fa-solid fa-trash"></i> Remove key</button>' : '');
     return '<div class="pai-provider" data-pai-provider="' + esc(p.key) + '">'
         + '<div class="pai-provider-main"><div class="pai-provider-name">' + esc(p.display_name || p.key) + ' <code class="pai-mkey">' + esc(p.key) + '</code></div>'
         + '<div class="pai-provider-meta"><code>' + esc(paiHost(p.base_url)) + '</code> <span class="pai-access is-' + access.toLowerCase() + '">' + esc(PAI_ACCESS_LABEL[access]) + '</span> <span class="pai-billing">' + billing + '</span></div>'
@@ -1071,7 +1071,7 @@ function paiProviderDialog(provider) {
         + '<div class="pai-form-row"><div class="ov-field"><label for="pai-p-priority">Order</label><input id="pai-p-priority" name="priority" type="number" step="1" value="' + esc(p.priority == null ? 100 : p.priority) + '"><p class="ov-field-hint">A lower number is tried first.</p></div>'
         + '<div class="ov-field"><label for="pai-p-model">Model used when none is named</label><input id="pai-p-model" name="default_model" value="' + esc(p.default_model || '') + '"></div></div>'
         + '<div id="pai-p-key-field"></div>'
-        + '<div class="pai-dialog-actions"><button type="button" class="btn" data-act="cancel">Cancel</button><button type="submit" class="btn btn-primary" data-act="save">' + (editing ? 'Save' : 'Add provider') + '</button></div>'
+        + '<div class="pai-dialog-actions"><button type="button" class="btn" data-act="cancel"><i class="fa-solid fa-xmark"></i> Cancel</button><button type="submit" class="btn btn-primary" data-act="save"><i class="fa-solid fa-' + (editing ? 'floppy-disk' : 'plus') + '"></i> ' + (editing ? 'Save' : 'Add provider') + '</button></div>'
         + '</form>';
     // The key field is built as a DOM node and is never part of an innerHTML string.
     const keyField = document.createElement('div');
@@ -1156,7 +1156,7 @@ async function paiKeyDialog(provider) {
     dlg.innerHTML = '<form method="dialog" class="pai-form"><h3>API key for ' + esc(provider.display_name || provider.key) + '</h3>'
         + '<p class="muted">' + state.text + '</p>'
         + '<div id="pai-key-field"></div>'
-        + '<div class="pai-dialog-actions"><button type="button" class="btn" data-act="cancel">Cancel</button><button type="submit" class="btn btn-primary" data-act="save">Save key</button></div></form>';
+        + '<div class="pai-dialog-actions"><button type="button" class="btn" data-act="cancel"><i class="fa-solid fa-xmark"></i> Cancel</button><button type="submit" class="btn btn-primary" data-act="save"><i class="fa-solid fa-key"></i> Save key</button></div></form>';
     const field = document.createElement('div');
     field.className = 'ov-field';
     const label = document.createElement('label');
@@ -1283,7 +1283,7 @@ function paiCard(n, opts = {}) {
         + (fields ? '<div class="pai-fields">' + fields + '</div>' : '')
         + fold
         + '<footer class="pai-card-foot"><span class="pai-revision">' + revised + (who ? ' · by ' + esc(who) : '') + (at ? ' · ' + esc(paiWhen(at)) : '') + ' ' + paiWhat('version', 'What is a version?') + '</span>'
-        + '<span class="pai-card-actions"><button type="button" class="btn btn-sm pai-quiet" data-act="history">History</button><button type="button" class="btn btn-sm btn-primary" data-act="save">Save</button></span></footer>'
+        + '<span class="pai-card-actions"><button type="button" class="btn btn-sm pai-quiet" data-act="history"><i class="fa-solid fa-clock-rotate-left"></i> History</button><button type="button" class="btn btn-sm btn-primary" data-act="save"><i class="fa-solid fa-floppy-disk"></i> Save</button></span></footer>'
         + '</article>';
 }
 
@@ -1315,7 +1315,7 @@ function paiControl(path, prop, value, { pinned = false, title = '', nested = fa
     if (type === 'array') {
         const items = Array.isArray(value) ? value : [];
         return '<div class="pai-chips" data-pai-chips>' + items.map((it) => paiChip(it, !pinned)).join('') + '</div>'
-            + (pinned ? '' : '<span class="pai-list-add"><input data-pai-list-input placeholder="Add…" aria-label="Add to ' + esc(title) + '"><button type="button" class="btn btn-sm pai-quiet" data-act="list-add">Add</button></span>');
+            + (pinned ? '' : '<span class="pai-list-add"><input data-pai-list-input placeholder="Add…" aria-label="Add to ' + esc(title) + '"><button type="button" class="btn btn-sm pai-quiet" data-act="list-add"><i class="fa-solid fa-plus"></i> Add</button></span>');
     }
     if (type === 'object') {
         // Raw JSON: only ever drawn inside Advanced settings (paiAdvanced).
@@ -1352,8 +1352,8 @@ function paiField(n, key, prop, pinned, pinName) {
         const shown = pinned ? 'From the server\'s settings file' + (pinName || prop['x-env'] ? ' (' + esc(pinName || prop['x-env']) + ')' : '')
             : set ? 'Entered here, locked' + (m && m.hint ? ' ••••' + esc(m.hint) : '') + (m && m.set_at ? ' · ' + esc(paiWhen(m.set_at)) : '') : 'Not set';
         control = '<div class="pai-secret"><span class="pai-marker">' + shown + '</span>'
-            + (pinned ? '' : ' <button type="button" class="btn btn-sm pai-quiet" data-act="secret" data-key="' + esc(key) + '">' + (set ? 'Replace' : 'Enter it') + '</button>')
-            + (!pinned && set ? ' <button type="button" class="btn btn-sm pai-quiet pai-quiet-danger" data-act="secret-remove" data-key="' + esc(key) + '">Remove</button>' : '') + '</div>';
+            + (pinned ? '' : ' <button type="button" class="btn btn-sm pai-quiet" data-act="secret" data-key="' + esc(key) + '"><i class="fa-solid fa-key"></i> ' + (set ? 'Replace' : 'Enter it') + '</button>')
+            + (!pinned && set ? ' <button type="button" class="btn btn-sm pai-quiet pai-quiet-danger" data-act="secret-remove" data-key="' + esc(key) + '"><i class="fa-solid fa-trash"></i> Remove</button>' : '') + '</div>';
     } else if (type === 'object' && prop.properties && typeof prop.properties === 'object' && Object.keys(prop.properties).length) {
         // An object whose fields the schema describes is a small form, not raw JSON.
         const inner = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -1507,7 +1507,7 @@ function paiSecretDialog(n, key) {
     const dlg = document.createElement('dialog');
     dlg.className = 'pai-dialog';
     dlg.innerHTML = '<form method="dialog" class="pai-form"><h3>' + esc(prop.title || paiHumanize(key)) + ' <code class="pai-mkey">' + esc(key) + '</code></h3><p class="muted">The value is written once and locked by ' + esc(paiLabel(n.service)) + '; it is never shown again.</p>'
-        + '<div id="pai-secret-field"></div><div class="pai-dialog-actions"><button type="button" class="btn" data-act="cancel">Cancel</button><button type="submit" class="btn btn-primary" data-act="save">Save key</button></div></form>';
+        + '<div id="pai-secret-field"></div><div class="pai-dialog-actions"><button type="button" class="btn" data-act="cancel"><i class="fa-solid fa-xmark"></i> Cancel</button><button type="submit" class="btn btn-primary" data-act="save"><i class="fa-solid fa-key"></i> Save key</button></div></form>';
     const field = document.createElement('div');
     field.className = 'ov-field';
     const label = document.createElement('label');
@@ -1578,12 +1578,12 @@ async function paiHistoryDialog(n) {
     const rows = snapshots.map((s) => {
         const actor = paiWho(s.activated_by || s.created_by);
         const current = s.state === 'active' || s.revision === n.revision;
-        return '<tr><td>' + esc(s.revision) + '</td><td>' + esc(paiWhen(s.activated_at || s.created_at)) + '</td><td>' + esc(actor || '—') + '</td><td>' + esc(s.reason || '—') + '</td><td>' + (current ? '<span class="muted">Current</span>' : '<button type="button" class="btn btn-sm" data-rollback="' + esc(s.revision) + '">Roll back</button>') + '</td></tr>';
+        return '<tr><td>' + esc(s.revision) + '</td><td>' + esc(paiWhen(s.activated_at || s.created_at)) + '</td><td>' + esc(actor || '—') + '</td><td>' + esc(s.reason || '—') + '</td><td>' + (current ? '<span class="muted">Current</span>' : '<button type="button" class="btn btn-sm" data-rollback="' + esc(s.revision) + '"><i class="fa-solid fa-rotate"></i> Roll back</button>') + '</td></tr>';
     }).join('');
     dlg.innerHTML = '<div class="pai-form"><h3>History · ' + esc((n.schema && n.schema.title) || n.namespace) + ' <code class="pai-mkey">' + esc(n.namespace) + '</code></h3>'
         + '<p class="muted">Every saved version, newest first. Rolling back makes an older version current again, as a new version; nothing is deleted.</p>'
         + (snapshots.length ? '<div class="pai-table-wrap"><table class="pai-table"><thead><tr><th>Version</th><th>When</th><th>By</th><th>Why</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>' : '<p class="muted">No saved versions yet: these are the defaults.</p>')
-        + '<div class="pai-dialog-actions"><button type="button" class="btn" data-act="close">Close</button></div></div>';
+        + '<div class="pai-dialog-actions"><button type="button" class="btn" data-act="close"><i class="fa-solid fa-xmark"></i> Close</button></div></div>';
     document.body.appendChild(dlg);
     dlg.addEventListener('click', async (ev) => {
         if (ev.target.closest('[data-act="close"]')) { dlg.close(); return; }
@@ -1612,7 +1612,7 @@ function paiConfirm(title, lines) {
         const dlg = document.createElement('dialog');
         dlg.className = 'pai-dialog';
         dlg.innerHTML = '<div class="pai-form"><h3>' + esc(title) + '</h3>' + (lines || []).map((line) => '<p class="pai-confirm-line">' + esc(line) + '</p>').join('')
-            + '<div class="pai-dialog-actions"><button type="button" class="btn" data-act="cancel">Cancel</button><button type="button" class="btn btn-primary" data-act="confirm">Confirm</button></div></div>';
+            + '<div class="pai-dialog-actions"><button type="button" class="btn" data-act="cancel"><i class="fa-solid fa-xmark"></i> Cancel</button><button type="button" class="btn btn-primary" data-act="confirm"><i class="fa-solid fa-check"></i> Confirm</button></div></div>';
         let answer = false;
         document.body.appendChild(dlg);
         dlg.addEventListener('click', (ev) => {
