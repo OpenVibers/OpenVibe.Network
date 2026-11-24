@@ -87,7 +87,8 @@ const runTokens = require('../server/identity/run-tokens');
         // 11-13 (plan §Z.9): and video.analyze, an agent's video_analyze tool.
         assert.deepStrictEqual(actorGrant[3], ['ai.complete', 'video.analyze'], 'AI\'s OpenAI-compatible workflow and video.analyze only');
         const actorGrants = await principals.grantsFor(db, 'actor', 'openvibe.ai');
-        assert.deepStrictEqual(actorGrants.map((g) => g.capability).sort(), ['ai.run.create', 'ai.usage.report'], 'and it reports its own provider calls to AI\'s meter');
+        // 11-23 (plan §V.1, one memory): and a person's memory in AI's store, on that person's behalf.
+        assert.deepStrictEqual(actorGrants.map((g) => g.capability).sort(), ['ai.memory.read', 'ai.memory.write', 'ai.run.create', 'ai.usage.report'], 'and it reports its own provider calls to AI\'s meter, and reads and writes a person\'s memory');
 
         // ── A run token: the person it acts for, and how long it lives ──
         let t = await runToken(OWNER);
