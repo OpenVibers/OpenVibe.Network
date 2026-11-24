@@ -194,12 +194,16 @@ function setupRowOf(el) {
     return { li, row };
 }
 
+/** The icon each action wears (plan §Z.1.4: every action in the admin panel wears one). */
+const SETUP_BUTTON_ICONS = { 'Let my agent do it': 'fa-wand-magic-sparkles', 'Mark done': 'fa-check', 'Mark not done': 'fa-rotate', 'Test': 'fa-flask', 'Save': 'fa-floppy-disk', 'Remove': 'fa-trash' };
+
 function setupButton(text, act, cls) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'btn ' + (cls || 'pai-quiet');
     b.dataset.act = act;
-    b.textContent = text;
+    const icon = SETUP_BUTTON_ICONS[text];
+    b.innerHTML = (icon ? '<i class="fa-solid ' + icon + '"></i> ' : '') + text;
     return b;
 }
 
@@ -312,11 +316,11 @@ function setupAgentNotice(li, row, grant) {
     const watch = document.createElement('button');
     watch.type = 'button';
     watch.className = 'btn btn-primary btn-sm';
-    watch.textContent = 'Watch it work';
+    watch.innerHTML = '<i class="fa-solid fa-eye"></i> Watch it work';
     watch.addEventListener('click', () => setupDeskOpen(row, grant));
     const stop = document.createElement('button');
     stop.type = 'button'; stop.className = 'btn btn-secondary btn-sm';
-    stop.textContent = 'Stop';
+    stop.innerHTML = '<i class="fa-solid fa-xmark"></i> Stop';
     let timer = 0;
     const until = Date.now() + 30 * 60 * 1000;
     const end = (words, tone) => { clearInterval(timer); note.remove(); setupDeskClose(); setupShowResult(li, words, tone); };

@@ -153,7 +153,7 @@ async function loadAiSetup(force) {
     } catch (err) {
         main.innerHTML = `<div class="setup-error"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
             <div><strong>The setup could not be read.</strong><p class="muted">${esc(err.message || 'OpenVibe.AI did not answer')}</p>
-            <button class="btn btn-outline btn-sm" onclick="loadAiSetup(true)">Try again</button></div></div>`;
+            <button class="btn btn-outline btn-sm" onclick="loadAiSetup(true)"><i class="fa-solid fa-rotate-right"></i> Try again</button></div></div>`;
     }
 }
 
@@ -321,7 +321,7 @@ function renderAiSetupStep() {
                             <div class="setup-other-price">${esc(aiSetupShortPrice(o.price))}</div></div>
                         <div class="setup-other-actions">
                             ${o.key_page && o.key_page.url ? `<a class="btn btn-outline btn-sm" href="${esc(o.key_page.url)}" target="_blank" rel="noopener noreferrer">Get a key</a>` : ''}
-                            <button class="btn btn-outline btn-sm" onclick="aiSetupChoose('${esc(step.id)}','${esc(o.provider)}','${esc(o.model)}')">Choose</button>
+                            <button class="btn btn-outline btn-sm" onclick="aiSetupChoose('${esc(step.id)}','${esc(o.provider)}','${esc(o.model)}')"><i class="fa-solid fa-check"></i> Choose</button>
                         </div>
                     </div>`).join('')}
                 </div>
@@ -362,9 +362,9 @@ function renderAiSetupStep() {
             </section>
 
             <footer class="setup-card-foot">
-                <button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')">Defaults</button>
+                <button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')"><i class="fa-solid fa-sliders"></i> Defaults</button>
                 <div class="setup-foot-next">
-                    <button class="btn btn-outline" onclick="skipAiSetupStep()">Skip</button>
+                    <button class="btn btn-outline" onclick="skipAiSetupStep()"><i class="fa-solid fa-forward"></i> Skip</button>
                     <button class="btn btn-primary" onclick="nextAiSetupNotReady()">Next <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
                 </div>
             </footer>
@@ -483,11 +483,11 @@ function renderAiSetupStart() {
                     <h3><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> One tap</h3>
                     <p class="muted">Proposes a model for every job from the keys you have saved, and a safe monthly cap for each. You read it, then save it all. Keys stay yours: paste each once, in its step.</p>
                     <button class="btn btn-primary btn-sm" onclick="selectAiSetupStep('${AI_SETUP_PLAN}')"><i data-ov-icon="wand" aria-hidden="true"></i> Set this up for me</button>
-                    <button class="btn btn-outline btn-sm" onclick="applyAiSetupRecommended()">Use the recommended set</button>
+                    <button class="btn btn-outline btn-sm" onclick="applyAiSetupRecommended()"><i class="fa-solid fa-check"></i> Use the recommended set</button>
                 </div>
             </section>
             <footer class="setup-card-foot">
-                <button class="btn btn-outline" onclick="selectAiSetupStep('${esc(first.id)}')">Start with ${esc(aiSetupStepName(first))}</button>
+                <button class="btn btn-outline" onclick="selectAiSetupStep('${esc(first.id)}')"><i class="fa-solid fa-play"></i> Start with ${esc(aiSetupStepName(first))}</button>
                 <button class="btn btn-primary" onclick="selectAiSetupStep('${AI_SETUP_PROVIDERS}')">Providers and keys <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></button>
             </footer>
         </article>`;
@@ -504,7 +504,7 @@ function renderAiSetupDone() {
         <span class="setup-step-dot" aria-hidden="true">${s.ready ? '<i class="fa-solid fa-check"></i>' : '<i class="fa-solid fa-minus"></i>'}</span>
         <span class="setup-done-name"><strong>${esc(s.name)}</strong><span class="muted">${s.ready ? esc((aiSetupSelected(s) || {}).label || 'Ready') : esc(s.what || '')}</span></span>
         <span class="setup-done-out" id="setup-done-${esc(s.id)}"></span>
-        ${s.ready ? '' : `<button class="btn btn-outline btn-sm" onclick="selectAiSetupStep('${esc(s.id)}')">Set it</button>`}
+        ${s.ready ? '' : `<button class="btn btn-outline btn-sm" onclick="selectAiSetupStep('${esc(s.id)}')"><i class="fa-solid fa-check"></i> Set it</button>`}
     </li>`;
     main.innerHTML = `
         <article class="setup-card" aria-labelledby="setup-done-title">
@@ -514,8 +514,8 @@ function renderAiSetupDone() {
             </header>
             <ul class="setup-done-list">${[...left, ...ready].map(row).join('')}</ul>
             <footer class="setup-card-foot">
-                ${ready.length ? `<button class="btn btn-primary" id="setup-test-all" onclick="testAllAiSetup()">Test every ready job</button>` : ''}
-                <button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')">Defaults and caps</button>
+                ${ready.length ? `<button class="btn btn-primary" id="setup-test-all" onclick="testAllAiSetup()"><i class="fa-solid fa-flask"></i> Test every ready job</button>` : ''}
+                <button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')"><i class="fa-solid fa-sliders"></i> Defaults and caps</button>
                 <a class="btn btn-outline" href="${AI_SETUP_LINKS.credits}" target="_blank" rel="noopener">Monthly credits</a>
             </footer>
         </article>`;
@@ -677,12 +677,12 @@ function renderAiSetupPlan() {
         </div>
         ${waiting.length ? `<p class="setup-help">${waiting.length === 1 ? 'One job waits' : waiting.length + ' jobs wait'} for a provider: paste its key, or turn it on, in Providers and keys, then come back. The plan picks it up.</p>` : ''}
         <footer class="setup-card-foot">
-            <button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_START}')">Back</button>
+            <button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_START}')"><i class="fa-solid fa-arrow-left"></i> Back</button>
             <div class="setup-foot-next">
-                ${waiting.length ? `<button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_PROVIDERS}')">Providers and keys</button>` : ''}
+                ${waiting.length ? `<button class="btn btn-outline" onclick="selectAiSetupStep('${AI_SETUP_PROVIDERS}')"><i class="fa-solid fa-key"></i> Providers and keys</button>` : ''}
                 <button class="btn btn-outline" id="setup-plan-agent" data-ov-agent="Let the agent do it" data-ov-agent-context="page" data-ov-agent-approve="first"
-                    data-ov-agent-task="${esc(AI_SETUP_AGENT_TASK)}">Let the agent do it</button>
-                <button class="btn btn-primary" id="setup-plan-apply" onclick="applyAiSetupPlan()" ${changes ? '' : 'disabled'}>${changes ? 'Use these' : 'Nothing to change'}</button>
+                    data-ov-agent-task="${esc(AI_SETUP_AGENT_TASK)}"><i class="fa-solid fa-wand-magic-sparkles"></i> Let the agent do it</button>
+                <button class="btn btn-primary" id="setup-plan-apply" onclick="applyAiSetupPlan()" ${changes ? '' : 'disabled'}><i class="fa-solid fa-check"></i> ${changes ? 'Use these' : 'Nothing to change'}</button>
             </div>
         </footer>
     </article>`;
@@ -780,7 +780,7 @@ function renderAiSetupFree() {
                 <label for="setup-free-tokens"><strong>Each person, each day</strong><span class="muted">${esc(field.description || '')}</span></label>
                 <div class="setup-free-row"><input id="setup-free-tokens" type="number" min="0" max="10000000" step="1000" value="${tokens}" ${pinned ? 'disabled' : ''} oninput="document.getElementById('setup-free-words').textContent = aiSetupFreeWords(this.value)">
                     <span class="muted">tokens · <span id="setup-free-words">${esc(words(tokens))}</span></span>
-                    ${pinned ? '<span class="setup-pill">Set in the server\'s settings file</span>' : '<button class="btn btn-primary btn-sm" onclick="saveAiSetupFree()">Save</button>'}</div>
+                    ${pinned ? '<span class="setup-pill">Set in the server\'s settings file</span>' : '<button class="btn btn-primary btn-sm" onclick="saveAiSetupFree()"><i class="fa-solid fa-floppy-disk"></i> Save</button>'}</div>
             </div>`;
     // Pictures each person may make a day (AI's picture task daily cap; the setup state's `free`, 2026-11-15).
     const pf = aiSetupState.free || null;
@@ -789,7 +789,7 @@ function renderAiSetupFree() {
                 <label for="setup-free-pictures"><strong>Each person, each day</strong><span class="muted">The most pictures one person can make in a day, with any model. ${pf.pictures_set ? '' : `The server's default is ${esc(String(pf.pictures_default))}.`}</span></label>
                 <div class="setup-free-row"><input id="setup-free-pictures" type="number" min="0" max="1000" step="1" value="${esc(String(pf.pictures_per_day == null ? '' : pf.pictures_per_day))}">
                     <span class="muted">pictures${Number(pf.pictures_per_day) === 0 ? ' · making pictures is off' : ''}</span>
-                    <button class="btn btn-primary btn-sm" onclick="saveAiSetupFreePictures()">Save</button></div>
+                    <button class="btn btn-primary btn-sm" onclick="saveAiSetupFreePictures()"><i class="fa-solid fa-floppy-disk"></i> Save</button></div>
             </div>`;
     // By rank (2026-11-16; the owner: "owner rank should be able to use more tokens per day"): each rank's share of the
     // free daily allowance, unlimited or a factor, from AI's setup state (`allowances`).
@@ -804,7 +804,7 @@ function renderAiSetupFree() {
                 <span class="setup-rank-factor"${unl ? ' hidden' : ''}><input type="number" min="0" max="9999" step="0.5" value="${esc(String(unl ? 1 : x.factor))}" aria-label="${esc(x.label)}: times the allowance" data-rank-factor oninput="aiSetupRankChanged(this)"><span class="muted">× the allowance</span></span>
             </div>`;
         }).join('')}
-            <div class="setup-free-row"><span class="muted">The allowance is ${Number(al.daily_tokens || 0).toLocaleString()} tokens a day.</span><button class="btn btn-primary btn-sm" onclick="saveAiSetupRanks()">Save</button></div></div>`;
+            <div class="setup-free-row"><span class="muted">The allowance is ${Number(al.daily_tokens || 0).toLocaleString()} tokens a day.</span><button class="btn btn-primary btn-sm" onclick="saveAiSetupRanks()"><i class="fa-solid fa-floppy-disk"></i> Save</button></div></div>`;
     main.innerHTML = `<article class="setup-card">
         <header class="setup-card-head"><div><span class="setup-kicker">For everyone</span><h3 id="setup-step-title">Free use and budgets</h3>
             <p class="setup-what">What people get free, what the server spends at most, and what happens past it.</p></div></header>
@@ -813,7 +813,7 @@ function renderAiSetupFree() {
         <section class="setup-free-sec"><h4>Pictures</h4>${pictures}</section>
         <section class="setup-free-sec"><h4>Most the server spends a month</h4>
             <p>${caps.length ? `<strong>${aiSetupMoney(total)}</strong> across ${caps.length} job${caps.length === 1 ? '' : 's'} with a cap.` : 'No job has a cap yet: the server spends what the jobs use.'}</p>
-            <button class="btn btn-outline btn-sm" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')">Change each job's cap</button></section>
+            <button class="btn btn-outline btn-sm" onclick="selectAiSetupStep('${AI_SETUP_DEFAULT}')"><i class="fa-solid fa-sliders"></i> Change each job's cap</button></section>
         <section class="setup-free-sec"><h4>Past the free part</h4>
             <p>People use their own key${credits ? ', or their Credits (Credits are on).' : '. Credits are off, so nothing is charged.'}</p></section>
     </article>`;
@@ -1197,7 +1197,7 @@ function aiSetupAgentsHtml() {
         const models = agentsOf.length > 1 ? `<button type="button" class="setup-agent-model" aria-expanded="${aiSetupAgentOpen === h.id ? 'true' : 'false'}" onclick="toggleAiSetupAgentModels('${esc(h.id)}')">${esc(agentsOf.length)} models · <strong>${cur ? esc(cur.name || cur.id) : 'its own default'}</strong> when nobody picks</button>${aiSetupAgentOpen === h.id ? aiSetupAgentModelsHtml(h) : ''}` : '';
         const onSwitch = `<label class="pai-switch" title="People can use it"><input type="checkbox" role="switch" data-ov-native ${h.off ? '' : 'checked'} aria-label="${esc(h.name)}: people can use it" onchange="setAiSetupAgent('${esc(h.id)}', this.checked)"><span class="pai-track" aria-hidden="true"><span class="pai-knob"></span></span></label>`;
         return `<li class="setup-model-row${h.off ? ' is-off' : ''}"><span class="setup-model-text"><strong>${esc(h.name)}</strong><span class="muted">${h.off ? 'Turned off · ' : ''}Runs on ${runsOn}${agentsOf.length === 1 ? ' · ' + esc(agentsOf[0].name || agentsOf[0].id) : ''}${h.price && h.price.text ? ' · ' + esc(h.price.text) : ''}</span>${models}</span>${onSwitch}
-            ${p ? (ready ? '<span class="setup-pill ok">Ready</span>' : `<button class="btn btn-outline btn-sm" onclick="aiSetupProviderOpen='${esc(pk)}'; selectAiSetupStep('${AI_SETUP_PROVIDERS}')">Add the ${esc(p.display_name || pk)} key</button>`) : '<span class="setup-pill">Signs in on the computer</span>'}</li>`;
+            ${p ? (ready ? '<span class="setup-pill ok">Ready</span>' : `<button class="btn btn-outline btn-sm" onclick="aiSetupProviderOpen='${esc(pk)}'; selectAiSetupStep('${AI_SETUP_PROVIDERS}')"><i class="fa-solid fa-key"></i> Add the ${esc(p.display_name || pk)} key</button>`) : '<span class="setup-pill">Signs in on the computer</span>'}</li>`;
     }).join('');
     const machines = a.machines.map((m) => {
         const lent = !!(m.controls && m.controls.shared_jobs);
