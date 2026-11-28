@@ -131,7 +131,7 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
 /* Extras */
 .divider{text-align:center;position:relative;margin:24px 0}
 .divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:var(--border)}
-.divider span{position:relative;background:var(--bg-card);padding:0 12px;font-size:11.5px;color:var(--text-muted);font-weight:500}
+.divider span{position:relative;background:var(--bg-card);padding:0 12px;font-size: 12px;color:var(--text-muted);font-weight:500}
 
 .anon-btn{
     width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:1px dashed var(--border);border-radius:10px;
@@ -145,7 +145,7 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
 
 .services{text-align:center;margin-top:24px;padding-top:16px;border-top:1px solid var(--border)}
 /* The line read at 2.3:1 in --text-dim; muted reads at 5.6:1 on the card (contrast probe, 2026-11-01). */
-.services p{font-size:11px;color:var(--text-muted);margin-bottom:10px}
+.services p{font-size: 12px;color:var(--text-muted);margin-bottom:10px}
 .services .icons{display:flex;justify-content:center;gap:12px}
 .services .icons > span{position:relative;display:inline-flex}
 .services .icons span{font-size:16px;opacity:0.4;transition:opacity var(--ov-dur-2, .2s)}
@@ -175,11 +175,11 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
 .oauth-consent li{padding:8px 10px;border-left:3px solid var(--border);border-radius:6px;background:color-mix(in srgb, var(--text-primary, #fff) 2%, transparent)}
 .oauth-consent li.sensitive{border-left-color:#f59e0b}
 .oauth-consent .consent-name{font-weight:600;color:var(--text)}
-.oauth-consent .consent-badge{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;color:#1a1204;background:#f59e0b;vertical-align:1px}
+.oauth-consent .consent-badge{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;font-size: 12px;font-weight:700;color:#1a1204;background:#f59e0b;vertical-align:1px}
 .oauth-consent small{display:block;margin-top:2px;color:var(--text-muted);font-size:12px}
 .oauth-consent .consent-none,.oauth-consent .consent-refused{margin:0;color:var(--text-muted)}
 .oauth-consent .consent-refused{margin-top:10px;font-size:12px}
-.oauth-consent code{font-size:11.5px}
+.oauth-consent code{font-size: 12px}
 .oauth-consent .consent-purposes{margin:10px 0 0;color:var(--text-muted)}
 .oauth-consent .consent-purposes b{color:var(--text);font-weight:600}
 
@@ -222,12 +222,12 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
 .account-item .avatar-initial{font-weight:700;color:var(--text,#e6edf7)}
 .account-item .info{flex:1;min-width:0}
 .account-item .info .name{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.account-item .info .detail{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account-item .info .detail{font-size: 12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .account-item .arrow{color:var(--text-dim);font-size:14px;flex-shrink:0;transition:color var(--ov-dur-2, .2s)}
 .account-item:hover .arrow{color:var(--accent)}
 .account-item .remove-btn{
     position:absolute;top:6px;right:6px;width:20px;height:20px;border:none;
-    background:rgba(231,76,60,0.15);border-radius:50%;color:#e74c3c;font-size:10px;
+    background:rgba(231,76,60,0.15);border-radius:50%;color:#e74c3c;font-size: 12px;
     cursor:pointer;display:none;align-items:center;justify-content:center;
     transition:background var(--ov-dur-2, .2s);line-height:1;
 }
@@ -284,6 +284,6 @@ body{min-height:100dvh;background:var(--bg);color:var(--text);font-family:'Inter
 .provider-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .provider-btn i{flex:none;display:inline-flex;width:20px;height:20px;font-size:20px;line-height:1}
 .provider-btn i svg{width:100%;height:100%}
-.providers-note{font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-top:10px;text-align:center;text-wrap:balance}
+.providers-note{font-size: 12px;color:var(--text-muted);line-height:1.5;margin-top:10px;text-align:center;text-wrap:balance}
 /* The "or" between the providers and the username form belongs to the providers: it goes when they do. */
 .providers-or{margin:20px 0 18px}

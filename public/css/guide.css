@@ -10,7 +10,7 @@
 .guide-fold[open] > summary { margin-bottom: 8px; }
 .guide-rail { display: grid; gap: 4px; }
 .guide-rail ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.guide-area { margin: 10px 0 2px; font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.guide-area { margin: 10px 0 2px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
 .guide-rail-step { display: flex; gap: 10px; align-items: center; min-height: 40px; padding: 6px 10px; border-radius: 10px; color: var(--text-secondary); text-decoration: none; }
 .guide-rail-step:hover, .guide-rail-step:focus-visible { background: var(--bg-secondary); color: var(--text); }
 .guide-rail-step.is-here { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text); font-weight: 600; }
