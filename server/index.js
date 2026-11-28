@@ -929,6 +929,8 @@ app.use('/api/themes', require('./themes/routes'));
 app.use('/api/coins', createCoinsRoutes(db, requireAuth));
 // The menu's AI plans: the person's coding agents' plan windows, from OpenVibe.Codes (server/usage/routes.js).
 app.use('/api/me/usage', require('./usage/routes')(requireAuth));
+// The service worker's kill switch (server/sw/config.js): every site's worker asks it.
+app.use('/api/v1/sw-config', require('./sw/config').createSwConfigRoutes());
 app.use('/api/v1/levels', require('./levels/routes').publicRouter({ db, requireAuth }));
 app.use('/api/v1/me/levels', require('./levels/routes').settingsRouter({ db, requireAuth }));
 // The wallet's own API (MONEY.md D12): the person's Balance and Vibes through Billing, their activity, the projects
