@@ -47,6 +47,14 @@ function loadDevPath(file = DEVPATH_FILE) {
     } catch { return null; }
 }
 const esc = seo.esc;
+// A moment in the reader's own zone and clock: theme-loader (loaded on this page) rewrites <time data-ov-time>; the UTC
+// words stay until it runs. 11-28: a release's boot, the last test run and an incident's window printed raw ISO.
+function timeTag(iso) {
+    const t = Date.parse(String(iso || ''));
+    if (!Number.isFinite(t)) return esc(String(iso || ''));
+    const z = new Date(t).toISOString();
+    return `<time datetime="${esc(z)}" data-ov-time="full">${esc(z.slice(0, 16).replace('T', ' '))} UTC</time>`;
+}
 const STATES = ['up', 'degraded', 'down', 'not-running', 'unknown'];
 const LABEL = { up: 'Up', degraded: 'Degraded', down: 'Down', 'not-running': 'Not running', unknown: 'Unknown' };
 
@@ -54,7 +62,7 @@ const LABEL = { up: 'Up', degraded: 'Degraded', down: 'Down', 'not-running': 'No
 function mainNote(d) {
     if (!d) return '';
     if (d.state === 'current') return '<small>main: current</small>';
-    if (d.state === 'behind') return `<small>main: ${esc(String(d.behind_by))} commit${d.behind_by === 1 ? '' : 's'} not deployed${d.since ? ` since <time datetime="${esc(d.since)}">${esc(d.since.slice(0, 16).replace('T', ' '))} UTC</time>` : ''}</small>`;
+    if (d.state === 'behind') return `<small>main: ${esc(String(d.behind_by))} commit${d.behind_by === 1 ? '' : 's'} not deployed${d.since ? ` since ${timeTag(d.since)}` : ''}</small>`;
     if (d.state === 'diverged') return '<small>main: not on main (a local build)</small>';
     return '';
 }
@@ -194,7 +202,7 @@ function checksList(ready) {
 function proofSteps(rec) {
     return `<ul class="st-sum">${rec.steps.map((st) => `<li class="st-${st.ok ? 'up' : st.skipped ? 'unknown' : 'down'}">${esc(st.name)}: ${st.ok ? 'ok' : st.skipped ? 'skipped' : 'failed'}</li>`).join('')}</ul>`;
 }
-const lastRun = (rec) => `Last run <time datetime="${esc(rec.finished_at)}">${esc(rec.finished_at)}</time>: <b>${rec.ok ? 'passed' : 'failed'}</b> (${rec.steps.filter((st) => st.ok).length}/${rec.steps.length} steps).`;
+const lastRun = (rec) => `Last run ${timeTag(rec.finished_at)}: <b>${rec.ok ? 'passed' : 'failed'}</b> (${rec.steps.filter((st) => st.ok).length}/${rec.steps.length} steps).`;
 
 /** Open incidents and maintenance windows (server/status/incidents.js), at the top of /status. */
 function incidentsSection(incidents) {
@@ -203,7 +211,7 @@ function incidentsSection(incidents) {
     const LBL = { investigating: 'Investigating', identified: 'Identified', monitoring: 'Monitoring', scheduled: 'Scheduled', in_progress: 'In progress' };
     return `<section class="st-incidents" aria-labelledby="h-incidents"><h2 id="h-incidents">Incidents and maintenance</h2>${active.map((i) => {
         const last = i.updates[i.updates.length - 1] || {};
-        const when = i.kind === 'maintenance' ? `${esc(i.starts_at)}${i.ends_at ? ` – ${esc(i.ends_at)}` : ''}` : `since ${esc(i.starts_at)}`;
+        const when = i.kind === 'maintenance' ? `${timeTag(i.starts_at)}${i.ends_at ? ` – ${timeTag(i.ends_at)}` : ''}` : `since ${timeTag(i.starts_at)}`;
         return `<article class="st-incident st-${esc(i.kind)}${i.severity ? ` st-sev-${esc(i.severity)}` : ''}"><h3>${esc(i.title)}</h3>
 <p><strong>${esc(LBL[i.state] || i.state)}</strong>${i.severity ? ` · ${esc(i.severity)}` : ''} · ${esc(i.services.join(', '))} · ${when}</p><p>${esc(last.message || '')}</p></article>`;
     }).join('')}<p><a href="/api/v1/status/incidents">History (JSON)</a></p></section>`;
@@ -233,7 +241,7 @@ function serviceCard(r, nowMs) {
         r.basis === 'health' ? '<p>Liveness only (no readiness endpoint).</p>' : '',
         r.reason && r.status !== 'not-running' ? `<p>${esc(r.reason)}</p>` : '',
         checksList(r.ready),
-        r.release ? `<p>Release <code>${esc(r.release.release)}</code>${r.release.booted_at ? `, booted <time datetime="${esc(r.release.booted_at)}">${esc(r.release.booted_at)}</time>` : ''}.</p>${mainNote(r.main)}` : r.status === 'not-running' ? '' : `<p>Release ${esc(r.release_error ? `unknown (${r.release_error})` : 'unknown')}.</p>`,
+        r.release ? `<p>Release <code>${esc(r.release.release)}</code>${r.release.booted_at ? `, booted ${timeTag(r.release.booted_at)}` : ''}.</p>${mainNote(r.main)}` : r.status === 'not-running' ? '' : `<p>Release ${esc(r.release_error ? `unknown (${r.release_error})` : 'unknown')}.</p>`,
         r.exposure ? `<p>${esc(r.exposure.label)}${r.exposure.note ? `: ${esc(r.exposure.note)}` : ''}</p>` : '',
         `<p class="st-id">${esc(r.id)} · manifest ${esc(r.manifest_status)}</p>`,
     ].filter(Boolean).join('');

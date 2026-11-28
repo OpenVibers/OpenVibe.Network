@@ -80,6 +80,8 @@ const server = http.createServer(app);
         assert.match(r.text, /Live streams stall on start/);
         assert.match(r.text, /Identified/);
         assert.match(r.text, /A restart left the ingest socket unbound\./);
+        // 11-28: the window in the reader's own zone (theme-loader rewrites the tag), UTC words until it runs.
+        assert.ok(r.text.includes('<time datetime="2026-09-28T03:00:00.000Z" data-ov-time="full">2026-09-28 03:00 UTC</time> – <time datetime="2026-09-28T04:00:00.000Z" data-ov-time="full">2026-09-28 04:00 UTC</time>'), 'a maintenance window: two time tags');
 
         // Resolve: closed, out of active, in recent; further updates refused.
         r = await call('POST', `/api/v1/status/incidents/${inc}/updates`, { body: { state: 'resolved', message: 'Rebound; streams start at once again.' }, headers: host });
