@@ -680,6 +680,9 @@ const DEFAULT_GRANTS = [
     // a person's tools and run one as them (X-OV-Subject), paid from that person's allowance; they never make or change one.
     ['actor', 'tools.made.run', 'openvibe.tools', []],
     ['codes', 'tools.made.run', 'openvibe.tools', []],
+    // Codes' spare-usage planner reads a person's own machines for them, read-only (Contracts 0.455.0, Bot #537), so it
+    // refreshes what each coding agent has left in the background, without the person's own token.
+    ['codes', 'bot.machine.read', 'openvibe.bot', []],
     // And make one for the person who asked (Contracts 0.439.0 tools.made.write; the owner, 11-15: "use codes or actor
     // to create a tool for you completely end to end"): draft it from their words and save it as theirs, always private
     // until they publish it. Changing or deleting a tool stays the person's own. From the Contracts release that has it.
