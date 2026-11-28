@@ -448,6 +448,11 @@ const DEFAULT_GRANTS = [
     // Desks plan D4, "hand it to me": when an agent needs its person for a step on its desk (a sign-in, a code, a
     // CAPTCHA), Actor tells them wherever they are, with the link to take the desk over. Actor resolves the task's
     // owner (a usr_ subject) to Network's user id, then pushes as app 'actor'.
+    // Codes tells the person when a task needs their approval, has a notice for them or used their spare usage
+    // (server/domain/notify.js, approvals.js, notices.js, spare.js): it resolves the usr_ subject, then pushes as app
+    // 'codes'. Never granted until 11-28, so every one was refused (invalid_scope, Codes' journal 11-21).
+    ['codes', 'identity.subject.resolve', SELF_AUDIENCE, []],
+    ['codes', 'network.notifications.push', SELF_AUDIENCE, ['codes']],
     ['actor', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['actor', 'network.notifications.push', SELF_AUDIENCE, ['actor']],
     // Plan T18: OpenVibe.Watch relays watch.observation.recorded / watch.watch.triggered / watch.check.failed.
