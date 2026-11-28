@@ -18,6 +18,9 @@ const contracts = require('openvibe-contracts');
 const REFRESH_MS = 5 * 60_000;
 const KEEP_MS = 30 * 60_000;
 const TIMEOUT_MS = 5_000;
+// A site that answers 404 publishes no card: ask it again in six hours, not every five minutes (11-28, openvibe.report's
+// traffic: ~16,700 404s a day across the network from this loop). Timeouts and other failures keep the usual pace.
+const ABSENT_MS = 6 * 60 * 60_000;
 const MAX_BYTES = 64 * 1024;
 const MAX_CARDS = 12;
 const PATH = '/.well-known/openvibe-menu.json';
@@ -150,6 +153,7 @@ async function readLimited(res, max) {
  */
 function createMenuCards({ sites, rankOf, load, save, onChange = () => {}, fetchImpl = (...a) => fetch(...a), now = Date.now, log = console }) {
     let state = {};            // site id → { cards, goodAt }
+    const absentUntil = new Map();   // site id → when to ask again a site that answered 404 (it has no card)
     let loaded = false;
     let inflight = null;
     let timer = null;
@@ -178,7 +182,7 @@ function createMenuCards({ sites, rankOf, load, save, onChange = () => {}, fetch
         });
         if (!res || res.status !== 200) {
             if (res && res.body && typeof res.body.cancel === 'function') res.body.cancel().catch(() => {});
-            return { ok: false };
+            return { ok: false, absent: !!res && (res.status === 404 || res.status === 410) };
         }
         const body = await readLimited(res, MAX_BYTES);
         if (body == null) return { ok: false };
@@ -194,9 +198,11 @@ function createMenuCards({ sites, rankOf, load, save, onChange = () => {}, fetch
         inflight = (async () => {
             const at = now();
             const list = sites();
-            const results = await Promise.all(list.map(async (site) => [site, await fetchSite(site).catch(() => ({ ok: false }))]));
+            const due = list.filter((site) => !(absentUntil.get(site.id) > at));
+            const results = await Promise.all(due.map(async (site) => [site, await fetchSite(site).catch(() => ({ ok: false }))]));
             let changed = false;
             for (const [site, result] of results) {
+                if (result.absent) absentUntil.set(site.id, at + ABSENT_MS); else absentUntil.delete(site.id);
                 if (result.ok) {
                     state[site.id] = { cards: result.cards, goodAt: at };
                     changed = true;
