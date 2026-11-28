@@ -515,7 +515,7 @@ ${require('openvibe-shared/frame').noscriptNav({ name: 'OpenVibe.Network', links
 <header class="os-head">
 <p class="os-kicker">Open stats</p>
 <h1>Every OpenVibe site's numbers</h1>
-<p class="os-lede">Public for everyone: page views, people, streams, OpenCoins and how fast each service answers. Counts only, never about a person. Updated every five minutes${d.generated_at ? ` · <time datetime="${esc(d.generated_at)}">${esc(d.generated_at.slice(0, 16).replace('T', ' '))} UTC</time>` : ''}.</p>
+<p class="os-lede">Public for everyone: page views, people, streams, OpenCoins and how fast each service answers. Counts only, never about a person. Updated every five minutes${d.generated_at ? ` · <time datetime="${esc(d.generated_at)}" data-ov-time="day">${esc(d.generated_at.slice(0, 16).replace('T', ' '))} UTC</time>` : ''}.</p>
 <nav class="os-tabs" aria-label="Time range">${tabs}</nav>
 <p class="os-data"><a href="/api/v1/stats?days=${days}">JSON</a> · <a href="/api/v1/stats/pageviews.csv?days=${days}">CSV</a> · <a href="/status">Service status</a></p>
 </header>
