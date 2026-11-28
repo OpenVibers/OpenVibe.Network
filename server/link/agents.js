@@ -7,6 +7,7 @@ const express = require('express');
 const { ids, http, validate, serviceAuth } = require('openvibe-contracts');
 const { ensureUserSubject } = require('../identity/subjects');
 const access = require('./access');
+const names = require('./names');
 const eventRelay = require('../developer/event-relay');
 
 const AGENT = /^agt_[0-9A-HJKMNP-TV-Z]{26}$/;
