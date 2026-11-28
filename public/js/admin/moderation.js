@@ -29,7 +29,7 @@ async function loadStreams() {
                         <td>${s.viewer_count || 0}</td>
                         <td>${s.started_at ? timeAgo(s.started_at) : '-'}</td>
                         <td>
-                            <button class="btn btn-sm btn-danger" onclick="endStream('${s.id}')"><i class="fa-solid fa-stop"></i> End broadcast</button><span class="admin-help">Disconnects viewers; the streamer must restart to resume.</span>
+                            <button class="btn btn-sm btn-danger" onclick="endStream('${s.id}')"><i class="fa-solid fa-power-off"></i> End broadcast</button><span class="admin-help">Disconnects viewers; the streamer must restart to resume.</span>
                         </td>
                     </tr>
                 `).join('')}</tbody>
