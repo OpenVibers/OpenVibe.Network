@@ -61,6 +61,9 @@ const DEFAULT_GRANTS = [
     ['quest', 'network.levels.award', SELF_AUDIENCE, []],
     ['quest', 'identity.subject.resolve', SELF_AUDIENCE, []],
     ['quest', 'events.subscription.manage', 'openvibe.events', []],
+    // Quest asks OpenVibe.Design to draft a missing badge glyph (design.glyph.draft; 11-28: the grant was never made, so
+    // every ask failed at the token and Quest logged "Design draft request unavailable" 160 times in six hours).
+    ['quest', 'design.glyph.draft', 'openvibe.design', []],
     // They subscribe to network.account.export_requested and network.account.deleted at boot (ADR-033).
     ...['actor', 'food', 'help', 'work', 'rent', 'media-hub', 'today'].map((svc) => [svc, 'events.subscription.manage', 'openvibe.events', []]),
     // Their pages go into OpenVibe.Search: <svc>.index_document.* through each one's outbox (openvibe-publishing/search-feed,
