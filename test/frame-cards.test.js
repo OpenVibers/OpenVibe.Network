@@ -163,5 +163,31 @@ function response(body, { status = 200, headers = {} } = {}) {
     assert.deepStrictEqual(body.cards[0].items[0].image, { src: 'https://openvibe.live/t/one.jpg', w: 640, h: 360 }, 'an image reaches GET /api/frame');
     srv.close();
 
+    // A site that answers 404 has no card: it is asked again in six hours, not every five minutes; a timeout or a 503
+    // keeps the usual pace (11-28: ~16,700 404s a day across the network).
+    {
+        let t = NOW;
+        const asked = [];
+        const fetch404 = async (url) => {
+            const site = SITES.find((s) => url.startsWith(`https://${s.host}/`));
+            asked.push(site.id);
+            if (site.id === 'games') return response('none', { status: 404 });
+            if (site.id === 'media-hub') return response('busy', { status: 503 });
+            return response([card(site.id)]);
+        };
+        const m = createMenuCards({ sites: () => SITES, rankOf: () => ['games', 'media-hub', 'live'], load: async () => null, save: async () => {}, fetchImpl: fetch404, now: () => t });
+        await m.refresh();
+        assert.ok(asked.includes('games') && asked.includes('media-hub'));
+        asked.length = 0;
+        t += 5 * 60_000;
+        await m.refresh();
+        assert.ok(!asked.includes('games'), 'the 404 site is not asked again five minutes later');
+        assert.ok(asked.includes('media-hub'), 'a 503 is asked again at the usual pace');
+        asked.length = 0;
+        t += 6 * 60 * 60_000;
+        await m.refresh();
+        assert.ok(asked.includes('games'), 'six hours later it is asked again');
+    }
+
     console.log('frame menu cards: sanitize, 64 KB, Live first, rank, 30-minute last good, /api/frame carries them');
 })().catch((err) => { console.error(err); process.exit(1); });
