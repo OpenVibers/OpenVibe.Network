@@ -144,6 +144,8 @@ const { createOpenStats, render } = require('../server/stats/open');
         const fresh = await s.collect(7);
         assert.notStrictEqual(fresh, first, 'the next reader has the new numbers');
         assert.ok(calls >= during, 'one recompute at a time');
+        // When it was counted is said in the reader's own zone (plan item 13): a <time data-ov-time> the theme loader rewrites.
+        if (fresh && fresh.generated_at) assert.match(render(fresh, 7), /Updated every five minutes · <time datetime="[^"]+" data-ov-time="day">[^<]+ UTC<\/time>/);
     }
     // Nothing answered yet: the page still renders, saying so.
     assert.ok(render(null, 30).includes('The numbers are being gathered'));
