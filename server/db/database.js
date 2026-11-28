@@ -155,6 +155,9 @@ async function seedDb(db, { log = console } = {}) {
             { client_id: 'directory', name: 'OpenVibe.Directory', redirect_uris: ['https://openvibe.directory/auth/callback'] },
             // OpenVibe.Finance (plan §L.2, 11-18): a person's own money data, its own service and database.
             { client_id: 'finance', name: 'OpenVibe.Finance', redirect_uris: ['https://openvibe.finance/auth/callback'] },
+            // openvibe.expert (plan §D item 6, 11-28): the Experts gallery on its own domain, served by OpenVibe.Actor (the
+            // store and the runs stay there), signs people in on its own host so Install and Remix work there.
+            { client_id: 'expert', name: 'OpenVibe Expert', redirect_uris: ['https://openvibe.expert/auth/callback'] },
             // openvibe.markets (plan §L.1, 11-18): a service principal for search by photo (Vision's ask); no sign-in yet.
             { client_id: 'markets', name: 'OpenVibe.Markets', redirect_uris: ['https://openvibe.markets/auth/callback'] },
             // IRL quest boards on a public Live channel, a local guide and group plans (the Fun room).
